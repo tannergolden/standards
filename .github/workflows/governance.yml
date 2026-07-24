@@ -1,0 +1,324 @@
+# --- Reusable Workflow ---
+#
+# ⚖️ Governance & Automation
+#
+# Purpose: the repository's housekeeping. Greets genuine first-time
+# contributors, labels pull requests by area, size, and conflict state, ages
+# out abandoned threads, locks the ones already finished, and keeps the label
+# taxonomy applied.
+#
+# Every job is independently gated on the event that should drive it, so the
+# caller can point one stub at several triggers and each job wakes only for
+# its own. Nothing here is a required check; all of it is allowed to fail
+# without blocking a merge.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '⚖️ Governance & Automation'
+#   on:
+#     pull_request_target:
+#       types: [opened, synchronize, reopened]
+#       branches: ['Development']
+#     issues:
+#       types: [opened]
+#     schedule:
+#       - cron: '0 4 * * 1' # start-of-week triage, and the label sync
+#     workflow_dispatch:
+#   concurrency:
+#     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     governance:
+#       permissions:
+#         contents: read # read the labeler rules
+#         issues: write # post the welcome on issues
+#         pull-requests: write # post the welcome on pull requests
+#       uses: tannergolden/standards/.github/workflows/governance.yml@v1
+#
+# NOTE ON THE LABEL SYNC TRIGGER: the taxonomy lives in this repository now,
+# so a consumer has no local labels file whose push could trigger a sync. The
+# schedule and manual dispatch are the triggers that matter, and a taxonomy
+# change reaches every repository on its next scheduled run.
+#
+# ---
+
+name: '⚖️ Reusable: Governance & Automation'
+
+on:
+  workflow_call:
+    inputs:
+      labeler-config:
+        description: 'Path to a labeler config in the CALLING repository. Empty uses the shared one.'
+        required: false
+        type: string
+        default: ''
+      contributing-url:
+        description: >-
+          Link to the contributing guide shown to first-time contributors.
+          Empty omits the line rather than pointing somewhere that 404s.
+        required: false
+        type: string
+        default: ''
+      standards-url:
+        description: >-
+          Link to the engineering standards shown to first-time
+          contributors. Empty omits the line.
+        required: false
+        type: string
+        default: ''
+      days-before-issue-stale:
+        description: 'Days of silence before an issue is marked stale.'
+        required: false
+        type: number
+        default: 60
+      days-before-pr-stale:
+        description: 'Days of silence before a pull request is marked stale.'
+        required: false
+        type: number
+        default: 30
+      days-before-close:
+        description: 'Days after the stale mark before the thread is closed.'
+        required: false
+        type: number
+        default: 7
+      lock-inactive-days:
+        description: >-
+          Days of silence after a thread is CLOSED before it is locked. The
+          stale sweep above ages out threads still open; this one seals
+          threads already finished.
+        required: false
+        type: number
+        default: 30
+
+permissions: {}
+
+jobs:
+  onboarding:
+    name: '👋 Contributor Welcome'
+    # Greet only genuine newcomers. actions/first-interaction does not
+    # reliably suppress repeat greetings for the repository owner, or for
+    # anything opened through an app or the API where the sender reads as a
+    # bot, so it was welcoming every maintainer's pull request as a first
+    # one. Gating on author_association fixes that: NONE, FIRST_TIME_
+    # CONTRIBUTOR, and FIRST_TIMER are newcomers; OWNER, MEMBER,
+    # COLLABORATOR, and CONTRIBUTOR fall through and skip.
+    if: >-
+      github.event.action == 'opened'
+      && github.event.pull_request.user.type != 'Bot'
+      && github.event.issue.user.type != 'Bot'
+      && (
+        github.event.pull_request.author_association == 'NONE'
+        || github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+        || github.event.pull_request.author_association == 'FIRST_TIMER'
+        || github.event.issue.author_association == 'NONE'
+        || github.event.issue.author_association == 'FIRST_TIME_CONTRIBUTOR'
+        || github.event.issue.author_association == 'FIRST_TIMER'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write # post the welcome on issues
+      pull-requests: write # post the welcome on pull requests
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      # The guide links are INPUTS with no default, and the message omits
+      # a line whose URL is empty. Community health files are commonly
+      # inherited from an account's .github repository rather than carried
+      # locally, so a guessed link into the calling repository's own tree
+      # would 404 at a new contributor on their very first interaction.
+      # Links that always resolve, to this repository's own issues and
+      # discussions, are built from the github context instead.
+      - name: '👋 Greet First-Time Contributor'
+        uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # v3.1.0
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
+            ### 👋 Thanks for opening your first issue!
+
+            We are glad you are here. A maintainer will take a look shortly, and a quick search of existing [issues](${{ github.server_url }}/${{ github.repository }}/issues) and [discussions](${{ github.server_url }}/${{ github.repository }}/discussions) may already point to an answer.
+
+            ${{ inputs.contributing-url && format('- 🤝 **[Contributing Guidelines]({0})**: how we branch, commit, and review.', inputs.contributing-url) || '' }}
+            ${{ inputs.standards-url && format('- 📐 **[Engineering Standards]({0})**: the rules every repository here follows.', inputs.standards-url) || '' }}
+          pr_message: |
+            ### 👋 Welcome, and thanks for your first pull request!
+
+            Small single-intent changes merge once CI is green, so here is the quick map:
+
+            ${{ inputs.contributing-url && format('- 🤝 The **[Contributing guide]({0})** covers branching, commits, and review.', inputs.contributing-url) || '' }}
+            ${{ inputs.standards-url && format('- 📐 The **[Engineering Standards]({0})** are the rules the gates enforce.', inputs.standards-url) || '' }}
+
+            **A few things CI checks, so they are worth a glance now:**
+            - 📜 **PR title** is a Conventional Commit (`type(scope): summary`); it becomes the squash commit.
+            - ✍️ **Commits are signed off** for the DCO (`git commit -s`); this is a required check.
+            - 🧪 **Local gates pass**: `make lint && make test`.
+            - 🌿 **Base branch** is `${{ github.event.repository.default_branch }}`.
+
+            Feel free to open as a **Draft** until CI is green; a maintainer will follow up from there. Happy shipping! ✨
+
+  triage:
+    name: '📥 Triage & Labeling'
+    # Pull requests only: issue labels come from the issue forms themselves,
+    # so an issue event would start a runner just to skip every step.
+    if: ${{ github.event_name == 'pull_request_target' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read # read the labeler rules
+      pull-requests: write # apply area, size, and conflict labels
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '📄 Resolve labeler configuration'
+        id: labeler-config
+        uses: tannergolden/standards/actions/config@v1
+        with:
+          name: labeler.yml
+          override: ${{ inputs.labeler-config }}
+
+      - name: '🏷️ Label Areas & Types'
+        uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
+        with:
+          repo-token: '${{ secrets.GITHUB_TOKEN }}'
+          configuration-path: ${{ steps.labeler-config.outputs.path }}
+          sync-labels: true
+
+      - name: '👕 Label Size'
+        uses: codelytv/pr-size-labeler@095a41fca88b8764fd9e008ad269bcdb82bb38b9 # v1.10.4
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: 'size: extra small'
+          xs_max_size: 10
+          s_label: 'size: small'
+          s_max_size: 50
+          m_label: 'size: medium'
+          m_max_size: 200
+          l_label: 'size: large'
+          l_max_size: 500
+          xl_label: 'size: extra large'
+
+      - name: '⚔️ Label Merge Conflicts'
+        uses: eps1lon/actions-label-merge-conflict@0273be72a0bbd58fcd71d0d6c02c209b50d1e5e1 # v3.1.0
+        with:
+          dirtyLabel: 'status: conflict'
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          commentOnDirty: 'This pull request has merge conflicts. Please resolve them to proceed.'
+
+      - name: '📝 Report Failure (Triage)'
+        if: ${{ failure() }}
+        run: |
+          echo "::error::Triage and labeling failed. Check the labeler configuration or the token's permissions."
+          {
+            echo "### 📥 Triage & Labeling Failed"
+            echo ""
+            echo "**Likely causes:**"
+            echo "- The labeler configuration is invalid, or an override path does not exist."
+            echo "- A label named by the rules does not exist yet: run the label sync."
+            echo "- The token lacks \`pull-requests: write\`."
+            echo "- API rate limiting; re-run once it resets."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  stale:
+    name: '🕰️ Stale Management'
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      issues: write # mark and close stale issues
+      pull-requests: write # mark and close stale pull requests
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      - name: '🔎 Mark Stale Issues & PRs'
+        uses: actions/stale@1e223db275d687790206a7acac4d1a11bd6fe629 # v10.4.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-issue-message: 'This issue has been automatically marked as stale because it has not had recent activity. It will be closed if no further activity occurs. Thank you for your contributions!'
+          stale-issue-label: 'status: stale'
+          days-before-stale: ${{ inputs.days-before-issue-stale }}
+          days-before-close: ${{ inputs.days-before-close }}
+          stale-pr-message: 'This PR has been automatically marked as stale because it has not had recent activity. It will be closed if no further activity occurs. Thank you for your contributions!'
+          stale-pr-label: 'status: stale'
+          days-before-pr-stale: ${{ inputs.days-before-pr-stale }}
+          days-before-pr-close: ${{ inputs.days-before-close }}
+          # 'automated' covers machine-authored pull requests that
+          # legitimately wait on a human. 'status: needs info' is
+          # deliberately NOT exempt: silence in answer to a question is
+          # exactly what should age out.
+          exempt-pr-labels: 'status: blocked, status: on hold, priority: high, automated, pinned'
+          exempt-issue-labels: 'status: blocked, status: on hold, priority: high, automated, pinned'
+
+  lock:
+    name: '🔒 Lock Inactive Threads'
+    # Same schedule as the stale sweep, and the same concern: a thread
+    # nobody is reading should stop accepting replies. Stale ages out what
+    # is still open, this seals what is already closed.
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      issues: write # lock long-inactive closed issues
+      pull-requests: write # lock long-inactive closed pull requests
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🔒 Lock Threads: seals closed issues and pull requests after a period of silence.'
+
+      - uses: dessant/lock-threads@89ae32b08ed1a541efecbab17912962a5e38981c # v6.0.2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-inactive-days: ${{ inputs.lock-inactive-days }}
+          pr-inactive-days: ${{ inputs.lock-inactive-days }}
+          issue-comment: 'This issue has been automatically locked since there has not been any recent activity after it was closed. Please open a new issue for related bugs.'
+          pr-comment: 'This pull request has been automatically locked since there has not been any recent activity after it was closed. Please open a new issue for related bugs.'
+          issue-lock-reason: 'resolved'
+          pr-lock-reason: 'resolved'
+
+  label-sync:
+    name: '🏷️ Label Sync'
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write # create and update the repository's labels
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      # No checkout: the taxonomy and the script both travel with the action.
+      - name: '🔖 Sync Labels'
+        uses: tannergolden/standards/actions/sync-labels@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: '📝 Report Failure (Label Sync)'
+        if: ${{ failure() }}
+        run: |
+          echo "::error::Label sync failed. The per-label output in the step above names the exact cause."
+          {
+            echo "### 🏷️ Label sync failed"
+            echo ""
+            echo "**Likely causes:**"
+            echo "1. **Validation:** a description over 100 characters, a malformed color, or a duplicate name. The validation step names the line."
+            echo "2. **Permissions:** the job needs \`issues: write\`."
+            echo "3. **API rate limit:** re-run once it resets."
+          } >> "$GITHUB_STEP_SUMMARY"
