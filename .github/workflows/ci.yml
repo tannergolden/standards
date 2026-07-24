@@ -1,0 +1,479 @@
+# --- Reusable Workflow ---
+#
+# ✨ CI: Validation
+#
+# Purpose: the primary validation gate. Lint, test, and build run as the
+# required check; spelling, links, dependency review, and license metadata
+# run beside it as separate jobs so a rotted external link cannot block a
+# merge that has nothing to do with it.
+#
+# RULESET-LOAD-BEARING JOB NAME: '🧪 Lint, Test & Build' is a required
+# status check, reported by a caller as '<job id> / 🧪 Lint, Test & Build'.
+# The stub job id is fixed at `ci` (see data/README.md).
+#
+# THIS WORKFLOW DOES NOT KNOW HOW YOUR PROJECT BUILDS, and does not need to.
+# Each stage resolves in the same order, which is what makes it work for any
+# language and any toolchain:
+#
+#   1. The command you passed as an input, if you passed one.
+#   2. `make <stage>`, if the repository has a Makefile defining that target.
+#   3. Skipped, with a notice.
+#
+# So a Go project passes `go build ./...`, a Rust project passes
+# `cargo build`, and a project that already routes everything through a
+# Makefile passes nothing at all. A documentation repository skips build and
+# test and is not failed for lacking them.
+#
+# ⚠️ If NOTHING resolves, the job FAILS rather than reporting green. A
+# validation gate that validated nothing is worse than no gate, because it
+# reports success to branch protection and to everyone reading the badge.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '✨ CI: Validation'
+#   on:
+#     push:
+#       branches: ['Experimental', 'Development', 'Preview', 'Release']
+#     pull_request:
+#       branches: ['Experimental', 'Development', 'Preview', 'Release']
+#     workflow_dispatch:
+#   concurrency:
+#     # In-progress runs are never canceled, so a required check cannot
+#     # vanish mid-merge. Later pushes wait their turn instead.
+#     group: ${{ github.workflow }}-${{ github.ref }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     ci: # <- fixed by the rulesets. Do not rename.
+#       permissions:
+#         contents: read # read the repository
+#       uses: tannergolden/standards/.github/workflows/ci.yml@v1
+#
+# ---
+
+name: '✨ Reusable: CI Validation'
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version, used when the repository has a package.json.'
+        required: false
+        type: string
+        default: '22.x'
+      python-version:
+        description: 'Python version, used when the repository has Python files.'
+        required: false
+        type: string
+        default: '3.12'
+      setup-command:
+        description: >-
+          Command that installs dependencies. Empty falls back to
+          `make setup`, then to the toolchain step's own install.
+        required: false
+        type: string
+        default: ''
+      lint-command:
+        description: 'Command that lints. Empty falls back to `make lint`, then skips.'
+        required: false
+        type: string
+        default: ''
+      test-command:
+        description: 'Command that runs tests. Empty falls back to `make test`, then skips.'
+        required: false
+        type: string
+        default: ''
+      build-command:
+        description: 'Command that builds. Empty falls back to `make build`, then skips.'
+        required: false
+        type: string
+        default: ''
+      typos-config:
+        description: 'Path to a typos config in the CALLING repository. Empty uses the shared one.'
+        required: false
+        type: string
+        default: ''
+      lychee-config:
+        description: 'Path to a lychee config in the CALLING repository. Empty uses the shared one.'
+        required: false
+        type: string
+        default: ''
+      reuse-check:
+        description: >-
+          Verify SPDX licensing metadata against the REUSE specification.
+          Off unless your repository already carries SPDX headers and a
+          LICENSES/ folder, since without them it fails by definition.
+        required: false
+        type: boolean
+        default: false
+      dependency-review:
+        description: >-
+          Screen dependency changes on a pull request for known
+          vulnerabilities. Public repositories only: the Dependency Graph is
+          free there and needs Advanced Security elsewhere.
+        required: false
+        type: boolean
+        default: true
+      dependency-review-severity:
+        description: 'Lowest severity that fails the check: critical, high, moderate, or low.'
+        required: false
+        type: string
+        default: 'high'
+      deny-licenses:
+        description: >-
+          Comma-separated SPDX licenses to reject, such as 'GPL-3.0'. Empty
+          enforces no license policy.
+        required: false
+        type: string
+        default: ''
+      fail-on-broken-links:
+        description: >-
+          Make the link check block a merge. Off by default: external links
+          rot on their own schedule, and a merge should not depend on
+          somebody else's uptime.
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  validate:
+    name: '🧪 Lint, Test & Build'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '👷 Primary CI: validates the repository via lint, test, and build.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🧰 Setup Toolchain'
+        id: setup
+        uses: tannergolden/standards/actions/setup@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          python-version: ${{ inputs.python-version }}
+          install: ${{ inputs.setup-command == '' }}
+
+      - name: '📦 Run Setup Command'
+        if: ${{ inputs.setup-command != '' }}
+        env:
+          COMMAND: ${{ inputs.setup-command }}
+        run: bash -c "$COMMAND"
+
+      # Each stage resolves the same way: explicit command, else a Makefile
+      # target of the same name, else skip. RAN=true/false is recorded so
+      # the summary can tell "passed" apart from "never ran", which is the
+      # distinction that decides whether this job is a real gate.
+      - name: '✨ Run Linter'
+        id: lint
+        env:
+          COMMAND: ${{ inputs.lint-command }}
+        run: |
+          if [ -n "$COMMAND" ]; then
+            echo "ran=true" >> "$GITHUB_OUTPUT"; bash -c "$COMMAND"
+          elif make -n lint >/dev/null 2>&1; then
+            echo "ran=true" >> "$GITHUB_OUTPUT"; make lint
+          else
+            echo "ran=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Lint skipped::No lint-command input and no 'lint' target in a Makefile."
+          fi
+
+      - name: '📝 Lint Documentation'
+        id: lintdocs
+        run: |
+          if make -n lint-docs >/dev/null 2>&1; then
+            echo "ran=true" >> "$GITHUB_OUTPUT"; make lint-docs
+          else
+            echo "ran=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Doc lint skipped::No 'lint-docs' target in a Makefile."
+          fi
+
+      - name: '🧪 Run Tests'
+        id: test
+        env:
+          COMMAND: ${{ inputs.test-command }}
+        run: |
+          if [ -n "$COMMAND" ]; then
+            echo "ran=true" >> "$GITHUB_OUTPUT"; bash -c "$COMMAND"
+          elif make -n test >/dev/null 2>&1; then
+            echo "ran=true" >> "$GITHUB_OUTPUT"; make test
+          else
+            echo "ran=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Tests skipped::No test-command input and no 'test' target in a Makefile."
+          fi
+
+      - name: '🏗️ Build Project'
+        id: build
+        env:
+          COMMAND: ${{ inputs.build-command }}
+        run: |
+          if [ -n "$COMMAND" ]; then
+            echo "ran=true" >> "$GITHUB_OUTPUT"; bash -c "$COMMAND"
+          elif make -n build >/dev/null 2>&1; then
+            echo "ran=true" >> "$GITHUB_OUTPUT"; make build
+          else
+            echo "ran=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Build skipped::No build-command input and no 'build' target in a Makefile."
+          fi
+
+      # A gate that gated nothing must not report green. Branch protection
+      # cannot tell the difference, and neither can anyone reading the check.
+      - name: '🚦 Verify Something Was Validated'
+        env:
+          RAN_LINT: ${{ steps.lint.outputs.ran }}
+          RAN_DOCS: ${{ steps.lintdocs.outputs.ran }}
+          RAN_TEST: ${{ steps.test.outputs.ran }}
+          RAN_BUILD: ${{ steps.build.outputs.ran }}
+        run: |
+          if [ "$RAN_LINT" = false ] && [ "$RAN_DOCS" = false ] && [ "$RAN_TEST" = false ] && [ "$RAN_BUILD" = false ]; then
+            echo "::error title=Nothing was validated::Every stage skipped, so this check would have reported success without checking anything. Pass lint-command, test-command, or build-command from your stub, or add the matching targets to a Makefile."
+            {
+              echo "### 🚦 Nothing was validated"
+              echo ""
+              echo "No stage resolved to a command, so this job would have passed without running a single check."
+              echo ""
+              echo "**Fix it, either way works:**"
+              echo ""
+              echo "\`\`\`yaml"
+              echo "jobs:"
+              echo "  ci:"
+              echo "    uses: tannergolden/standards/.github/workflows/ci.yml@v1"
+              echo "    with:"
+              echo "      lint-command: 'golangci-lint run'"
+              echo "      test-command: 'go test ./...'"
+              echo "      build-command: 'go build ./...'"
+              echo "\`\`\`"
+              echo ""
+              echo "Or add \`lint\`, \`test\`, and \`build\` targets to a \`Makefile\` and pass nothing."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: '🏁 Summary'
+        if: always()
+        env:
+          R_SETUP: ${{ steps.setup.conclusion }}
+          R_LINT: ${{ steps.lint.conclusion }}
+          R_LINTDOCS: ${{ steps.lintdocs.conclusion }}
+          R_TEST: ${{ steps.test.conclusion }}
+          R_BUILD: ${{ steps.build.conclusion }}
+          RAN_LINT: ${{ steps.lint.outputs.ran }}
+          RAN_DOCS: ${{ steps.lintdocs.outputs.ran }}
+          RAN_TEST: ${{ steps.test.outputs.ran }}
+          RAN_BUILD: ${{ steps.build.outputs.ran }}
+        run: |
+          {
+            echo "### 🏁 CI Summary"
+            echo "| Check | Status |"
+            echo "| :--- | :--- |"
+            echo "| 📦 Setup | $([ "$R_SETUP" = success ] && echo ✅ || echo ❌) $R_SETUP |"
+            row() { # name, conclusion, ran
+              if [ "$3" = false ]; then echo "| $1 | ⏭️ skipped |"
+              elif [ "$2" = success ]; then echo "| $1 | ✅ $2 |"
+              else echo "| $1 | ❌ $2 |"; fi
+            }
+            row "✨ Linter" "$R_LINT" "$RAN_LINT"
+            row "📝 Documentation" "$R_LINTDOCS" "$RAN_DOCS"
+            row "🧪 Tests" "$R_TEST" "$RAN_TEST"
+            row "🏗️ Build" "$R_BUILD" "$RAN_BUILD"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$R_LINT" = failure ]; then
+            {
+              echo "#### 💡 Linting Tips"
+              echo "- Run \`make lint-fix\` locally to resolve many issues automatically."
+              echo "- The style standards: https://github.com/tannergolden/standards/tree/Development/docs/technical/interface"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "$R_LINTDOCS" = failure ]; then
+            {
+              echo "#### 📝 Docs & Governance Tips"
+              echo "- Run \`make lint-docs\` locally; the output names each violating file and rule."
+              echo "- The style spec: https://github.com/tannergolden/standards/blob/Development/docs/technical/interface/Document-Styling-&-Formatting.md"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "$R_TEST" = failure ]; then
+            {
+              echo "#### 🧪 Testing Tips"
+              echo "- Run \`make test\` locally to reproduce and debug failures."
+              echo "- Check the workflow logs for the specific failing cases."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "$R_SETUP" = failure ]; then
+            {
+              echo "#### 📦 Setup Tips"
+              echo "- Run \`make setup\` locally; it reports the failing toolchain or dependency step."
+              echo "- A lockfile mismatch is the usual cause: reinstall and commit the updated lockfile."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "$R_BUILD" = failure ]; then
+            {
+              echo "#### 🏗️ Build Tips"
+              echo "- Run \`make build\` locally to reproduce the failure."
+              echo "- Build is part of a required check: fix the error it reports before merging."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  spelling:
+    name: '📝 Check Spelling'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '📝 Spell Check: validates spelling across the repository.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '📄 Resolve typos configuration'
+        id: typos-config
+        uses: tannergolden/standards/actions/config@v1
+        with:
+          name: _typos.toml
+          override: ${{ inputs.typos-config }}
+
+      - name: '📝 Check Spelling'
+        uses: crate-ci/typos@bee27e3a4fd1ea2111cf90ab89cd076c870fce14 # v1.48.0
+        with:
+          files: .
+          config: ${{ steps.typos-config.outputs.path }}
+
+  link-checker:
+    name: '🔗 Check Links'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🔗 Quality: checks for broken links in documentation.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '📄 Resolve lychee configuration'
+        id: lychee-config
+        uses: tannergolden/standards/actions/config@v1
+        with:
+          name: lychee.toml
+          override: ${{ inputs.lychee-config }}
+
+      - name: '🔗 Link Check'
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        id: link-check
+        with:
+          # Scan the whole tree with '/'-rooted links resolved against the
+          # repository root. Excludes, verbosity, and accepted status codes
+          # all come from the config: tune there, not here.
+          args: '--config ${{ steps.lychee-config.outputs.path }} --root-dir . .'
+          fail: ${{ inputs.fail-on-broken-links }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: '📊 Link Check Summary'
+        if: always()
+        run: |
+          if [ -f ./lychee.md ]; then
+            echo "### 🔗 Link Check Report" >> "$GITHUB_STEP_SUMMARY"
+            cat ./lychee.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # A pull-request-time gate like the rest of this workflow, so it lives
+  # here rather than in a file of its own. Runs only on pull_request, which
+  # is the only event with a dependency diff to review, and only on public
+  # repositories, where the Dependency Graph is available.
+  dependency-review:
+    name: '📦 Dependency Review'
+    if: ${{ inputs.dependency-review && github.event_name == 'pull_request' && github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🕵️ Supply Chain: scans dependency changes for known vulnerabilities.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🛡️ Scan Dependencies'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        id: dependency-review
+        with:
+          fail-on-severity: ${{ inputs.dependency-review-severity }}
+          deny-licenses: ${{ inputs.deny-licenses }}
+
+      - name: '📝 Report Failure'
+        if: ${{ failure() && steps.dependency-review.conclusion == 'failure' }}
+        env:
+          SEVERITY: ${{ inputs.dependency-review-severity }}
+        run: |
+          echo "::error::A dependency change introduces a vulnerability at or above '${SEVERITY}' severity, or uses a denied license."
+          {
+            echo "### 🛡️ Dependency Review Failed"
+            echo ""
+            echo "A dependency added or updated by this pull request has a known vulnerability at or above **${SEVERITY}** severity, or carries a license this repository denies."
+            echo ""
+            echo "**Fix it:** update the dependency to a patched version, or drop it. The run log names the advisory and the affected version range."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # License compliance against the REUSE specification: every file carries
+  # machine-readable copyright and license metadata.
+  #
+  # OFF BY DEFAULT. REUSE requires a LICENSES/ folder holding the full text
+  # of every license identifier used, and a repository that does not already
+  # work that way would get a permanently red job for a standard it never
+  # adopted. Turn it on where SPDX headers are part of how you work.
+  reuse:
+    name: '📄 REUSE Compliance'
+    if: ${{ inputs.reuse-check }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '📄 REUSE: verifies every file has copyright and license metadata.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '📄 REUSE Lint'
+        uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0

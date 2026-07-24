@@ -1,0 +1,138 @@
+# --- Reusable Workflow ---
+#
+# 🔐 Scan for Secrets
+#
+# Purpose: scans a repository's full history for committed secrets,
+# credentials, and tokens. History depth matters here: a secret removed in a
+# later commit is still a leaked secret, so this checks out everything rather
+# than the tip.
+#
+# RULESET-LOAD-BEARING JOB NAME: '🔍 Scan for Secrets' is a required status
+# check. A caller reports it as '<job id> / 🔍 Scan for Secrets', which is
+# why the stub job id is fixed at `secrets` (see data/README.md). Renaming
+# either half leaves branch protection waiting on a check that never
+# reports, which blocks every merge and looks like a hung pull request
+# rather than a naming mistake.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🔐 Security: Gitleaks'
+#   on:
+#     push:
+#       branches: ['Experimental', 'Development', 'Preview', 'Release']
+#     pull_request:
+#       branches: ['Experimental', 'Development', 'Preview', 'Release']
+#     workflow_dispatch:
+#   concurrency:
+#     group: ${{ github.workflow }}-${{ github.ref }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     secrets: # <- fixed by the rulesets. Do not rename.
+#       permissions:
+#         contents: read # full-history checkout for the secret scan
+#         issues: write # one-time escalation issue when scanning is silently off
+#       uses: tannergolden/standards/.github/workflows/gitleaks.yml@v1
+#       secrets: inherit
+#
+# ---
+
+name: '🔐 Reusable: Scan for Secrets'
+
+on:
+  workflow_call:
+    secrets:
+      GITLEAKS_LICENSE:
+        description: >-
+          Free-tier gitleaks license, required only for ORGANIZATION-owned
+          repositories. Personal and public repositories ignore it entirely.
+        required: false
+
+permissions: {}
+
+jobs:
+  scan:
+    name: '🔍 Scan for Secrets'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read # full-history checkout for the secret scan
+      issues: write # one-time escalation issue when scanning is silently off
+
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🔐 Security Scan: checking for leaked secrets using Gitleaks.'
+
+      # Full history: a secret deleted in a later commit is still leaked.
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # gitleaks-action is free for personal and public repositories.
+      # Organization-owned repositories need a (free-tier) GITLEAKS_LICENSE;
+      # without it the action errors outright. Because this is a REQUIRED
+      # merge check, a hard failure would block EVERY merge in a new
+      # org-owned repository until someone added the secret. Instead, skip
+      # the scan so the required check still reports, and make the gap loud
+      # enough that nobody mistakes a green check for a scanned repository.
+      - name: '🔑 Preflight: organization license check'
+        id: preflight
+        env:
+          OWNER_TYPE: ${{ github.event.repository.owner.type }}
+          HAS_LICENSE: ${{ secrets.GITLEAKS_LICENSE != '' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "$OWNER_TYPE" = "Organization" ] && [ "$HAS_LICENSE" != "true" ]; then
+            echo "scan=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Secret scan skipped (GITLEAKS_LICENSE not set)::This repository is owned by a GitHub organization, and gitleaks-action requires a free-tier GITLEAKS_LICENSE secret for org-owned repositories. Secret scanning is SKIPPED so this required check stays green - your PRs are NOT being scanned for leaked credentials. Get a free key at https://gitleaks.io and add it under Settings > Secrets and variables > Actions as GITLEAKS_LICENSE to turn scanning on."
+            # A green check with scanning silently off is easy to never
+            # notice: escalate ONCE with an issue. Deduplicated against
+            # every state, so closing the issue counts as acknowledgement
+            # and it is never re-opened; entirely best-effort - a token
+            # without issues scope must never fail the required check.
+            TITLE="🔍 Secret scanning is OFF - add the free GITLEAKS_LICENSE secret"
+            EXISTING="$(gh issue list --search 'in:title GITLEAKS_LICENSE' --state all --json number --jq '.[0].number // empty' 2>/dev/null || true)"
+            if [ -z "$EXISTING" ]; then
+              BODY="This repository is owned by a GitHub **organization**, and gitleaks-action requires a (free-tier) \`GITLEAKS_LICENSE\` secret on org-owned repositories.
+
+          Until one is added, the required **🔍 Scan for Secrets** check passes with the scan **skipped** - pull requests are NOT being scanned for leaked credentials.
+
+          **Fix (once):** get a free key at https://gitleaks.io and add it under **Settings → Secrets and variables → Actions** as \`GITLEAKS_LICENSE\`. The very next run scans for real.
+
+          Closing this issue acknowledges the gap - it will not be re-opened."
+              gh issue create --title "$TITLE" --body "$BODY" --label 'type: security' 2>/dev/null \
+                || gh issue create --title "$TITLE" --body "$BODY" 2>/dev/null \
+                || echo "::notice::Could not open the escalation issue (token without issues scope) - the warning above is the only signal."
+            fi
+          else
+            echo "scan=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: '🔍 Run Gitleaks'
+        if: ${{ steps.preflight.outputs.scan == 'true' }}
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Wired for org-owned repositories that provision the free-tier
+          # license; empty (and ignored) for personal and public repos.
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+          GITLEAKS_ENABLE_SUMMARY: true
+
+      - name: '📝 Report Failure'
+        if: ${{ failure() }}
+        run: |
+          echo "::error::Gitleaks step failed. If it exited on findings, secrets were detected - review the log and ROTATE any exposed credentials immediately. If it failed to run (org license, network, checkout), fix the action error; this is a required merge check."
+          {
+            echo "### 🚨 Security: Gitleaks failed"
+            echo ""
+            echo "This step fails in two distinct cases - check the run log to tell which:"
+            echo ""
+            echo "1. **Secrets detected:** Gitleaks found potential secrets (keys, passwords, tokens). Remove them from history and **rotate the exposed credentials** - assume they are compromised."
+            echo "2. **Failed to run:** an org-license, network, or checkout error, not a finding. Fix the action error and re-run."
+          } >> "$GITHUB_STEP_SUMMARY"

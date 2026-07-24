@@ -1,0 +1,238 @@
+# --- Reusable Workflow ---
+#
+# ✨ Semantic Pull Request
+#
+# Purpose: the pull-request integrity gate. Four jobs enforce four
+# contracts: the title follows Conventional Commits, because a squash merge
+# turns it into the commit subject and the changelog is built from those; the
+# source branch follows `<type>/<topic>`; every human-authored commit message
+# follows Conventional Commits in its own right, which matters the moment a
+# repository merges or rebases rather than squashing; and every
+# human-authored commit carries the DCO sign-off trailer.
+#
+# RULESET-LOAD-BEARING JOB NAME: '✍️ DCO Sign-Off' is a required status
+# check, reported by a caller as '<job id> / ✍️ DCO Sign-Off'. The stub job
+# id is fixed at `pr` (see data/README.md).
+#
+# The DCO job deliberately has no bot skip at the job level. A skipped
+# required check never concludes, which would deadlock every Dependabot pull
+# request rather than passing it. Bots are exempted per COMMIT inside the
+# check instead, so an all-bot pull request still reports success.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '✨ Semantic Pull Request'
+#   on:
+#     pull_request_target:
+#       types: [opened, edited, synchronize]
+#   concurrency:
+#     # Keyed per pull request: under pull_request_target github.ref is the
+#     # BASE branch, so a branch-keyed group would put every open pull
+#     # request in one queue slot.
+#     group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     pr: # <- fixed by the rulesets. Do not rename.
+#       permissions:
+#         pull-requests: read # read the PR title under validation
+#         statuses: write # publish the semantic-title status check on the PR
+#       uses: tannergolden/standards/.github/workflows/semantic-pr.yml@v1
+#
+# ---
+
+name: '✨ Reusable: Semantic Pull Request'
+
+on:
+  workflow_call:
+    inputs:
+      branch-prefixes:
+        description: >-
+          Pipe-separated topic-branch prefixes accepted by the branch-name
+          check, as a regular expression alternation.
+        required: false
+        type: string
+        default: 'feat|fix|bugfix|hotfix|docs|style|refactor|perf|test|build|ci|chore|security|revert|experiment|release|deps|claude|agent'
+      commit-types:
+        description: >-
+          Comma-separated Conventional Commit types accepted in individual
+          commit messages. Keep this in step with the types the title check
+          allows, or a message can pass one gate and fail the other.
+        required: false
+        type: string
+        default: 'feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert,security'
+
+permissions: {}
+
+jobs:
+  title:
+    name: '👮 Validate PR Title'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pull-requests: read # read the PR title under validation
+      statuses: write # publish the semantic-title status check on the PR
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '📦 Governance: enforces Conventional Commits on pull request titles.'
+
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        id: semantic-pr
+        # Exempt bot-AUTHORED pull requests, which follow their own title
+        # conventions. Keyed to the PR author rather than the event actor: a
+        # maintainer clicking 'Update branch' on a bot's pull request
+        # re-fires this as themselves and must not fail the bot's title.
+        if: ${{ github.event.pull_request.number && !endsWith(github.actor, '[bot]') && !endsWith(github.event.pull_request.user.login, '[bot]') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+            security
+          requireScope: false
+          # Regex the title subject must match. It enforces an OPTIONAL
+          # leading emoji and space, then a lowercase letter, and rejects the
+          # em dash anywhere in the subject. That last part carries real
+          # weight: a squash merge inherits the title as the commit subject,
+          # and commitlint does not run on a GitHub-created squash commit, so
+          # this is the only gate keeping a banned em dash out of history.
+          #
+          # WHY THE ESCAPES LOOK LIKE THIS: the action compiles this with
+          # `new RegExp(pattern)` and NO `u` flag. Under that mode
+          # `\p{Emoji}` matches the literal text "p{Emoji}" and a braced
+          # `\u{2014}` escape matches the literal text "u{2014}", NOT the
+          # character, so the obvious pattern silently rejects every real
+          # emoji AND leaves the em-dash guard inert. Flag-independent forms
+          # are used instead:
+          #   - the em dash is caught by the dash range U+2013 to U+2015,
+          #     which also rejects the en dash and horizontal bar. Both are
+          #     unwanted in a subject, so that is acceptable.
+          #   - the optional emoji is matched by explicit UTF-16 code units:
+          #     an astral emoji as a surrogate pair, or a BMP symbol emoji in
+          #     the common ranges, each with an optional variation selector.
+          # Verified in Node against real house emoji and em-dash titles.
+          subjectPattern: "^(?!.*[\\u2013-\\u2015])(?:(?:[\\uD800-\\uDBFF][\\uDC00-\\uDFFF]|[\\u2190-\\u21FF\\u2300-\\u27BF\\u2900-\\u2BFF])\\uFE0F? )?[a-z].*"
+          subjectPatternError: |
+            The subject of a pull request title must start with a lowercase letter, optionally preceded by an emoji and a space, and must not contain an em dash (use a comma, a colon, or a spaced hyphen).
+
+      - name: '📝 Report Failure (Semantic PR)'
+        if: ${{ failure() && steps.semantic-pr.conclusion == 'failure' }}
+        run: |
+          echo "::error::PR title does not follow Conventional Commits specification."
+          {
+            echo "### ❌ Semantic PR Check Failed"
+            echo "The pull request title must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification."
+            echo ""
+            echo "**Pattern:** \`<type>(<scope>): <subject>\` or \`<type>: <subject>\`"
+            echo "**Examples:**"
+            echo "- \`feat: add new feature\`"
+            echo "- \`fix(ui): resolve button alignment\`"
+            echo "- \`docs: update readme\`"
+            echo ""
+            echo "Please update your PR title to match this format."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  branch-name:
+    name: '🌿 Validate Branch Name'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    # Bots manage their own branch names. Exempted by pull request AUTHOR as
+    # well as event actor, so a maintainer updating a Dependabot branch does
+    # not fail Dependabot's naming.
+    if: ${{ github.event.pull_request.number && !endsWith(github.actor, '[bot]') && !endsWith(github.event.pull_request.user.login, '[bot]') }}
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      - name: '🌿 Check topic branch prefix'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          PREFIXES: ${{ inputs.branch-prefixes }}
+        run: |
+          # Mechanical enforcement of the branch naming convention in
+          # docs/distribution/Branching-Strategy-&-Workflow.md
+          if printf '%s' "$HEAD_REF" | grep -qE "^(${PREFIXES})/.+"; then
+            echo "✅ Branch name follows convention: $HEAD_REF"
+          else
+            echo "::error::Branch '$HEAD_REF' does not follow the '<type>/<topic>' naming convention (e.g. feat/login-form, bugfix/issue-42)."
+            {
+              echo "### 🌿 Branch Naming Check Failed"
+              echo "Rename your branch to match '<type>/<topic>', e.g. git branch -m feat/my-topic."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+  # The title check above covers what a SQUASH merge writes into history.
+  # It covers nothing else, so on a repository that merges or rebases every
+  # commit message reaching the default branch was validated by nothing.
+  # This is that gate, and it is per commit rather than per pull request.
+  #
+  # Bot-authored and merge commits are exempt, matching the DCO check
+  # exactly, so one pull request cannot pass one gate and fail the other on
+  # the same commit.
+  commits:
+    name: '✍️ Commit Messages'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read # read the PR's commits and their messages
+    if: ${{ github.event.pull_request.number }}
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '✍️ Commits: enforces Conventional Commits on every human commit.'
+
+      # No checkout, for the same reason the DCO job has none: this runs
+      # under pull_request_target with an elevated token, and the commits
+      # are read through the API rather than fetched from the branch.
+      - name: '✍️ Verify commit messages'
+        uses: tannergolden/standards/actions/commit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
+          types: ${{ inputs.commit-types }}
+
+  dco:
+    name: '✍️ DCO Sign-Off'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read # read the PR's commits and their sign-off trailers
+    # No bot skip here, deliberately: see the header. This must always
+    # report a result, and it does so for bot pull requests too because the
+    # exemption is applied per commit inside the check.
+    if: ${{ github.event.pull_request.number }}
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '✍️ DCO: verifies the Signed-off-by trailer on every human commit.'
+
+      # No checkout. The commits under review are read through the API and
+      # never executed, and the check script travels with the action rather
+      # than being fetched from the tree under review. That is what makes
+      # this safe under pull_request_target.
+      - name: '✍️ Verify Developer Certificate of Origin sign-offs'
+        uses: tannergolden/standards/actions/dco-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
