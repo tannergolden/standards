@@ -1,0 +1,113 @@
+# --- Shared Spell-Check Configuration ---
+#
+# The accepted-words list applied to a calling repository's prose and code.
+# Entries are terms `typos` would otherwise flag: product names, acronyms,
+# and domain vocabulary that is spelled correctly but sits outside its
+# dictionary.
+#
+# Additive by design. A word missing here fails a build that should have
+# passed, so err toward adding the term rather than rewording the sentence.
+#
+# ---
+
+[files]
+extend-exclude = [
+  "_typos.toml",
+  "lychee.md",
+  "package-lock.json",
+  ".config/",
+  ".cursorrules",
+  ".windsurfrules",
+  "LICENSE",
+]
+
+[default.extend-words]
+a11y = "a11y"
+ADR = "ADR"
+ADRs = "ADRs"
+adrs = "adrs"
+agentic = "agentic"
+Agentic = "Agentic"
+Ansible = "Ansible"
+Antigravity = "Antigravity"
+AppVeyor = "AppVeyor"
+AWS = "AWS"
+Azure = "Azure"
+CFR = "CFR"
+cheatsheets = "cheatsheets"
+Cheatsheets = "Cheatsheets"
+checkmarx = "checkmarx"
+CircleCI = "CircleCI"
+codeowners = "codeowners"
+CODEOWNERS = "CODEOWNERS"
+CodeQL = "CodeQL"
+conventionalcommits = "conventionalcommits"
+declutters = "declutters"
+Dependabot = "Dependabot"
+Docker = "Docker"
+docstrings = "docstrings"
+Docstrings = "Docstrings"
+DORA = "DORA"
+ESLint = "ESLint"
+GCP = "GCP"
+GitHub = "GitHub"
+gitkraken = "gitkraken"
+glassmorphism = "glassmorphism"
+Husky = "Husky"
+Jenkins = "Jenkins"
+Jules = "Jules"
+Kafka = "Kafka"
+KPI = "KPI"
+KPIs = "KPIs"
+Kubernetes = "Kubernetes"
+lineal = "lineal"
+lockfiles = "lockfiles"
+LTS = "LTS"
+lycheeverse = "lycheeverse"
+Markdownlint = "Markdownlint"
+MFA = "MFA"
+mojibake = "mojibake"
+MTBF = "MTBF"
+MTTR = "MTTR"
+Netlify = "Netlify"
+npm = "npm"
+nvm = "nvm"
+nvmrc = "nvmrc"
+nwo = "nwo" # jekyll-github-metadata's repository_nwo ("name with owner"), used by _layouts/
+OIDC = "OIDC"
+opensourceinitiative = "opensourceinitiative"
+passwordless = "passwordless"
+pip = "pip"
+PostgreSQL = "PostgreSQL"
+Prettier = "Prettier"
+Pulumi = "Pulumi"
+pyenv = "pyenv"
+pytest = "pytest"
+quad-tier = "quad-tier"
+RabbitMQ = "RabbitMQ"
+RBAC = "RBAC"
+Redis = "Redis"
+RPO = "RPO"
+RTO = "RTO"
+SBOM = "SBOM"
+SemVer = "SemVer"
+SLA = "SLA"
+SLI = "SLI"
+SLO = "SLO"
+SQLite = "SQLite"
+stefanzweifel = "stefanzweifel"
+Stylelint = "Stylelint"
+Supabase = "Supabase"
+tannergolden = "tannergolden"
+Terraform = "Terraform"
+TOTP = "TOTP"
+toupper = "toupper"
+TravisCI = "TravisCI"
+UAT = "UAT"
+unparseable = "unparseable" # accepted variant of "unparsable"; used across the label parser, governance gate, and research-shelf lifecycle
+Vercel = "Vercel"
+vite = "vite"
+vitest = "vitest"
+WCAG = "WCAG"
+WebAuthn = "WebAuthn"
+XSS = "XSS"

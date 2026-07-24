@@ -1,0 +1,25 @@
+# --- Shared Prettier Ignore List ---
+#
+# Paths the formatter must not rewrite in a calling repository: build output,
+# dependency trees, lockfiles, and machine-generated files, where formatting
+# either means nothing or actively corrupts the artifact.
+#
+# ---
+
+dist/
+node_modules/
+.git/
+package-lock.json
+coverage/
+# Jekyll/Liquid templates - Prettier's HTML/JSON formatters re-wrap
+# Liquid tags; the site chrome is hand-formatted instead.
+_layouts/
+search.json
+404.html
+_site/
+
+# Generated repository-traffic archive (machine-written data, not hand-formatted)
+analytics/
+
+# Generated badge and metric SVGs (machine-rendered, not hand-formatted)
+assets/badges/

@@ -1,0 +1,33 @@
+# --- Shared Lychee Configuration ---
+#
+# Link-checker settings applied to a calling repository's documentation.
+# See https://github.com/lycheeverse/lychee#configuration-file
+#
+# ---
+
+verbose = "info"
+no_progress = true
+max_retries = 3
+accept = [200, 201, 202, 203, 204, 403, 429]
+exclude = [
+    # Self-referential badge raw URLs, matched for any owner and repository
+    # so the exclude keeps holding after a fork or a rename. Checking them
+    # remotely races the merge that publishes them, so they would fail on
+    # exactly the commit that introduces them.
+    'https://raw\.githubusercontent\.com/[^/]+/[^/]+/[^/]+/assets/badges/.*',
+    # Commit, tree, and blob permalinks: valid the moment they are written,
+    # and rate-limited into false failures when checked in bulk.
+    'https://github.com/.*/(commit|tree|blob)/.*',
+    'http(s)?://localhost.*',
+    'http(s)?://127\.0\.0\.1.*',
+    'http(s)?://example\.com.*',
+    # Unsubstituted placeholders in fill-in documents.
+    'https://github.com/\{\{.*\}\}',
+    'node_modules/',
+    'dist/',
+    'coverage/'
+]
+retry_wait_time = 5
+timeout = 20
+max_concurrency = 10
+output = "./lychee.md"
