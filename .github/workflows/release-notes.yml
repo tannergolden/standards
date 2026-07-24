@@ -1,0 +1,240 @@
+# --- Reusable Workflow ---
+#
+# 📋 Draft Release Notes
+#
+# Purpose: maintains ONE evolving draft release per branch. git-cliff builds
+# a changelog from Conventional Commit messages, and each run prunes the
+# drafts it previously created for this branch before publishing a fresh
+# one, so the Releases page shows a single current draft rather than a
+# pile-up.
+#
+# ONE BRANCH, ONE DRAFT. The tag carries the computed next version plus a
+# fixed `.next` suffix, so successive runs supersede the same draft instead
+# of minting a new one each time. Traceability lives in the draft body,
+# which names the exact commit, rather than in a proliferation of tags.
+#
+# The prune is scoped to this branch's tag namespace, so drafts created by
+# hand or by another branch are never touched.
+#
+# Cadence is weekly rather than per-push, deliberately. A draft refreshed
+# once a week is just as reviewable and keeps the Actions and Releases
+# surfaces quiet. A manual dispatch refreshes it immediately and bypasses
+# the activity gate, because a manual run is by definition intentional.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '📋 Draft Release Notes'
+#   on:
+#     schedule:
+#       - cron: '0 5 * * 1'
+#     workflow_dispatch:
+#   concurrency:
+#     group: ${{ github.workflow }}-${{ github.ref }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     notes:
+#       permissions:
+#         contents: write # create or update the draft release
+#       uses: tannergolden/standards/.github/workflows/release-notes.yml@v1
+#
+# ---
+
+name: '📋 Reusable: Draft Release Notes'
+
+on:
+  workflow_call:
+    inputs:
+      minimum-commits:
+        description: >-
+          Commits in the last week below which a scheduled run skips. A
+          manual dispatch ignores this entirely.
+        required: false
+        type: number
+        default: 3
+      cliff-config:
+        description: 'Path to a git-cliff config in the CALLING repository. Empty uses the shared one.'
+        required: false
+        type: string
+        default: ''
+
+permissions: {}
+
+jobs:
+  check-history:
+    name: '🔎 Check Commit History'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      commit_count: ${{ steps.count.outputs.count }}
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '📋 Release Notes: drafts a changelog from Conventional Commits.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # full history, for an accurate count
+
+      - name: '🔢 Count Commits'
+        id: count
+        run: echo "count=$(git rev-list --count --since='1 week ago' HEAD)" >> "$GITHUB_OUTPUT"
+
+  changelog:
+    name: '📄 Draft Changelog'
+    needs: check-history
+    if: ${{ github.event_name == 'workflow_dispatch' || fromJSON(needs.check-history.outputs.commit_count) >= inputs.minimum-commits }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # create or update the draft release
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: '📄 Resolve git-cliff configuration'
+        id: cliff-config
+        uses: tannergolden/standards/actions/config@v1
+        with:
+          name: cliff.toml
+          override: ${{ inputs.cliff-config }}
+
+      - name: '🔎 Check for existing tags'
+        id: tags
+        run: |
+          if git describe --tags --abbrev=0 >/dev/null 2>&1; then
+            echo "has_tags=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_tags=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: '🔢 Get Bumped Version'
+        id: bump
+        if: ${{ steps.tags.outputs.has_tags == 'true' }}
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
+        with:
+          config: ${{ steps.cliff-config.outputs.path }}
+          args: --bumped-version
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      # No tags yet means nothing to bump from, so the first draft starts here.
+      - name: '🌱 Set Initial Version'
+        id: initial
+        if: ${{ steps.tags.outputs.has_tags == 'false' }}
+        run: echo "content=v0.1.0" >> "$GITHUB_OUTPUT"
+
+      - name: '🔧 Calculate Next Version'
+        id: version
+        env:
+          NEXT_VER: ${{ steps.bump.outputs.content || steps.initial.outputs.content }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          BASE_VER=$(printf '%s' "$NEXT_VER" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+          if [ -z "$BASE_VER" ]; then
+            echo "::error::Could not determine a base version from the git-cliff output."
+            exit 1
+          fi
+          BRANCH_NAME=$(printf '%s' "$REF_NAME" | tr '[:upper:]' '[:lower:]')
+          echo "branch=${BRANCH_NAME}" >> "$GITHUB_OUTPUT"
+          echo "version=v${BASE_VER}-${BRANCH_NAME}.next" >> "$GITHUB_OUTPUT"
+
+      # Scope the changelog to this branch's own history since its last
+      # draft. Without this the notes repeat everything inherited from a
+      # parent branch, which is noise on every draft after the first.
+      - name: '🎯 Find Changelog Range'
+        id: range
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          BRANCH_NAME=$(printf '%s' "$REF_NAME" | tr '[:upper:]' '[:lower:]')
+          LATEST_TAG=$(git tag --list "v*-$BRANCH_NAME.*" --sort=-v:refname | head -n 1)
+          if [ -n "$LATEST_TAG" ]; then
+            echo "range_args=$LATEST_TAG..HEAD" >> "$GITHUB_OUTPUT"
+            echo "Using range: $LATEST_TAG..HEAD"
+          else
+            echo "range_args=--unreleased" >> "$GITHUB_OUTPUT"
+            echo "No branch-specific tag yet, so drafting everything unreleased."
+          fi
+
+      - name: '📝 Generate Changelog'
+        id: cliff
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
+        with:
+          config: ${{ steps.cliff-config.outputs.path }}
+          args: --verbose ${{ steps.range.outputs.range_args }} --strip header
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: '🚀 Prune Superseded Drafts & Publish Fresh Draft'
+        id: publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.version.outputs.version }}
+          BRANCH: ${{ steps.version.outputs.branch }}
+          CONTENT: ${{ steps.cliff.outputs.content }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # Snapshot before deleting: removing releases while pagination is
+          # mid-flight shifts pages and revisits stale ids. A 404 on delete
+          # means already gone, which is success for a prune.
+          DRAFTS=$(gh api "/repos/$REPO/releases" --paginate \
+            --jq '.[] | select(.draft) | [.id, .tag_name] | @tsv')
+          while IFS=$'\t' read -r id tag; do
+            [ -n "$id" ] || continue
+            case "$tag" in
+              v*-"$BRANCH".*)
+                if OUT=$(gh api -X DELETE "/repos/$REPO/releases/$id" 2>&1); then
+                  echo "Pruned superseded draft: $tag"
+                elif ! printf '%s' "$OUT" | grep -q "HTTP 404"; then
+                  printf '%s\n' "$OUT"
+                  exit 1
+                fi
+                ;;
+            esac
+          done <<< "$DRAFTS"
+
+          {
+            printf '%s\n\n---\n\n' "$CONTENT"
+            cat <<NOTES
+          ### ⚠️ Draft, not published
+
+          - Snapshot of \`$BRANCH\` at commit \`$HEAD_SHA\`.
+          - Refreshed weekly, or on manual dispatch. Each refresh replaces this draft.
+          - When publishing, set the final tag in the release form, dropping the \`.next\` suffix.
+          NOTES
+          } > release-notes.md
+          gh release create "$TAG" --draft --title "$TAG" --notes-file release-notes.md
+          echo "Published fresh draft: $TAG"
+
+      - name: '📝 Report Failure'
+        if: ${{ failure() }}
+        env:
+          CLIFF_CONCLUSION: ${{ steps.cliff.conclusion }}
+        run: |
+          if [ "$CLIFF_CONCLUSION" = "failure" ]; then
+            echo "::error::git-cliff could not generate the changelog. Check the configuration and that the history contains Conventional Commits."
+          else
+            echo "::error::The release draft could not be refreshed. The job needs contents: write."
+          fi

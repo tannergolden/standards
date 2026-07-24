@@ -1,0 +1,401 @@
+# --- Reusable Workflow ---
+#
+# 🚀 Publish New Release
+#
+# Purpose: cuts and publishes a release. It serves two different flows, and
+# knowing which one you are in explains most of the file:
+#
+#   MANUAL (workflow_dispatch): compute the next version from Conventional
+#   Commits, generate the changelog, build, package, and publish a new
+#   release under a freshly minted tag.
+#
+#   ON PUBLISH (release: published): a draft, typically one that
+#   release-notes.yml has been maintaining, was published by hand. Version
+#   and notes already exist, so this only builds, packages, and attaches the
+#   artifacts to the release that is already there.
+#
+# The two flows share their build half and differ entirely in their first
+# half. A single `gate` step resolves which one is running and whether it
+# should proceed, so every later step tests one condition instead of
+# restating the whole trigger matrix. The original repeated a three-clause
+# condition on nine steps, where a single missed clause would have been
+# invisible.
+#
+# CACHING IS DELIBERATELY OFF in the setup steps. This job publishes
+# artifacts, so a poisoned cache would reach a release. Everywhere else
+# caching is fine; here the trade goes the other way.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🚀 Publish New Release'
+#   on:
+#     release:
+#       types: [published]
+#     workflow_dispatch:
+#       inputs:
+#         manual-tag:
+#           description: 'Optional tag override, as v1.2.3-branch'
+#           type: string
+#   concurrency:
+#     group: ${{ github.workflow }}-${{ github.ref }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     publish:
+#       permissions:
+#         attestations: write # record the attestation
+#         contents: write # create the tag and publish the release
+#         id-token: write # sign the build provenance attestation
+#       uses: tannergolden/standards/.github/workflows/release-publish.yml@v1
+#       with:
+#         manual-tag: ${{ inputs.manual-tag || '' }}
+#
+# ---
+
+name: '🚀 Reusable: Publish New Release'
+
+on:
+  workflow_call:
+    inputs:
+      manual-tag:
+        description: 'Tag override for a manual run, as v{major}.{minor}.{patch}-{branch}. Empty computes one.'
+        required: false
+        type: string
+        default: ''
+      minimum-commits:
+        description: >-
+          Commits since the last tag below which a manual run declines to
+          release. Ignored when no tags exist yet.
+        required: false
+        type: number
+        default: 5
+      cliff-config:
+        description: 'Path to a git-cliff config in the CALLING repository. Empty uses the shared one.'
+        required: false
+        type: string
+        default: ''
+      build-command:
+        description: >-
+          Command that builds the release. Empty falls back to
+          `make build`, then skips.
+        required: false
+        type: string
+        default: ''
+      artifact-path:
+        description: >-
+          Directory whose contents are packaged into the release tarball.
+          Any language: dist, build, target/release, bin, whatever you
+          produce.
+        required: false
+        type: string
+        default: 'dist'
+      sbom:
+        description: >-
+          Attach a Software Bill of Materials. On by default, because a
+          release without one cannot answer "am I affected?" later.
+        required: false
+        type: boolean
+        default: true
+      sbom-format:
+        description: 'SBOM format: cyclonedx-json, spdx-json, or any other the generator supports.'
+        required: false
+        type: string
+        default: 'cyclonedx-json'
+      sbom-generator-version:
+        description: >-
+          Pin the SBOM generator, as 1.2.3. Empty tracks its current
+          release, which is safe here: it describes the build and never
+          touches the artifact.
+        required: false
+        type: string
+        default: ''
+      node-version:
+        description: 'Node.js version, used when the repository has a package.json.'
+        required: false
+        type: string
+        default: '22.x'
+      python-version:
+        description: 'Python version, used when the repository has Python files.'
+        required: false
+        type: string
+        default: '3.12'
+
+permissions: {}
+
+jobs:
+  release:
+    name: '📦 Create & Deploy Release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # create the tag and publish the release
+      id-token: write # sign the build provenance attestation
+      attestations: write # record the attestation
+
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🚀 Release: builds, packages, and publishes.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # full history for version computation
+
+      # One gate for the whole job. Resolves which flow is running and
+      # whether it proceeds, so no later step has to restate the trigger
+      # matrix.
+      - name: '🚦 Resolve Release Mode'
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+          MINIMUM: ${{ inputs.minimum-commits }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "release" ]; then
+            echo "mode=published" >> "$GITHUB_OUTPUT"
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "A published release triggered this run: building and attaching artifacts."
+            exit 0
+          fi
+
+          echo "mode=manual" >> "$GITHUB_OUTPUT"
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "No previous tags, so this is the first release."
+            exit 0
+          fi
+
+          COMMIT_COUNT=$(git rev-list --count "${LAST_TAG}..HEAD")
+          echo "Commits since ${LAST_TAG}: ${COMMIT_COUNT}"
+          if [ "$COMMIT_COUNT" -ge "$MINIMUM" ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Threshold met (${COMMIT_COUNT} >= ${MINIMUM})."
+          else
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Release skipped::Only ${COMMIT_COUNT} commit(s) since ${LAST_TAG}, below the threshold of ${MINIMUM}. Nothing was published."
+          fi
+
+      - name: '📄 Resolve git-cliff configuration'
+        id: cliff-config
+        if: ${{ steps.gate.outputs.proceed == 'true' && steps.gate.outputs.mode == 'manual' }}
+        uses: tannergolden/standards/actions/config@v1
+        with:
+          name: cliff.toml
+          override: ${{ inputs.cliff-config }}
+
+      - name: '🔎 Check for existing tags'
+        id: tags
+        if: ${{ steps.gate.outputs.proceed == 'true' && steps.gate.outputs.mode == 'manual' }}
+        run: |
+          if git describe --tags --abbrev=0 >/dev/null 2>&1; then
+            echo "has_tags=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_tags=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: '🔢 Get Bumped Version'
+        id: bump
+        if: ${{ steps.tags.outputs.has_tags == 'true' }}
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
+        with:
+          config: ${{ steps.cliff-config.outputs.path }}
+          args: --bumped-version
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: '🌱 Set Initial Version'
+        id: initial
+        if: ${{ steps.tags.outputs.has_tags == 'false' }}
+        run: echo "content=v0.1.0" >> "$GITHUB_OUTPUT"
+
+      - name: '🔧 Calculate Tag Name'
+        id: version
+        if: ${{ steps.gate.outputs.proceed == 'true' && steps.gate.outputs.mode == 'manual' }}
+        env:
+          MANUAL_TAG: ${{ inputs.manual-tag }}
+          NEXT_VER: ${{ steps.bump.outputs.content || steps.initial.outputs.content }}
+        run: |
+          set -euo pipefail
+          # Portable version comparison: no dpkg, no sort -V dependency.
+          version_ge() {
+            printf '%s\n%s' "$2" "$1" | sort -t. -k1,1n -k2,2n -k3,3n -C
+          }
+
+          TAG_PREFIX=""
+          prerelease_flag=""
+
+          if [ -n "$MANUAL_TAG" ]; then
+            echo "Manual tag provided: $MANUAL_TAG"
+            if ! printf '%s' "$MANUAL_TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+-.+$'; then
+              echo "::error::Invalid tag format. It must look like v{major}.{minor}.{patch}-{branch}."
+              exit 1
+            fi
+            BRANCH_NAME=$(printf '%s' "$MANUAL_TAG" | sed -E 's/^v[0-9]+\.[0-9]+\.[0-9]+-//')
+            if ! git rev-parse --verify --quiet "origin/$BRANCH_NAME" >/dev/null; then
+              echo "::error::Branch 'origin/$BRANCH_NAME' does not exist, so this tag would name a branch that is not there."
+              exit 1
+            fi
+            TAG_PREFIX="$MANUAL_TAG"
+            BASE_VER=$(printf '%s' "$MANUAL_TAG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+            if version_ge "$BASE_VER" "1.0.0"; then prerelease_flag="false"; else prerelease_flag="true"; fi
+          else
+            BASE_VER=$(printf '%s' "$NEXT_VER" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)
+            if [ -z "$BASE_VER" ]; then
+              echo "::error::Could not determine a base version from the changelog engine output ('$NEXT_VER'). Aborting rather than publishing a malformed tag."
+              exit 1
+            fi
+            # Maturity is read from the version itself rather than from the
+            # branch, so a tag cut from anywhere carries an honest label.
+            if version_ge "$BASE_VER" "1.0.0"; then
+              release_level="release"; prerelease_flag="false"
+            elif version_ge "$BASE_VER" "0.7.5"; then
+              release_level="preview"; prerelease_flag="true"
+            else
+              release_level="development"; prerelease_flag="true"
+            fi
+            TAG_PREFIX="v${BASE_VER}-${release_level}"
+          fi
+
+          # A unique suffix, so two releases from the same commit never
+          # collide on a tag name.
+          TIMESTAMP=$(date -u +'%y%m%d%H%M')
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=${TAG_PREFIX}.${TIMESTAMP}.g${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${prerelease_flag}" >> "$GITHUB_OUTPUT"
+
+      - name: '📝 Generate Changelog'
+        id: cliff
+        if: ${{ steps.gate.outputs.proceed == 'true' && steps.gate.outputs.mode == 'manual' }}
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
+        with:
+          config: ${{ steps.cliff-config.outputs.path }}
+          args: --verbose --strip header --limit-commits 100
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      # Caching is off in both setup steps: this job publishes artifacts, so
+      # a poisoned cache would reach a release.
+      - name: '🟢 Setup Node.js'
+        if: ${{ steps.gate.outputs.proceed == 'true' && hashFiles('package.json') != '' }}
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: '🐍 Setup Python'
+        if: ${{ steps.gate.outputs.proceed == 'true' && hashFiles('requirements.txt', 'pyproject.toml', 'scripts/*.py') != '' }}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: '📦 Install Dependencies'
+        if: ${{ steps.gate.outputs.proceed == 'true' && hashFiles('Makefile') != '' }}
+        run: make setup
+
+      - name: '🏗️ Build Project'
+        if: ${{ steps.gate.outputs.proceed == 'true' }}
+        env:
+          COMMAND: ${{ inputs.build-command }}
+        run: |
+          if [ -n "$COMMAND" ]; then
+            bash -c "$COMMAND"
+          elif make -n build >/dev/null 2>&1; then
+            make build
+          else
+            echo "::notice title=Build skipped::No build-command input and no 'build' target in a Makefile. This release will carry notes only."
+          fi
+
+      - name: '📦 Package Artifacts'
+        id: package
+        if: ${{ steps.gate.outputs.proceed == 'true' }}
+        env:
+          TAG_NAME: ${{ steps.version.outputs.version || github.event.release.tag_name }}
+          ARTIFACT_PATH: ${{ inputs.artifact-path }}
+          SBOM_FORMAT: ${{ inputs.sbom-format }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          if [ -d "$ARTIFACT_PATH" ] && [ -n "$(ls -A "$ARTIFACT_PATH" 2>/dev/null)" ]; then
+            tar -czf "release/build-${TAG_NAME}.tar.gz" "$ARTIFACT_PATH"
+            echo "Packaged ${ARTIFACT_PATH}/ into release/build-${TAG_NAME}.tar.gz"
+            echo "has_build_artifact=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=No build artifact::Nothing in '${ARTIFACT_PATH}', so this release carries notes only. Point artifact-path at your build output to attach artifacts."
+            echo "has_build_artifact=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -f README.md ]; then
+            # Internal-only blocks are stripped at packaging time, so the
+            # README in git stays whole and branches never diverge over
+            # presentation.
+            sed '/<!-- internal:start -->/,/<!-- internal:end -->/d' README.md > release/README.md
+          fi
+
+          # The SBOM extension follows the format, because downstream tooling
+          # globs on it. Computed here so the generator step stays a plain
+          # `uses:` with nothing conditional in it.
+          case "$SBOM_FORMAT" in
+            cyclonedx-json) EXT='.cdx.json' ;;
+            spdx-json) EXT='.spdx.json' ;;
+            cyclonedx-xml) EXT='.cdx.xml' ;;
+            *json*) EXT='.json' ;;
+            *xml*) EXT='.xml' ;;
+            *) EXT='.txt' ;;
+          esac
+          echo "sbom_path=release/sbom-${TAG_NAME}${EXT}" >> "$GITHUB_OUTPUT"
+
+      # Software Bill of Materials: the dependency inventory this release was
+      # built from, and the thing that lets somebody answer "am I affected?"
+      # when a dependency is found vulnerable long after this ran.
+      #
+      # This is a separate step rather than a few lines of packaging because
+      # it has to work in every ecosystem. The earlier version shelled out to
+      # `npm sbom`, which meant a Go, Rust, or Python release quietly shipped
+      # with no inventory at all.
+      - name: '🧾 Generate SBOM'
+        id: sbom
+        if: ${{ steps.gate.outputs.proceed == 'true' && inputs.sbom }}
+        uses: tannergolden/standards/actions/sbom@v1
+        with:
+          output: ${{ steps.package.outputs.sbom_path }}
+          format: ${{ inputs.sbom-format }}
+          generator-version: ${{ inputs.sbom-generator-version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Records who built what from which commit, verifiable afterwards with
+      # `gh attestation verify`. Public repositories only, since private
+      # attestations require Advanced Security.
+      - name: '🧾 Attest Build Provenance'
+        if: ${{ steps.package.outputs.has_build_artifact == 'true' && github.event.repository.private == false }}
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: 'release/build-*.tar.gz'
+
+      - name: '🚀 Create or Update Release'
+        if: ${{ steps.gate.outputs.proceed == 'true' }}
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ steps.version.outputs.version || github.event.release.tag_name }}
+          name: ${{ steps.version.outputs.version || github.event.release.name }}
+          body: ${{ steps.cliff.outputs.content || github.event.release.body }}
+          files: release/*
+          draft: false
+          # On the published trigger, preserve the release's existing
+          # prerelease state rather than recomputing it, which could
+          # otherwise flip a stable release into a prerelease.
+          prerelease: ${{ steps.version.outputs.prerelease || github.event.release.prerelease }}
+
+      - name: '📝 Report Failure'
+        if: ${{ failure() }}
+        env:
+          PACKAGE_CONCLUSION: ${{ steps.package.conclusion }}
+        run: |
+          if [ "$PACKAGE_CONCLUSION" = "failure" ]; then
+            echo "::error::Packaging failed. Check that the build produced output and that the release/ directory can be written."
+          else
+            echo "::error::The release could not be published. The job needs contents: write, and the tag must not already exist."
+          fi

@@ -1,0 +1,1115 @@
+# --- Reusable Workflow ---
+#
+# 📦 Publish Package
+#
+# Purpose: publishes the thing your repository actually ships to the
+# registry people install it from. `release-publish.yml` cuts a GitHub
+# Release with a tarball attached, which is the right answer for a project
+# whose deliverable is a tag. It is the wrong answer for a library: nobody
+# runs `npm install` against a GitHub tarball.
+#
+# FOUR REGISTRIES, EACH OPT-IN, EACH A SEPARATE JOB: npm, PyPI, crates.io,
+# and any OCI registry, defaulting to GHCR. Turning one on turns on exactly
+# one job, so a Rust crate never runs a Node step and a failure names the
+# registry that failed rather than "publish".
+#
+# ⚠️ AN OPT-IN JOB WITH NO CREDENTIAL FAILS, AND DOES NOT SKIP. That is a
+# deliberate departure from how everything else here degrades. Elsewhere a
+# missing secret means an optional extra was unavailable; here it means you
+# asked to publish and nothing was published. A green check over a release
+# that never reached the registry is the single worst outcome this workflow
+# can produce, so it is the one thing it refuses to do quietly.
+#
+# ALREADY-PUBLISHED IS NOT A FAILURE. Every job checks the registry first
+# and reports "already there" rather than erroring, because re-running a
+# release job after fixing an unrelated step is normal and should not need a
+# human to reason about which half already happened.
+#
+# NO THIRD-PARTY PUBLISHING ACTIONS. Each job uses the ecosystem's own CLI,
+# which is the tool its maintainers support, and keeps the trusted set for a
+# job that holds a registry credential as small as it can be.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '📦 Publish Package'
+#   on:
+#     release:
+#       types: [published]
+#     workflow_dispatch:
+#       inputs:
+#         dry-run:
+#           type: boolean
+#           default: true
+#   concurrency:
+#     group: ${{ github.workflow }}-${{ github.ref }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     publish:
+#       permissions:
+#         attestations: write # record it
+#         contents: read # read the repository
+#         id-token: write # signs the provenance statement npm attaches
+#         packages: write # push to GHCR under this repository
+#       uses: tannergolden/standards/.github/workflows/publish-package.yml@v1
+#       with:
+#         npm: true
+#         build-command: 'npm ci && npm run build'
+#         dry-run: ${{ inputs.dry-run || false }}
+#       secrets: inherit
+#
+# ---
+
+name: '📦 Reusable: Publish Package'
+
+on:
+  workflow_call:
+    inputs:
+      # --- npm -------------------------------------------------------------
+      npm:
+        description: 'Publish to the npm registry.'
+        required: false
+        type: boolean
+        default: false
+      npm-directory:
+        description: 'Directory holding the package.json to publish.'
+        required: false
+        type: string
+        default: '.'
+      npm-dist-tag:
+        description: 'npm dist-tag. Use something other than latest for a prerelease.'
+        required: false
+        type: string
+        default: 'latest'
+      npm-access:
+        description: 'public or restricted. Scoped packages default to restricted without this.'
+        required: false
+        type: string
+        default: 'public'
+      npm-registry:
+        description: 'Registry URL. Change it to publish to a private registry instead.'
+        required: false
+        type: string
+        default: 'https://registry.npmjs.org'
+
+      # --- PyPI ------------------------------------------------------------
+      pypi:
+        description: 'Publish to PyPI.'
+        required: false
+        type: boolean
+        default: false
+      pypi-directory:
+        description: 'Directory holding pyproject.toml or setup.py.'
+        required: false
+        type: string
+        default: '.'
+      pypi-repository-url:
+        description: >-
+          Upload endpoint. Point it at https://test.pypi.org/legacy/ to
+          rehearse against TestPyPI first.
+        required: false
+        type: string
+        default: 'https://upload.pypi.org/legacy/'
+      pypi-tooling:
+        description: >-
+          Packages installed to build and upload. Pin them here
+          (build==1.2.3) where a reproducible toolchain matters.
+        required: false
+        type: string
+        default: 'build twine'
+
+      # --- crates.io -------------------------------------------------------
+      crates:
+        description: 'Publish to crates.io.'
+        required: false
+        type: boolean
+        default: false
+      crates-directory:
+        description: 'Directory holding the Cargo.toml to publish.'
+        required: false
+        type: string
+        default: '.'
+
+      # --- containers ------------------------------------------------------
+      container:
+        description: 'Build and push a container image.'
+        required: false
+        type: boolean
+        default: false
+      container-registry:
+        description: 'OCI registry host. GHCR authenticates with the built-in token.'
+        required: false
+        type: string
+        default: 'ghcr.io'
+      container-image:
+        description: >-
+          Image repository, without registry or tag. Empty uses the calling
+          repository's own name, lowercased as registries require.
+        required: false
+        type: string
+        default: ''
+      container-file:
+        description: 'Path to the Dockerfile.'
+        required: false
+        type: string
+        default: 'Dockerfile'
+      container-context:
+        description: 'Build context directory.'
+        required: false
+        type: string
+        default: '.'
+      container-tags:
+        description: >-
+          Space-separated tags. Empty uses the resolved version, plus
+          `latest` unless this is a prerelease.
+        required: false
+        type: string
+        default: ''
+      container-build-args:
+        description: 'Space-separated build arguments, as KEY=VALUE.'
+        required: false
+        type: string
+        default: ''
+      container-platforms:
+        description: >-
+          Comma-separated architectures to build, from linux/amd64 and
+          linux/arm64. Each is built NATIVELY on a runner of that
+          architecture and the results are combined into one manifest list,
+          so nothing is emulated. One platform, the default, skips the
+          fan-out entirely.
+        required: false
+        type: string
+        default: 'linux/amd64'
+
+      # --- shared ----------------------------------------------------------
+      version:
+        description: >-
+          Version being published. Empty resolves the release tag, then the
+          most recent git tag. Used for container tags and to catch a
+          manifest whose version was never bumped.
+        required: false
+        type: string
+        default: ''
+      build-command:
+        description: >-
+          Command run before publishing, in the package directory. Empty
+          falls back to `make build`, then to nothing.
+        required: false
+        type: string
+        default: ''
+      dry-run:
+        description: >-
+          Do everything except the write. Every job supports it, and it is
+          the honest way to prove a publishing pipeline before it can
+          publish something wrong.
+        required: false
+        type: boolean
+        default: false
+      node-version:
+        description: 'Node.js version for the npm job.'
+        required: false
+        type: string
+        default: '22.x'
+      python-version:
+        description: 'Python version for the PyPI job.'
+        required: false
+        type: string
+        default: '3.12'
+
+    secrets:
+      NPM_TOKEN:
+        description: 'npm automation token. Required when npm is on and not a dry run.'
+        required: false
+      PYPI_API_TOKEN:
+        description: >-
+          PyPI API token. Optional: without it the job attempts Trusted
+          Publishing over OIDC, which stores no long-lived secret at all.
+        required: false
+      CARGO_REGISTRY_TOKEN:
+        description: 'crates.io API token. Required when crates is on and not a dry run.'
+        required: false
+      REGISTRY_USERNAME:
+        description: 'Container registry username. Not needed for GHCR.'
+        required: false
+      REGISTRY_PASSWORD:
+        description: 'Container registry password or token. Not needed for GHCR.'
+        required: false
+
+permissions: {}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # npm
+  # ---------------------------------------------------------------------------
+  npm:
+    name: '📦 Publish to npm'
+    if: ${{ inputs.npm }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # signs the provenance statement npm attaches
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '📦 Publishing to npm.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # tags, for version resolution
+
+      # registry-url is what writes the .npmrc that NODE_AUTH_TOKEN feeds.
+      # Without it the token is ignored and the publish fails on 401.
+      #
+      # Caching is off on purpose, as it is in the release job: this step
+      # produces something that reaches users, so a poisoned cache would too.
+      - name: '🟢 Setup Node.js'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          registry-url: ${{ inputs.npm-registry }}
+
+      - name: '🔑 Verify Credential'
+        if: ${{ !inputs.dry-run }}
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NPM_TOKEN:-}" ]; then
+            echo "::error title=No npm token::This workflow was asked to publish to npm, but NPM_TOKEN is not set. Add it as a repository secret and pass 'secrets: inherit', or set dry-run to rehearse without one. Failing rather than skipping, because a skipped publish looks identical to a successful one."
+            exit 1
+          fi
+          echo "Credential present."
+
+      - name: '🏗️ Build'
+        working-directory: ${{ inputs.npm-directory }}
+        env:
+          COMMAND: ${{ inputs.build-command }}
+        run: |
+          set -euo pipefail
+          if [ -n "$COMMAND" ]; then
+            bash -c "$COMMAND"
+          elif [ -f Makefile ] && make -n build > /dev/null 2>&1; then
+            make build
+          else
+            echo "::notice title=No build step::Publishing the tree as it is. Set build-command if the package needs compiling first."
+          fi
+
+      - name: '🔎 Inspect Package'
+        id: inspect
+        working-directory: ${{ inputs.npm-directory }}
+        env:
+          EXPECTED: ${{ inputs.version }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [ ! -f package.json ]; then
+            echo "::error title=No package.json::Nothing to publish in '${PWD}'. Point npm-directory at the package."
+            exit 1
+          fi
+
+          NAME="$(jq -r '.name // empty' package.json)"
+          VERSION="$(jq -r '.version // empty' package.json)"
+          if [ -z "$NAME" ] || [ -z "$VERSION" ]; then
+            echo "::error title=Incomplete package.json::It must declare both a name and a version."
+            exit 1
+          fi
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Package: ${NAME}@${VERSION}"
+
+          # A manifest nobody remembered to bump is the most common way a
+          # release job "succeeds" and ships last month's code. Warned, not
+          # failed: the tag and the package version are allowed to differ,
+          # and only the repository knows whether they should.
+          WANT="${EXPECTED:-${RELEASE_TAG:-}}"
+          WANT="${WANT#v}"
+          if [ -n "$WANT" ] && [ "$WANT" != "$VERSION" ]; then
+            echo "::warning title=Version mismatch::package.json says ${VERSION} but the release says ${WANT}. Publishing ${VERSION}, which is what npm will record."
+          fi
+
+          # An existing version cannot be overwritten, so this is checked up
+          # front and reported as a no-op rather than a 403 at the end.
+          if npm view "${NAME}@${VERSION}" version > /dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Already on npm::${NAME}@${VERSION} is already published. Nothing to do."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Provenance links the published tarball to this workflow run and this
+      # commit, verifiable by anyone afterwards. It requires a public
+      # repository and the public npm registry, so it is enabled only when
+      # both hold rather than failing the publish where they do not.
+      - name: '🚀 Publish'
+        if: ${{ steps.inspect.outputs.published == 'false' }}
+        working-directory: ${{ inputs.npm-directory }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          DIST_TAG: ${{ inputs.npm-dist-tag }}
+          ACCESS: ${{ inputs.npm-access }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          IS_PRIVATE: ${{ github.event.repository.private }}
+          REGISTRY: ${{ inputs.npm-registry }}
+        run: |
+          set -euo pipefail
+          ARGS=(--tag "$DIST_TAG" --access "$ACCESS")
+
+          if [ "$IS_PRIVATE" = "false" ] && [ "$REGISTRY" = "https://registry.npmjs.org" ]; then
+            ARGS+=(--provenance)
+            echo "Provenance is on: public repository, public registry."
+          else
+            echo "::notice title=No provenance::npm provenance needs a public repository publishing to the public registry. The package still publishes, without a provenance statement."
+          fi
+
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS+=(--dry-run)
+            echo "Dry run: nothing will be written to the registry."
+          fi
+
+          npm publish "${ARGS[@]}"
+
+      - name: '📝 Summary'
+        if: ${{ always() }}
+        env:
+          NAME: ${{ steps.inspect.outputs.name }}
+          VERSION: ${{ steps.inspect.outputs.version }}
+          ALREADY: ${{ steps.inspect.outputs.published }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          {
+            echo "### 📦 npm"
+            echo ""
+            if [ -z "${NAME:-}" ]; then
+              echo "Did not get as far as reading the package."
+            elif [ "$ALREADY" = "true" ]; then
+              echo "\`${NAME}@${VERSION}\` was already on the registry. Nothing was published."
+            elif [ "$DRY_RUN" = "true" ]; then
+              echo "**Dry run.** \`${NAME}@${VERSION}\` would have been published."
+            else
+              echo "Published \`${NAME}@${VERSION}\`."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # PyPI
+  # ---------------------------------------------------------------------------
+  pypi:
+    name: '🐍 Publish to PyPI'
+    if: ${{ inputs.pypi }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # exchanged for a short-lived token under Trusted Publishing
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🐍 Publishing to PyPI.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: '🐍 Setup Python'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: '🏗️ Build Distributions'
+        id: build
+        working-directory: ${{ inputs.pypi-directory }}
+        env:
+          COMMAND: ${{ inputs.build-command }}
+          TOOLING: ${{ inputs.pypi-tooling }}
+        run: |
+          set -euo pipefail
+          if [ ! -f pyproject.toml ] && [ ! -f setup.py ] && [ ! -f setup.cfg ]; then
+            echo "::error title=No Python package::'${PWD}' has no pyproject.toml, setup.py, or setup.cfg. Point pypi-directory at the package."
+            exit 1
+          fi
+
+          # shellcheck disable=SC2086 # deliberately word-split: the input is a package list
+          python -m pip install --quiet --upgrade pip $TOOLING
+
+          if [ -n "$COMMAND" ]; then
+            bash -c "$COMMAND"
+          fi
+
+          # A build-command that already produced dist/ is respected rather
+          # than rebuilt, since it may do something this cannot.
+          if [ -d dist ] && [ -n "$(ls -A dist 2> /dev/null)" ]; then
+            echo "Using the distributions the build command produced."
+          else
+            python -m build --outdir dist
+          fi
+
+          # Catches a malformed long description before the upload does,
+          # where the failure is a 400 with no useful detail.
+          python -m twine check dist/*
+          ls -1 dist
+
+      # Trusted Publishing exchanges this run's OIDC identity for a token
+      # that lives for minutes, so the repository stores no PyPI credential
+      # at all. It has to be configured once on PyPI, naming this repository
+      # and workflow. An explicit API token wins where one is set, because
+      # somebody set it on purpose.
+      #
+      # ⚠️ RESOLVING THE CREDENTIAL AND USING IT ARE ONE STEP DELIBERATELY.
+      # Handing a token to a later step means putting it in a step output or
+      # in the environment file, where it is written to disk and outlives
+      # the moment it was needed. Kept here, it never leaves the shell that
+      # minted it.
+      - name: '🚀 Upload'
+        id: upload
+        working-directory: ${{ inputs.pypi-directory }}
+        env:
+          API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          TWINE_REPOSITORY_URL: ${{ inputs.pypi-repository-url }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          set -euo pipefail
+
+          # Checked before anything else so a dry run needs no credential at
+          # all. Rehearsing the build is the point, and requiring a token to
+          # do it would mean nobody rehearses.
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "::notice title=Dry run::Distributions were built and validated. No credential was resolved and nothing was uploaded."
+            echo "method=none (dry run)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          case "$TWINE_REPOSITORY_URL" in
+            *test.pypi.org*) MINT_HOST='test.pypi.org'; AUDIENCE='testpypi' ;;
+            *) MINT_HOST='pypi.org'; AUDIENCE='pypi' ;;
+          esac
+
+          if [ -n "${API_TOKEN:-}" ]; then
+            TWINE_PASSWORD="$API_TOKEN"
+            echo "method=token" >> "$GITHUB_OUTPUT"
+            echo "Using the configured API token."
+          else
+            echo "No API token set; attempting Trusted Publishing against ${MINT_HOST}."
+            if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+              echo "::error title=No credential::PYPI_API_TOKEN is unset and no OIDC token is available, so nothing can authenticate. The calling job needs 'id-token: write', or set the token secret."
+              exit 1
+            fi
+
+            OIDC="$(curl -sSfL -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}" | jq -r '.value // empty')"
+            if [ -z "$OIDC" ]; then
+              echo "::error title=No OIDC token::The identity token could not be minted, so Trusted Publishing cannot proceed."
+              exit 1
+            fi
+
+            MINTED="$(curl -sS -X POST "https://${MINT_HOST}/_/oidc/mint-token" -H 'Content-Type: application/json' -d "{\"token\":\"${OIDC}\"}")"
+            TWINE_PASSWORD="$(printf '%s' "$MINTED" | jq -r '.token // empty')"
+            if [ -z "$TWINE_PASSWORD" ]; then
+              REASON="$(printf '%s' "$MINTED" | jq -r '(.message // "no reason given")' 2> /dev/null || echo 'no reason given')"
+              echo "::error title=Trusted Publishing refused::${MINT_HOST} would not issue a token: ${REASON}. Configure a trusted publisher on ${MINT_HOST} for this repository and workflow file, or set PYPI_API_TOKEN instead."
+              exit 1
+            fi
+            echo "::add-mask::${TWINE_PASSWORD}"
+            echo "method=trusted" >> "$GITHUB_OUTPUT"
+            echo "Minted a short-lived Trusted Publishing token."
+          fi
+
+          # --skip-existing turns a re-run into a no-op instead of a 400 on
+          # the file that already landed.
+          TWINE_USERNAME='__token__' TWINE_PASSWORD="$TWINE_PASSWORD" \
+            python -m twine upload --non-interactive --skip-existing dist/*
+
+      - name: '📝 Summary'
+        if: ${{ always() }}
+        env:
+          METHOD: ${{ steps.upload.outputs.method }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          TARGET: ${{ inputs.pypi-repository-url }}
+        run: |
+          {
+            echo "### 🐍 PyPI"
+            echo ""
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "**Dry run.** Distributions were built and checked; nothing was uploaded."
+            else
+              echo "| Field | Value |"
+              echo "| :--- | :--- |"
+              echo "| Endpoint | \`${TARGET}\` |"
+              echo "| Auth | ${METHOD:-none resolved} |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # crates.io
+  # ---------------------------------------------------------------------------
+  crates:
+    name: '🦀 Publish to crates.io'
+    if: ${{ inputs.crates }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🦀 Publishing to crates.io.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # Rust ships with the runner image, so there is no toolchain action to
+      # pin here and nothing to install for the common case.
+      - name: '🔑 Verify Credential'
+        if: ${{ !inputs.dry-run }}
+        env:
+          CARGO_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "${CARGO_TOKEN:-}" ]; then
+            echo "::error title=No crates.io token::This workflow was asked to publish to crates.io, but CARGO_REGISTRY_TOKEN is not set. Add it as a repository secret and pass 'secrets: inherit', or set dry-run to rehearse without one."
+            exit 1
+          fi
+          echo "Credential present."
+
+      - name: '🔎 Inspect Crate'
+        id: inspect
+        working-directory: ${{ inputs.crates-directory }}
+        env:
+          EXPECTED: ${{ inputs.version }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [ ! -f Cargo.toml ]; then
+            echo "::error title=No Cargo.toml::Nothing to publish in '${PWD}'. Point crates-directory at the crate."
+            exit 1
+          fi
+
+          cargo --version
+          META="$(cargo metadata --no-deps --format-version 1)"
+          NAME="$(printf '%s' "$META" | jq -r '.packages[0].name // empty')"
+          VERSION="$(printf '%s' "$META" | jq -r '.packages[0].version // empty')"
+          if [ -z "$NAME" ] || [ -z "$VERSION" ]; then
+            echo "::error title=Unreadable manifest::cargo metadata returned no package name or version."
+            exit 1
+          fi
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Crate: ${NAME} ${VERSION}"
+
+          WANT="${EXPECTED:-${RELEASE_TAG:-}}"
+          WANT="${WANT#v}"
+          if [ -n "$WANT" ] && [ "$WANT" != "$VERSION" ]; then
+            echo "::warning title=Version mismatch::Cargo.toml says ${VERSION} but the release says ${WANT}. Publishing ${VERSION}."
+          fi
+
+          # crates.io versions are permanent, so an existing one is a no-op
+          # rather than something to retry.
+          CODE="$(curl -sS -o /dev/null -w '%{http_code}' -H 'User-Agent: tannergolden-standards-publish' "https://crates.io/api/v1/crates/${NAME}/${VERSION}" || echo '000')"
+          if [ "$CODE" = "200" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Already on crates.io::${NAME} ${VERSION} is already published. Nothing to do."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # No unconditional `cargo build` here: `cargo publish` compiles and
+      # verifies the packaged crate itself, so building first would be the
+      # same work done twice. This step exists only for a project that needs
+      # something done beforehand, such as generating sources.
+      - name: '🏗️ Build'
+        if: ${{ steps.inspect.outputs.published == 'false' && inputs.build-command != '' }}
+        working-directory: ${{ inputs.crates-directory }}
+        env:
+          COMMAND: ${{ inputs.build-command }}
+        run: bash -c "$COMMAND"
+
+      - name: '🚀 Publish'
+        if: ${{ steps.inspect.outputs.published == 'false' }}
+        working-directory: ${{ inputs.crates-directory }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          set -euo pipefail
+          # --locked only where a lockfile exists. Libraries frequently do
+          # not commit one, and demanding it would fail the publish over a
+          # legitimate convention.
+          ARGS=()
+          if [ -f Cargo.lock ]; then
+            ARGS+=(--locked)
+          else
+            echo "::notice title=No lockfile::Cargo.lock is absent, so dependency versions resolve at publish time."
+          fi
+
+          if [ "$DRY_RUN" = "true" ]; then
+            # --dry-run packages and verifies without registering anything,
+            # and needs no token, which is what makes it a real rehearsal.
+            cargo publish --dry-run "${ARGS[@]}"
+            echo "::notice title=Dry run::The crate packaged and verified. Nothing was registered."
+            exit 0
+          fi
+          cargo publish "${ARGS[@]}"
+
+      - name: '📝 Summary'
+        if: ${{ always() }}
+        env:
+          NAME: ${{ steps.inspect.outputs.name }}
+          VERSION: ${{ steps.inspect.outputs.version }}
+          ALREADY: ${{ steps.inspect.outputs.published }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          {
+            echo "### 🦀 crates.io"
+            echo ""
+            if [ -z "${NAME:-}" ]; then
+              echo "Did not get as far as reading the manifest."
+            elif [ "$ALREADY" = "true" ]; then
+              echo "\`${NAME} ${VERSION}\` was already on the registry. Nothing was published."
+            elif [ "$DRY_RUN" = "true" ]; then
+              echo "**Dry run.** \`${NAME} ${VERSION}\` packaged and verified."
+            else
+              echo "Published \`${NAME} ${VERSION}\`."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Container image
+  # ---------------------------------------------------------------------------
+  # THREE JOBS RATHER THAN ONE, and only because of multi-architecture. The
+  # usual way to build for a foreign architecture is to emulate it with
+  # QEMU, which is slow enough to time real builds out and means trusting
+  # another image inside a job that holds a registry credential. GitHub
+  # hosts arm64 runners now, so each architecture is instead built natively
+  # on its own machine and the results are stitched into one manifest list
+  # afterwards. Nothing is emulated and no extra image is trusted.
+  #
+  # A SINGLE-ARCHITECTURE BUILD, WHICH IS THE DEFAULT, SKIPS ALL OF THAT.
+  # One job builds, pushes exactly the tags you asked for, and the stitching
+  # job never runs. You pay for the fan-out only when you ask for it.
+  #
+  # Multi-architecture leaves per-architecture tags (`1.2.3-amd64`) in the
+  # registry beside the real one. They are the components the manifest list
+  # points at, not strays, and deleting them breaks the image.
+  # ---------------------------------------------------------------------------
+  container-plan:
+    name: '🐳 Resolve Image, Tags & Platforms'
+    if: ${{ inputs.container }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      image: ${{ steps.resolve.outputs.image }}
+      tags: ${{ steps.resolve.outputs.tags }}
+      version: ${{ steps.resolve.outputs.version }}
+      matrix: ${{ steps.resolve.outputs.matrix }}
+      multi: ${{ steps.resolve.outputs.multi }}
+      suffixes: ${{ steps.resolve.outputs.suffixes }}
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🐳 Resolving the image to build.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: '🔎 Resolve Image, Tags And Platforms'
+        id: resolve
+        env:
+          REGISTRY: ${{ inputs.container-registry }}
+          IMAGE_INPUT: ${{ inputs.container-image }}
+          TAGS_INPUT: ${{ inputs.container-tags }}
+          PLATFORMS: ${{ inputs.container-platforms }}
+          VERSION_INPUT: ${{ inputs.version }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          REPO: ${{ github.repository }}
+          DOCKERFILE: ${{ inputs.container-file }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "$DOCKERFILE" ]; then
+            echo "::error title=No Dockerfile::'${DOCKERFILE}' does not exist, so there is nothing to build. Set container-file if yours lives elsewhere."
+            exit 1
+          fi
+
+          # Registries reject uppercase in a repository name, and plenty of
+          # GitHub repositories have it.
+          IMAGE="${IMAGE_INPUT:-$REPO}"
+          IMAGE="$(printf '%s' "$IMAGE" | tr '[:upper:]' '[:lower:]')"
+          echo "image=${REGISTRY}/${IMAGE}" >> "$GITHUB_OUTPUT"
+
+          VERSION="${VERSION_INPUT:-${RELEASE_TAG:-}}"
+          if [ -z "$VERSION" ]; then
+            VERSION="$(git describe --tags --abbrev=0 2> /dev/null || true)"
+          fi
+          if [ -z "$VERSION" ]; then
+            VERSION="$(git rev-parse --short HEAD)"
+            echo "::notice title=No version tag::No release tag and no git tag, so the image is tagged with the commit ${VERSION}."
+          fi
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$TAGS_INPUT" ]; then
+            TAGS="$TAGS_INPUT"
+          else
+            TAGS="$VERSION"
+            # `latest` must not follow a prerelease, or `docker pull` gives
+            # people the unstable build by default.
+            if [ "$IS_PRERELEASE" = "true" ]; then
+              echo "::notice title=No latest tag::This is a prerelease, so 'latest' was not moved."
+            else
+              TAGS="${TAGS} latest"
+            fi
+          fi
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+
+          # Each platform maps to a runner that IS that architecture. An
+          # architecture with no native runner is rejected outright rather
+          # than silently emulated, because the alternative is a build that
+          # appears to work and takes an hour.
+          ENTRIES=''
+          SUFFIXES=''
+          COUNT=0
+          OLD_IFS="$IFS"
+          IFS=','
+          for raw in $PLATFORMS; do
+            IFS="$OLD_IFS"
+            platform="$(printf '%s' "$raw" | tr -d '[:space:]')"
+            [ -n "$platform" ] || { IFS=','; continue; }
+            case "$platform" in
+              linux/amd64) runner='ubuntu-latest'; suffix='amd64' ;;
+              linux/arm64) runner='ubuntu-24.04-arm'; suffix='arm64' ;;
+              *)
+                echo "::error title=Unsupported platform::'${platform}' has no natively matching GitHub-hosted runner. Supported: linux/amd64, linux/arm64."
+                exit 1
+                ;;
+            esac
+            [ -z "$ENTRIES" ] || ENTRIES="${ENTRIES},"
+            ENTRIES="${ENTRIES}{\"platform\":\"${platform}\",\"runner\":\"${runner}\",\"suffix\":\"${suffix}\"}"
+            SUFFIXES="${SUFFIXES}${suffix} "
+            COUNT=$((COUNT + 1))
+            IFS=','
+          done
+          IFS="$OLD_IFS"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error title=No platforms::container-platforms resolved to nothing. Give it at least one, such as linux/amd64."
+            exit 1
+          fi
+
+          echo "matrix={\"include\":[${ENTRIES}]}" >> "$GITHUB_OUTPUT"
+          echo "suffixes=${SUFFIXES% }" >> "$GITHUB_OUTPUT"
+          if [ "$COUNT" -gt 1 ]; then
+            echo "multi=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Multi-architecture::Building ${COUNT} architectures natively, then combining them into one manifest list."
+          else
+            echo "multi=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "Image: ${REGISTRY}/${IMAGE}"
+          echo "Tags: ${TAGS}"
+          echo "Platforms: ${PLATFORMS}"
+
+  container-build:
+    name: '🐳 Build ${{ matrix.platform }}'
+    needs: container-plan
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      # One architecture failing means the manifest list would be
+      # incomplete, so the others are stopped rather than pushed.
+      fail-fast: true
+      matrix: ${{ fromJSON(needs.container-plan.outputs.matrix) }}
+    permissions:
+      contents: read
+      packages: write # push to GHCR under this repository
+      id-token: write # sign the image provenance attestation
+      attestations: write # record it
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🐳 Building a container image.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: '🔑 Registry Login'
+        if: ${{ !inputs.dry-run }}
+        env:
+          REGISTRY: ${{ inputs.container-registry }}
+          USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # GHCR authenticates with the run's own token, so the common case
+          # needs no secret at all. Anywhere else needs a real credential.
+          if [ -n "${USERNAME:-}" ] && [ -n "${PASSWORD:-}" ]; then
+            printf '%s' "$PASSWORD" | docker login "$REGISTRY" --username "$USERNAME" --password-stdin
+            echo "Signed in to ${REGISTRY} as ${USERNAME}."
+          elif [ "$REGISTRY" = "ghcr.io" ]; then
+            printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+            echo "Signed in to ghcr.io with the workflow token."
+          else
+            echo "::error title=No registry credential::Pushing to '${REGISTRY}' needs REGISTRY_USERNAME and REGISTRY_PASSWORD. Only ghcr.io can authenticate with the built-in token."
+            exit 1
+          fi
+
+      # Native build: the runner already IS this architecture, so --platform
+      # asserts the target rather than emulating it.
+      - name: '🏗️ Build Image'
+        id: build
+        env:
+          IMAGE: ${{ needs.container-plan.outputs.image }}
+          TAGS: ${{ needs.container-plan.outputs.tags }}
+          VERSION: ${{ needs.container-plan.outputs.version }}
+          MULTI: ${{ needs.container-plan.outputs.multi }}
+          PLATFORM: ${{ matrix.platform }}
+          SUFFIX: ${{ matrix.suffix }}
+          DOCKERFILE: ${{ inputs.container-file }}
+          CONTEXT: ${{ inputs.container-context }}
+          BUILD_ARGS: ${{ inputs.container-build-args }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Single architecture pushes the tags you asked for. Multi
+          # architecture pushes per-architecture tags that the manifest job
+          # then combines into the tags you asked for.
+          LOCAL_TAGS=''
+          # shellcheck disable=SC2086 # deliberately word-split: a space-separated tag list
+          for tag in $TAGS; do
+            if [ "$MULTI" = "true" ]; then
+              LOCAL_TAGS="${LOCAL_TAGS}${tag}-${SUFFIX} "
+            else
+              LOCAL_TAGS="${LOCAL_TAGS}${tag} "
+            fi
+          done
+          LOCAL_TAGS="${LOCAL_TAGS% }"
+          echo "local_tags=${LOCAL_TAGS}" >> "$GITHUB_OUTPUT"
+
+          ARGS=()
+          # shellcheck disable=SC2086 # deliberately word-split: a space-separated tag list
+          for tag in $LOCAL_TAGS; do
+            ARGS+=(--tag "${IMAGE}:${tag}")
+          done
+          # shellcheck disable=SC2086 # deliberately word-split: a space-separated argument list
+          for arg in $BUILD_ARGS; do
+            ARGS+=(--build-arg "$arg")
+          done
+
+          # Standard OCI annotations, so `docker inspect` on the published
+          # image can answer where it came from and what built it.
+          ARGS+=(--label "org.opencontainers.image.source=${REPO_URL}")
+          ARGS+=(--label "org.opencontainers.image.revision=${REVISION}")
+          ARGS+=(--label "org.opencontainers.image.version=${VERSION}")
+          ARGS+=(--label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')")
+
+          docker build --platform "$PLATFORM" "${ARGS[@]}" --file "$DOCKERFILE" "$CONTEXT"
+          docker images "$IMAGE"
+
+      - name: '🚀 Push Image'
+        id: push
+        if: ${{ !inputs.dry-run }}
+        env:
+          IMAGE: ${{ needs.container-plan.outputs.image }}
+          LOCAL_TAGS: ${{ steps.build.outputs.local_tags }}
+        run: |
+          set -euo pipefail
+          FIRST=''
+          # shellcheck disable=SC2086 # deliberately word-split: a space-separated tag list
+          for tag in $LOCAL_TAGS; do
+            docker push "${IMAGE}:${tag}"
+            if [ -z "$FIRST" ]; then FIRST="$tag"; fi
+          done
+
+          # The digest only exists once something has been pushed, and it is
+          # what an attestation has to be about: a tag can be moved, a digest
+          # cannot.
+          DIGEST="$(docker inspect --format '{{ index .RepoDigests 0 }}' "${IMAGE}:${FIRST}" 2> /dev/null | cut -d '@' -f 2 || true)"
+          if [ -z "$DIGEST" ]; then
+            echo "::warning title=No digest::The image pushed but its digest could not be read, so no attestation will be recorded."
+          fi
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "Pushed ${IMAGE} (${LOCAL_TAGS})."
+
+      # Attested here only for a single-architecture build. A multi
+      # architecture one is attested once, against the manifest list, which
+      # is the thing anybody actually pulls.
+      - name: '🧾 Attest Image Provenance'
+        if: ${{ !inputs.dry-run && needs.container-plan.outputs.multi == 'false' && steps.push.outputs.digest != '' && github.event.repository.private == false }}
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-name: ${{ needs.container-plan.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: '📝 Summary'
+        if: ${{ always() }}
+        env:
+          IMAGE: ${{ needs.container-plan.outputs.image }}
+          LOCAL_TAGS: ${{ steps.build.outputs.local_tags }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          PLATFORM: ${{ matrix.platform }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          {
+            echo "### 🐳 Container (${PLATFORM})"
+            echo ""
+            if [ -z "${LOCAL_TAGS:-}" ]; then
+              echo "Did not get as far as building."
+            elif [ "$DRY_RUN" = "true" ]; then
+              echo "**Dry run.** Built \`${IMAGE}\` (${LOCAL_TAGS}); nothing was pushed."
+            else
+              echo "| Field | Value |"
+              echo "| :--- | :--- |"
+              echo "| Image | \`${IMAGE}\` |"
+              echo "| Tags | ${LOCAL_TAGS} |"
+              echo "| Digest | \`${DIGEST:-unavailable}\` |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Combines the per-architecture images into one manifest list, so a plain
+  # `docker pull` resolves to the right architecture on its own. Runs only
+  # for a multi-architecture build; a single one already pushed its real
+  # tags.
+  container-manifest:
+    name: '🐳 Combine Into One Image'
+    needs: [container-plan, container-build]
+    if: ${{ needs.container-plan.outputs.multi == 'true' && !inputs.dry-run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write # push the manifest list to GHCR under this repository
+      id-token: write # sign the manifest's provenance attestation
+      attestations: write # record it
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🐳 Combining architectures into one image.'
+
+      - name: '🔑 Registry Login'
+        env:
+          REGISTRY: ${{ inputs.container-registry }}
+          USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${USERNAME:-}" ] && [ -n "${PASSWORD:-}" ]; then
+            printf '%s' "$PASSWORD" | docker login "$REGISTRY" --username "$USERNAME" --password-stdin
+          elif [ "$REGISTRY" = "ghcr.io" ]; then
+            printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+          else
+            echo "::error title=No registry credential::Combining needs the same credential the build used."
+            exit 1
+          fi
+
+      # `buildx imagetools` rather than `docker manifest`, which is still
+      # gated behind the experimental CLI flag on some Docker versions.
+      # buildx ships with the runner image and needs no flag.
+      - name: '🧬 Create Manifest Lists'
+        id: manifest
+        env:
+          IMAGE: ${{ needs.container-plan.outputs.image }}
+          TAGS: ${{ needs.container-plan.outputs.tags }}
+          SUFFIXES: ${{ needs.container-plan.outputs.suffixes }}
+        run: |
+          set -euo pipefail
+          FIRST=''
+          # shellcheck disable=SC2086 # deliberately word-split: a space-separated tag list
+          for tag in $TAGS; do
+            SOURCES=()
+            # shellcheck disable=SC2086 # deliberately word-split: a space-separated suffix list
+            for suffix in $SUFFIXES; do
+              SOURCES+=("${IMAGE}:${tag}-${suffix}")
+            done
+            docker buildx imagetools create --tag "${IMAGE}:${tag}" "${SOURCES[@]}"
+            echo "Combined ${#SOURCES[@]} architectures into ${IMAGE}:${tag}."
+            if [ -z "$FIRST" ]; then FIRST="$tag"; fi
+          done
+
+          # The manifest list has its own digest, distinct from any single
+          # architecture's, and it is the one a `docker pull` resolves.
+          DIGEST="$(docker buildx imagetools inspect "${IMAGE}:${FIRST}" --format '{{ .Manifest.Digest }}' 2> /dev/null || true)"
+          case "$DIGEST" in
+            sha256:*) ;;
+            *)
+              echo "::warning title=No manifest digest::The manifest list was pushed but its digest could not be read, so no attestation will be recorded."
+              DIGEST=''
+              ;;
+          esac
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: '🧾 Attest Image Provenance'
+        if: ${{ steps.manifest.outputs.digest != '' && github.event.repository.private == false }}
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-name: ${{ needs.container-plan.outputs.image }}
+          subject-digest: ${{ steps.manifest.outputs.digest }}
+          push-to-registry: true
+
+      - name: '📝 Summary'
+        if: ${{ always() }}
+        env:
+          IMAGE: ${{ needs.container-plan.outputs.image }}
+          TAGS: ${{ needs.container-plan.outputs.tags }}
+          SUFFIXES: ${{ needs.container-plan.outputs.suffixes }}
+          DIGEST: ${{ steps.manifest.outputs.digest }}
+        run: |
+          {
+            echo "### 🐳 Container (combined)"
+            echo ""
+            echo "| Field | Value |"
+            echo "| :--- | :--- |"
+            echo "| Image | \`${IMAGE}\` |"
+            echo "| Tags | ${TAGS} |"
+            echo "| Architectures | ${SUFFIXES} |"
+            echo "| Manifest digest | \`${DIGEST:-unavailable}\` |"
+            echo ""
+            echo "> The per-architecture tags (\`<tag>-${SUFFIXES%% *}\`, and so on) are what the manifest list points at. Deleting them breaks the image."
+          } >> "$GITHUB_STEP_SUMMARY"
+  # ---------------------------------------------------------------------------
+  # Nothing selected
+  # ---------------------------------------------------------------------------
+  # A stub that calls this with every registry off is almost always a stub
+  # somebody meant to configure. It reports rather than sitting green and
+  # empty, which is the same reasoning that makes ci.yml fail when every
+  # stage skipped.
+  guard:
+    name: '🚦 Verify A Registry Was Selected'
+    if: ${{ !inputs.npm && !inputs.pypi && !inputs.crates && !inputs.container }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: '🚦 Nothing to publish'
+        run: |
+          echo "::error title=No registry selected::This workflow was called with npm, pypi, crates, and container all off, so it would publish nothing. Turn on the one your project ships to, or remove the stub."
+          exit 1
