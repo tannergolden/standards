@@ -1,0 +1,70 @@
+# --- Composite Action ---
+#
+# ✍️ Commit Message Check
+#
+# Purpose: enforces Conventional Commits on every human-authored commit in a
+# pull request, which the title check does not do.
+#
+# The title check covers what a SQUASH merge writes into history and nothing
+# else. A repository that merges or rebases instead puts every commit
+# message on its default branch having been validated by nothing at all.
+#
+# ⚠️ NO CHECKOUT, DELIBERATELY. The workflow that calls this runs on
+# `pull_request_target`, which means an elevated token and a checkout that
+# would be the contributor's code. That is exactly why this reads the
+# commits through the API instead: nothing from the branch under review is
+# fetched, executed, or installed. It is the same reasoning that shapes the
+# DCO check, and the reason this is not commitlint, which would need
+# `npm install` against the pull request's own manifest.
+#
+# `config/commitlint.config.js` is still published for anyone running the
+# same rules in a local Node toolchain. One rule set, two encodings, changed
+# together.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/commit-check@v1
+#     with:
+#       token: ${{ secrets.GITHUB_TOKEN }}
+#       pr-number: ${{ github.event.pull_request.number }}
+#
+# ---
+
+name: '✍️ Commit Message Check'
+description: 'Verifies every human-authored commit in a pull request follows Conventional Commits.'
+
+inputs:
+  token:
+    description: 'Token used to read the pull request commits.'
+    required: true
+  pr-number:
+    description: 'Pull request number whose commits are checked.'
+    required: true
+  repository:
+    description: 'Repository holding the pull request, as owner/repo.'
+    required: false
+    default: ${{ github.repository }}
+  types:
+    description: >-
+      Comma-separated Conventional Commit types accepted. Keep this in step
+      with the types the title check allows, or a message can pass one gate
+      and fail the other.
+    required: false
+    default: 'feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert,security'
+  max-header-length:
+    description: 'Maximum length of the subject line.'
+    required: false
+    default: '100'
+
+runs:
+  using: composite
+  steps:
+    - name: '✍️ Verify commit messages'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ inputs.repository }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        COMMIT_TYPES: ${{ inputs.types }}
+        MAX_HEADER_LENGTH: ${{ inputs.max-header-length }}
+      run: python3 "${GITHUB_ACTION_PATH}/../../scripts/commit-check.py"

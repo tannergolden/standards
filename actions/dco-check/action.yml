@@ -1,0 +1,56 @@
+# --- Composite Action ---
+#
+# ✍️ DCO Sign-Off Check
+#
+# Purpose: verifies that every human-authored commit in a pull request
+# carries the `Signed-off-by:` trailer required by the Developer Certificate
+# of Origin. Bot-authored commits and merge commits are exempt by contract,
+# decided per commit inside the script rather than by skipping the job, so
+# an all-bot pull request still reports a result instead of deadlocking on
+# a required check that never concludes.
+#
+# WHY THIS IS AN ACTION AND NOT A REUSABLE WORKFLOW: a composite action is
+# fetched with its whole repository, so `github.action_path` gives it the
+# script sitting next to it. A reusable workflow gets no such thing; its
+# checkout resolves to the CALLING repository, which would leave the script
+# unreachable. Anything that needs to ship code alongside it belongs here.
+#
+# The commits under review are read through the GitHub API and never
+# executed, which is what makes this safe to run under pull_request_target.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/dco-check@v1
+#     with:
+#       token: ${{ secrets.GITHUB_TOKEN }}
+#       pr-number: ${{ github.event.pull_request.number }}
+#
+# ---
+
+name: '✍️ DCO Sign-Off Check'
+description: 'Verifies the Signed-off-by trailer on every human-authored commit in a pull request.'
+
+inputs:
+  token:
+    description: 'Token used to read the pull request commits. Needs pull-requests: read.'
+    required: true
+  repository:
+    description: 'Repository holding the pull request, as owner/repo.'
+    required: false
+    default: ${{ github.repository }}
+  pr-number:
+    description: 'Number of the pull request to verify.'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: '✍️ Verify Developer Certificate of Origin sign-offs'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ inputs.repository }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+      # The script travels with this action, so it is the trusted copy at
+      # the pinned ref rather than whatever the calling tree happens to hold.
+      run: bash "${GITHUB_ACTION_PATH}/../../scripts/dco-check.sh"
