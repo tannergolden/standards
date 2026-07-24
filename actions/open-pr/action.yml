@@ -1,0 +1,97 @@
+# --- Composite Action ---
+#
+# 🚀 Open Maintenance Pull Request
+#
+# Purpose: delivers whatever an automation job changed in the working tree
+# as a pull request, never as a direct push. Automation is held to the same
+# PR-only contract the published rulesets enforce for humans.
+#
+# ONE FIXED BRANCH PER CONCERN, force-pushed every run. A per-run branch
+# would mint a new pull request on every firing; in a lightly maintained
+# repository the stale bot then closes each one and the next firing opens a
+# duplicate, forever. One branch means one pull request that stays current
+# until somebody merges it.
+#
+# The pull request is labeled `automated`, which is the marker that makes it
+# stale-exempt. A pull request opened with the default GITHUB_TOKEN cannot
+# trigger required checks, so it legitimately waits on a human and must not
+# be aged out for doing so.
+#
+# Commits are authored, committed, and signed off as the repository owner.
+# The sign-off is load-bearing rather than decorative: the DCO gate exempts
+# only commits whose author login ends in [bot], and these map to a human,
+# so without the trailer the required check fails and auto-merge could never
+# fire.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/open-pr@v1
+#     with:
+#       token: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+#       branch: chore/license-year
+#       commit-title: 'build(license): 📅 update copyright year to 2027'
+#       pr-title: 'build(license): 📅 update copyright year'
+#       pr-body: |
+#         ### 🕒 Automated License Year Update
+#
+# ---
+
+name: '🚀 Open Maintenance Pull Request'
+description: 'Commits working-tree changes to a fixed branch and opens or updates one evolving pull request.'
+
+inputs:
+  token:
+    description: >-
+      Token for pushing and for opening the pull request. The default
+      GITHUB_TOKEN works but cannot push files under .github/workflows/ and
+      cannot trigger required checks; a PAT with repo and workflow scopes
+      lifts both limits.
+    required: true
+  branch:
+    description: 'The fixed topic branch for this concern, such as chore/license-year.'
+    required: true
+  commit-title:
+    description: >-
+      Conventional Commit title. Pass run-specific measured values so each
+      commit says what this run actually did rather than repeating a line.
+    required: true
+  commit-body:
+    description: 'Extended commit message body.'
+    required: false
+    default: ''
+  pr-title:
+    description: 'Pull request title, in Conventional Commit form.'
+    required: true
+  pr-body:
+    description: 'Pull request body, as markdown.'
+    required: true
+  base:
+    description: >-
+      Base branch the pull request targets. Empty resolves the repository's
+      OWN default branch at run time, which is the right answer for anyone
+      whose conventions differ from this repository's.
+    required: false
+    default: ''
+  automerge:
+    description: >-
+      Queue the pull request to squash-merge once required checks pass.
+      Still gated on green CI, so nothing merges unvalidated. Needs
+      'Allow auto-merge' in repository settings.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: '🚀 Propose the change as a pull request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        BRANCH_PREFIX: ${{ inputs.branch }}
+        COMMIT_TITLE: ${{ inputs.commit-title }}
+        COMMIT_BODY: ${{ inputs.commit-body }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        PR_BODY: ${{ inputs.pr-body }}
+        PR_BASE: ${{ inputs.base }}
+        AUTOMERGE: ${{ inputs.automerge }}
+      run: bash "${GITHUB_ACTION_PATH}/../../scripts/open-pr.sh"
