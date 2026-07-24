@@ -1,0 +1,553 @@
+# --- Trigger Stub ---
+#
+# Everything this repository checks about itself, in one file and one run:
+# the required gates a consumer also runs (ci, secrets), the workflow lint,
+# and the structural verification that everything shipped is coherent.
+#
+# The `uses:` lines are LOCAL paths rather than pinned tags, and only
+# because this is the repository that publishes them. Every consumer pins a
+# tag instead, so a change here cannot reach them until they move the pin.
+#
+# ⚠️ `ci` AND `secrets` ARE CHECK NAMES. A called workflow reports as
+# `<job id> / <job name>`, and the rulesets name those two. The file they
+# live in is free to change; the job ids are not.
+#
+# ---
+
+name: '🔁 Self: Checks'
+
+on:
+  push:
+    branches: ['Development']
+  pull_request:
+    branches: ['Development']
+  workflow_dispatch:
+
+concurrency:
+  # In-progress runs are never canceled, so a required check cannot vanish
+  # mid-merge. Later pushes wait their turn instead.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+# ⚠️ THE `permissions:` BELOW IS A CEILING, NOT A GRANT. For a job that calls a
+# reusable workflow, the caller's permissions cap what the called workflow may
+# request. Anything it asks for beyond them fails the run before a single job
+# starts: a startup failure, with no job, no step, and no log to read.
+#
+# Each job declares the union of what ITS called workflow's jobs ask for, and
+# nothing more - grouping the callers into one file widens none of them.
+
+permissions: {}
+
+jobs:
+  ci: # <- fixed by the rulesets. Do not rename.
+    permissions:
+      contents: read # read the repository
+    uses: ./.github/workflows/ci.yml
+    with:
+      # This repository ships shell and Python, not a buildable artifact,
+      # so lint is the stage that carries the weight here.
+      lint-command: |
+        set -euo pipefail
+        echo "Checking shell scripts parse..."
+        for f in scripts/*.sh; do bash -n "$f"; done
+        echo "Checking Python scripts compile..."
+        python3 -m compileall -q scripts/
+        echo "Checking data and config parse..."
+        python3 -c "import json,glob; [json.load(open(f)) for f in glob.glob('data/rulesets/*.json')]"
+        python3 -c "import json; json.load(open('config/prettierrc.json'))"
+      test-command: |
+        set -euo pipefail
+        echo "Verifying every action referenced by a workflow exists..."
+        python3 - <<'PY'
+        import pathlib, re, sys
+        missing = []
+        pattern = re.compile(r'uses:\s*tannergolden/standards/(actions/[A-Za-z0-9._-]+)@')
+        for wf in pathlib.Path('.github/workflows').glob('*.yml'):
+            for ref in pattern.findall(wf.read_text()):
+                if not (pathlib.Path(ref) / 'action.yml').is_file():
+                    missing.append(f"{wf.name} -> {ref}")
+        if missing:
+            print("::error::Workflows reference actions that do not exist:")
+            for m in sorted(set(missing)):
+                print(f"  {m}")
+            sys.exit(1)
+        print("Every referenced action exists.")
+        PY
+        echo "Verifying every config named by the config action exists..."
+        python3 - <<'PY'
+        import pathlib, re, sys
+        missing = []
+        for wf in list(pathlib.Path('.github/workflows').glob('*.yml')):
+            text = wf.read_text()
+            for name in re.findall(r'actions/config@v1\s*\n\s*with:\s*\n\s*name:\s*(\S+)', text):
+                if not (pathlib.Path('config') / name).is_file():
+                    missing.append(f"{wf.name} -> config/{name}")
+        if missing:
+            print("::error::Workflows request shared configs that do not exist:")
+            for m in sorted(set(missing)):
+                print(f"  {m}")
+            sys.exit(1)
+        print("Every requested shared config exists.")
+        PY
+
+  secrets: # <- fixed by the rulesets. Do not rename.
+    permissions:
+      contents: read # full-history checkout for the secret scan
+      issues: write # one-time escalation issue when scanning is silently off
+    uses: ./.github/workflows/gitleaks.yml
+    secrets: inherit # zizmor: ignore[secrets-inherit] - the callee is this same repository.
+
+  lint:
+    permissions:
+      contents: read # read the repository
+    uses: ./.github/workflows/lint-workflows.yml
+    with:
+      # ⚠️ POINTED AT THE WORKING TREE ON PURPOSE. The reusable workflow above
+      # is the local file, but the `actions/config@v1` inside it resolves the
+      # shared zizmor config out of the LAST PUBLISHED release - so without
+      # this, the repository audits its next release against its previous
+      # rules, and a config change cannot go green until after it ships.
+      # A consuming repository leaves this unset and gets the published pair.
+      zizmor-config: 'config/zizmor.yml'
+
+  verify:
+    name: '🔬 Structure, Syntax & Integrity'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      # The upstream action directly, not actions/harden: this workflow must
+      # run before any tag exists, which is the whole point of it.
+      - name: '🛡️ Harden Runner'
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: '📂 Checkout'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🧰 actionlint (Actions semantics)'
+        env:
+          # SC2129 ("consider { cmd; } >> file") is style-level: step
+          # summaries interleave echoes with conditionals, where the grouped
+          # form reads worse. Correctness findings still fail this job.
+          SHELLCHECK_OPTS: --exclude=SC2129
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          "$(go env GOPATH)/bin/actionlint" -color
+
+      # shellcheck ships with the runner image, so its version moves with
+      # the image rather than with anything here. Style severity is the
+      # strictest setting, and findings are annotated at their call site
+      # rather than disabled wholesale.
+      - name: '🐚 shellcheck (every script)'
+        run: |
+          shellcheck --version
+          shellcheck --severity=style scripts/*.sh
+
+      # PINNED, and the rule set is declared in .ruff.toml. An unpinned
+      # linter means a release with new default rules turns this red on a
+      # commit that changed nothing, which is exactly how this check first
+      # failed. Dependabot has no ecosystem for a bare pip install here, so
+      # the pin is bumped deliberately.
+      - name: '🐍 ruff + compile (every script)'
+        run: |
+          pip install --quiet ruff==0.15.8
+          ruff check scripts/
+          python3 -m compileall -q scripts/
+
+      - name: '📐 Structural integrity'
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, json, sys
+          import yaml
+
+          ROOT = pathlib.Path('.')
+          fail = []
+          WF  = sorted(ROOT.glob('.github/workflows/*.yml'))
+          ACT = sorted(ROOT.glob('actions/*/action.yml'))
+          # `self-*` and release.yml are this repository's own triggers, not
+          # things anyone calls, so the callable contract does not apply.
+          REUSABLE = [w for w in WF if not w.name.startswith('self-') and w.name != 'release.yml']
+
+          for f in WF + ACT:
+              try:
+                  yaml.safe_load(f.read_text())
+              except Exception as e:
+                  fail.append(f"{f}: invalid YAML: {e}")
+
+          for f in REUSABLE:
+              d = yaml.safe_load(f.read_text())
+              on = d.get(True, d.get('on')) or {}
+              if 'workflow_call' not in on:
+                  fail.append(f"{f.name}: published but has no `on: workflow_call`")
+              if 'permissions' not in d:
+                  fail.append(f"{f.name}: no workflow-level permissions declaration")
+              wc = on.get('workflow_call') or {}
+              for k, v in (wc.get('inputs') or {}).items():
+                  if v.get('required'):
+                      fail.append(f"{f.name}: input '{k}' is required, so the workflow is not callable with zero configuration")
+              for k, v in (wc.get('secrets') or {}).items():
+                  if v.get('required'):
+                      fail.append(f"{f.name}: secret '{k}' is required, so the workflow cannot degrade gracefully")
+
+          # Every internal reference must exist, or a consumer's run fails
+          # on a name that looked fine here.
+          for f in WF + ACT:
+              for path, ref in re.findall(r'uses:\s*tannergolden/standards/(actions/[\w.-]+)@(\S+)', f.read_text()):
+                  if not (ROOT / path / 'action.yml').is_file():
+                      fail.append(f"{f.name}: references {path}, which does not exist")
+
+          # Files an action ships must actually be beside it.
+          for f in ACT:
+              for rel in re.findall(r'\$\{GITHUB_ACTION_PATH\}/\.\./\.\./([\w./-]+)', f.read_text()):
+                  if not (ROOT / rel).exists():
+                      fail.append(f"{f.parent.name}: ships {rel}, which does not exist")
+
+          # Shared configs a workflow asks for must be published.
+          for f in WF:
+              text = f.read_text()
+              for block in re.findall(r'uses:\s*tannergolden/standards/actions/config@v1(.*?)(?=\n\s{6}- |\Z)', text, re.S):
+                  for name in re.findall(r'\bname:\s*([\w.-]+)\s*$', block, re.M):
+                      if not (ROOT / 'config' / name).is_file():
+                          fail.append(f"{f.name}: requests config/{name}, which does not exist")
+
+          # Third-party actions must be SHA-pinned; a version tag is mutable.
+          for f in WF + ACT:
+              for repo, ref in re.findall(r'uses:\s*(?!\./)(?!tannergolden/standards/)([\w.-]+/[\w./-]+)@([^\s#]+)', f.read_text()):
+                  if not re.fullmatch(r'[0-9a-f]{40}', ref):
+                      fail.append(f"{f.name}: {repo}@{ref} is not pinned to a commit SHA")
+
+          for f in sorted(ROOT.glob('data/rulesets/*.json')):
+              try:
+                  json.load(f.open())
+              except Exception as e:
+                  fail.append(f"{f}: invalid JSON: {e}")
+
+          # A ruleset's required check is `<caller job id> / <called job name>`,
+          # and a check that never reports leaves every pull request PENDING
+          # rather than failed. The job ids live in the template repositories
+          # now, so that tie cannot be checked from here - apply-rulesets.sh
+          # does it at apply time instead, against the repository actually
+          # being protected, which is the stronger place for it. What is still
+          # checkable here is that every ruleset is documented.
+          BRANCH_DOC = ROOT / 'docs/operations/Branch-Protection.md'
+          doc_text = BRANCH_DOC.read_text() if BRANCH_DOC.is_file() else ''
+          if not doc_text:
+              fail.append('docs/operations/Branch-Protection.md is missing')
+
+          for f in sorted(ROOT.glob('data/rulesets/*.json')):
+              try:
+                  rs = json.load(f.open())
+              except Exception:
+                  continue  # already reported above
+              if doc_text and f.name not in doc_text:
+                  fail.append(f"{f.name}: not named in Branch-Protection.md, so the policy is undocumented")
+              for rule in rs.get('rules', []):
+                  if rule.get('type') != 'required_status_checks':
+                      continue
+                  for check in rule['parameters']['required_status_checks']:
+                      context = check['context']
+                      _job_id, _, job_name = context.partition(' / ')
+                      if doc_text and job_name and job_name not in doc_text:
+                          fail.append(f"{f.name}: required check {job_name!r} is not documented in Branch-Protection.md")
+
+          print(f"reusable workflows: {len(REUSABLE)}   own triggers: {len(WF) - len(REUSABLE)}   actions: {len(ACT)}")
+          for e in sorted(set(fail)):
+              print(f"::error::{e}")
+          print(f"\n{len(set(fail))} problem(s).")
+          sys.exit(1 if fail else 0)
+          PY
+
+      - name: '📚 Documentation describes what ships'
+        run: |
+          python3 scripts/update-doc-indexes.py --check
+
+          # The label reference states a colour for every label, and a colour
+          # is exactly the kind of detail nobody re-reads. It had drifted from
+          # the registry twice before the tables were generated.
+          python3 scripts/update-label-docs.py --check
+
+          python3 - <<'PY'
+          import pathlib, re, sys
+
+          ROOT = pathlib.Path('.')
+          DOCS = [p for p in ROOT.glob('docs/**/*.md')] + [
+              ROOT / 'README.md',
+              ROOT / '.github/workflows/README.md',
+              ROOT / 'actions/README.md',
+          ]
+
+          # Machinery this repository does not have. Each entry was true of the
+          # monolith these documents were copied from, and false here.
+          RETIRED = [
+              'sync engine', 'Engine Sync', 'Engine-Sync', 'engine sync',
+              'smart_sync', 'template sync', 'TEMPLATE_SYNC', 'make init',
+              'Dynamic Analysis', 'make ai-clis', 'make setup-dev',
+              'make docs-index', 'governance_gate', 'test_guardrails',
+              'test_sync_properties', 'check-docs-style', 'docs-style.json',
+              # The same machinery under the other names it was written up as.
+              # Every one of these survived the first sweep because the list
+              # held 'sync engine' and the documents said it differently.
+              'engine-owned', 'engine-synced', 'weekly sync', 'Day-0 init',
+              'seed contract', 'sync-protected', 'engine pass',
+          ]
+
+          problems = []
+          for doc in sorted(d for d in DOCS if d.is_file()):
+              text = doc.read_text()
+
+              # A backticked path into this repository has to resolve. Third-party
+              # `owner/repo` references are excluded by requiring a known root.
+              for ref in re.findall(r'`((?:scripts|config|data|templates)/[A-Za-z0-9_./-]+)`', text):
+                  if not (ROOT / ref).exists():
+                      problems.append(f"{doc}: names `{ref}`, which does not exist")
+
+              for term in RETIRED:
+                  if term in text:
+                      problems.append(f"{doc}: still describes '{term}', which this repository does not have")
+
+              # Two text rules this specification states as binding. They were
+              # stated as machine-enforced while nothing enforced them, which is
+              # the same defect as describing machinery that does not exist.
+              for number, line in enumerate(text.splitlines(), start=1):
+                  if '\u2014' in line:
+                      problems.append(f"{doc}:{number}: em dash (U+2014); use a comma, a colon, parentheses, or a spaced hyphen")
+                  if '\u00c3\u00a2' in line or '\u00c3\u00b0\u00c5\u00b8' in line:
+                      problems.append(f"{doc}:{number}: mojibake; the file is not being read as UTF-8 somewhere upstream")
+
+          for p in problems:
+              print(f"::error::{p}")
+          print(f"{len(DOCS)} document(s) checked. {len(problems)} problem(s).")
+          sys.exit(1 if problems else 0)
+          PY
+
+      - name: '🏷️ Workflow names are unique'
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, sys
+          from collections import defaultdict
+
+          problems = []
+          for label, folder in (('workflow', '.github/workflows'),):
+              names = defaultdict(list)
+              for f in sorted(pathlib.Path(folder).glob('*.yml')):
+                  m = re.search(r"^name:\s*(.+)$", f.read_text(), re.M)
+                  if not m:
+                      problems.append(f"{f} declares no top-level name")
+                      continue
+                  names[m.group(1).strip().strip("'\"")].append(f.name)
+              for name, files in sorted(names.items()):
+                  if len(files) > 1:
+                      problems.append(
+                          f"{label} name {name!r} is used by {len(files)} files "
+                          f"({', '.join(files)}); workflow_run matches on name, "
+                          f"so a watcher could not address either one"
+                      )
+
+          for p in problems:
+              print(f"::error::{p}")
+          print(f"{len(problems)} problem(s).")
+          sys.exit(1 if problems else 0)
+          PY
+
+      - name: '🏷️ Label taxonomy is applicable'
+        run: |
+          python3 - <<'PY'
+          import re, sys
+          # Parsed exactly the way sync-labels.sh parses it, so this catches
+          # a taxonomy that PyYAML accepts but the sync would misread.
+          field = re.compile(r"^(?:-\s+)?(name|color|description|renamed_from):\s*'(.*)'\s*$")
+          labels, current, problems = [], {}, []
+          for n, raw in enumerate(open('data/labels.yml', encoding='utf-8'), 1):
+              line = raw.strip()
+              if not line or line.startswith('#'):
+                  continue
+              m = field.match(line)
+              if not m:
+                  continue
+              key, value = m.group(1), m.group(2)
+              if key == 'name':
+                  if current:
+                      labels.append(current)
+                  current = {'name': value, '_line': n}
+              else:
+                  current[key] = value
+          if current:
+              labels.append(current)
+
+          seen = {}
+          for label in labels:
+              name, line = label['name'], label['_line']
+              desc = label.get('description', '')
+              # The API rejects a longer description with a 422, which fails
+              # the whole sync rather than the one entry.
+              if len(desc) > 100:
+                  problems.append(f"line {line}: '{name}' description is {len(desc)} chars (limit 100)")
+              if not re.fullmatch(r'[0-9a-fA-F]{6}', label.get('color', '')):
+                  problems.append(f"line {line}: '{name}' color is not 6-digit hex")
+              if name in seen:
+                  problems.append(f"line {line}: '{name}' duplicates line {seen[name]}")
+              seen[name] = line
+
+          for p in problems:
+              print(f"::error::{p}")
+          print(f"{len(labels)} labels, {len(problems)} problem(s).")
+          sys.exit(1 if problems else 0)
+          PY
+
+      # The README states counts and names directories. Both drift silently,
+      # and a wrong count in the front door is the kind of thing nobody
+      # notices until a reader does. Checked rather than remembered.
+      - name: '📖 Documentation matches the tree'
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, sys
+
+          ROOT = pathlib.Path('.')
+          readme = (ROOT / 'README.md').read_text()
+          problems = []
+
+          actual = {
+              'reusable workflows': len([
+                  w for w in (ROOT / '.github/workflows').glob('*.yml')
+                  if not w.name.startswith('self-') and w.name != 'release.yml'
+              ]),
+              'composite actions': len(list((ROOT / 'actions').glob('*/action.yml'))),
+          }
+          for label, n in actual.items():
+              m = re.search(rf'(\d+) {re.escape(label)}', readme)
+              if not m:
+                  problems.append(f"README no longer states a count for '{label}'")
+              elif int(m.group(1)) != n:
+                  problems.append(f"README says {m.group(1)} {label}, but there are {n}")
+
+          # Every directory the What's Inside table names must exist.
+          for path in re.findall(r'^\| \[?`([\w./-]+/)`', readme, re.M):
+              if not (ROOT / path).is_dir():
+                  problems.append(f"README table names {path}, which does not exist")
+
+          # Every published directory must appear in that table, so a new one
+          # cannot land undocumented.
+          documented = set(re.findall(r'^\| \[?`([\w./-]+/)`', readme, re.M))
+          for required in ('.github/workflows/', 'actions/', 'data/', 'config/', 'scripts/'):
+              if required not in documented:
+                  problems.append(f"{required} exists but is missing from the README table")
+
+          for p in problems:
+              print(f"::error::{p}")
+          print(f"{len(problems)} problem(s).")
+          sys.exit(1 if problems else 0)
+          PY
+
+      # A document fenced with `---` renders its metadata as a visible table
+      # at the top of the page on GitHub, so the first thing any reader sees
+      # is machine bookkeeping. The comment form parses identically and shows
+      # nothing. Checked rather than remembered, because the wrong form looks
+      # completely normal in an editor.
+      - name: '🗂️ Frontmatter is hidden'
+        run: |
+          python3 - <<'PY'
+          import pathlib, sys
+          import yaml
+
+          problems = []
+          checked = 0
+          # Exempt by the standard itself: GitHub inserts this file verbatim
+          # into every pull request body, where frontmatter would be noise.
+          # It opens with an instruction comment that is deliberately not YAML.
+          EXEMPT = {'pull_request_template.md'}
+
+          for f in sorted(pathlib.Path('.').rglob('*.md')):
+              if '.git/' in str(f) or f.name in EXEMPT:
+                  continue
+              lines = f.read_text(encoding='utf-8').split('\n')
+              if not lines:
+                  continue
+              first = lines[0].strip()
+              if first == '---':
+                  problems.append(
+                      f"{f}: frontmatter uses `---` fences, which GitHub renders "
+                      f"as a visible table. Use `<!--` and `-->` instead."
+                  )
+                  continue
+              if first != '<!--':
+                  continue
+              close = next((i for i in range(1, len(lines)) if lines[i].strip() == '-->'), None)
+              if close is None:
+                  problems.append(f"{f}: opens a comment that is never closed")
+                  continue
+              checked += 1
+              try:
+                  data = yaml.safe_load('\n'.join(lines[1:close]))
+              except Exception as e:
+                  problems.append(f"{f}: frontmatter is not valid YAML: {e}")
+                  continue
+              if not isinstance(data, dict):
+                  continue  # a plain comment, not frontmatter
+              if not str(data.get('description', '')).strip():
+                  problems.append(f"{f}: frontmatter has no description")
+              # Exactly four, not a minimum. A floor lets documents accrete
+              # tags nobody prunes until the vocabulary stops classifying
+              # anything.
+              tags = data.get('tags')
+              if not isinstance(tags, list):
+                  problems.append(f"{f}: frontmatter has no tag list")
+              elif len(tags) != 4:
+                  problems.append(f"{f}: frontmatter has {len(tags)} tag(s), the standard requires exactly 4")
+
+          for p in problems:
+              print(f"::error::{p}")
+          print(f"{checked} document(s) with hidden frontmatter, {len(problems)} problem(s).")
+          sys.exit(1 if problems else 0)
+          PY
+
+      - name: '📄 Shared configs parse'
+        run: |
+          python3 - <<'PY'
+          import json, sys, tomllib
+          import yaml
+          problems = []
+          for f, loader in [
+              ('config/zizmor.yml', lambda p: yaml.safe_load(open(p))),
+              ('config/labeler.yml', lambda p: yaml.safe_load(open(p))),
+              ('config/_typos.toml', lambda p: tomllib.load(open(p, 'rb'))),
+              ('config/lychee.toml', lambda p: tomllib.load(open(p, 'rb'))),
+              ('config/cliff.toml', lambda p: tomllib.load(open(p, 'rb'))),
+              ('config/prettierrc.json', lambda p: json.load(open(p))),
+          ]:
+              try:
+                  loader(f)
+              except Exception as e:
+                  problems.append(f"{f}: {e}")
+          for p in problems:
+              print(f"::error::{p}")
+          print(f"{len(problems)} problem(s).")
+          sys.exit(1 if problems else 0)
+          PY
+
+      - name: '🏁 Summary'
+        if: always()
+        run: |
+          {
+            echo "### 🔬 Verify"
+            echo ""
+            echo "Checked against the working tree, independent of any published tag."
+            echo ""
+            echo "| Check | Covers |"
+            echo "| :--- | :--- |"
+            echo "| actionlint | Actions semantics, expressions, shell in \`run:\` |"
+            echo "| shellcheck | Every shell script |"
+            echo "| ruff + compile | Every Python script |"
+            echo "| Structural | Callable contract, references, shipped files, SHA pins |"
+            echo "| Stubs | Every template parses once substituted, with no placeholder left |"
+            echo "| Taxonomy | Parsed as the sync parses it: length, color, duplicates |"
+            echo "| Configs | Every shared config parses |"
+            echo "| Documentation | README counts and directory table match the tree |"
+            echo "| Names | No two workflows share a name |"
+            echo "| Frontmatter | Hidden in a comment, never \`---\` fences GitHub renders |"
+          } >> "$GITHUB_STEP_SUMMARY"
