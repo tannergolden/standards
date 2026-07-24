@@ -1,0 +1,167 @@
+# --- Reusable Workflow ---
+#
+# 🧹 Prune
+#
+# Purpose: the scheduled housekeeping that keeps a repository's Actions and
+# Environments views honest. Two jobs, both safe to run unattended:
+#
+#   DEPLOYMENTS  deletes superseded and non-passing deployments, leaving the
+#                current successful one per environment. In-flight
+#                deployments are never touched.
+#   RUNS         deletes old workflow runs with their logs and artifacts,
+#                keeping recent history and anything still executing.
+#
+# ⚠️ DRAFT RELEASES ARE NOT PRUNED HERE. That lives in `prune-drafts.yml`
+# and stays separate on purpose: it deletes releases and is dispatch-only,
+# so folding it in would let a schedule reach it. A destructive action
+# nobody chose to run is a different risk from a tidy-up nobody notices.
+#
+# Every job can be turned off, and a dry run prints the plan without
+# deleting anything. Meet a prune with `dry-run: true` the first time.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🧹 Prune'
+#   on:
+#     schedule:
+#       - cron: '0 6 * * 1'
+#     workflow_dispatch:
+#       inputs:
+#         dry-run:
+#           type: boolean
+#           default: false
+#   concurrency:
+#     # One prune at a time: a second run would race the first run's
+#     # paginated snapshot of the list it is deleting from.
+#     group: ${{ github.workflow }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     prune:
+#       permissions:
+#         actions: write # delete workflow runs, with their logs and artifacts
+#         contents: read # read the recent commit list for the protection window
+#         deployments: write # deactivate and delete stale deployments
+#       uses: tannergolden/standards/.github/workflows/prune.yml@v1
+#       with:
+#         dry-run: ${{ inputs.dry-run || false }}
+#
+# ---
+
+name: '🧹 Reusable: Prune'
+
+on:
+  workflow_call:
+    inputs:
+      dry-run:
+        description: 'Log what would be deleted and delete nothing.'
+        required: false
+        type: boolean
+        default: false
+      prune-deployments:
+        description: 'Prune superseded deployments.'
+        required: false
+        type: boolean
+        default: true
+      prune-workflow-runs:
+        description: 'Prune old workflow runs.'
+        required: false
+        type: boolean
+        default: true
+      pages-environment:
+        description: 'Name of the documentation-site environment.'
+        required: false
+        type: string
+        default: 'github-pages'
+      prune-app-environments:
+        description: >-
+          Also prune application environments such as preview and release.
+          Harmless where none exist; the job simply finds nothing.
+        required: false
+        type: boolean
+        default: true
+      keep:
+        description: 'How many recent runs to keep per workflow.'
+        required: false
+        type: number
+        default: 1
+      keep-recent-commits:
+        description: >-
+          Never delete runs from this many latest default-branch commits.
+          The default of 35 is one page of the commit-history view.
+        required: false
+        type: number
+        default: 35
+
+permissions: {}
+
+jobs:
+  # A documentation site publishes from every repository that has one, while
+  # application environments exist only where something is deployed. Split so
+  # a repository that deploys nothing still gets its pages history tidied.
+  deployments-pages:
+    name: '🧹 Prune Pages Deployments'
+    if: ${{ inputs.prune-deployments }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      deployments: write # deactivate and delete stale deployments
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🧹 Prune: removes superseded documentation-site deployments.'
+
+      - name: '🧹 Prune pages deployments'
+        uses: tannergolden/standards/actions/prune-deployments@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          only: ${{ inputs.pages-environment }}
+          dry-run: ${{ inputs.dry-run }}
+
+  deployments-app:
+    name: '🧹 Prune App Deployments'
+    if: ${{ inputs.prune-deployments && inputs.prune-app-environments }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      deployments: write # deactivate and delete stale deployments
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🧹 Prune: removes superseded application deployments.'
+
+      - name: '🧹 Prune app environments'
+        uses: tannergolden/standards/actions/prune-deployments@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          exclude: ${{ inputs.pages-environment }}
+          dry-run: ${{ inputs.dry-run }}
+
+  workflow-runs:
+    name: '🧹 Delete Old Workflow Runs'
+    if: ${{ inputs.prune-workflow-runs }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      actions: write # delete workflow runs, with their logs and artifacts
+      contents: read # read the recent commit list for the protection window
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🧹 Prune: deletes old workflow runs, keeping recent history.'
+
+      # In-flight runs are never deleted, which includes this one, so the
+      # prune cannot delete the job it is executing in.
+      - name: '🧹 Prune runs'
+        uses: tannergolden/standards/actions/prune-workflow-runs@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          keep: ${{ inputs.keep }}
+          keep-recent-commits: ${{ inputs.keep-recent-commits }}
+          dry-run: ${{ inputs.dry-run }}

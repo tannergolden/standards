@@ -1,0 +1,83 @@
+# --- Reusable Workflow ---
+#
+# 🧹 Prune Draft Releases
+#
+# Purpose: deletes every DRAFT release in a repository. Published releases
+# are never touched, because the filter selects drafts only.
+#
+# ⚠️ DISPATCH ONLY, DELIBERATELY. This deletes things, and a scheduled
+# deletion is a deletion nobody decided to make. The caller's stub should
+# carry `workflow_dispatch` and nothing else.
+#
+# The draft list is snapshotted in full before anything is deleted. Deleting
+# while pagination is still fetching shifts the pages underneath the
+# iterator, which double-visits some entries and 404s on others.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🧹 Prune Draft Releases'
+#   on:
+#     workflow_dispatch:
+#   concurrency:
+#     group: ${{ github.workflow }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     prune:
+#       permissions:
+#         contents: write # deleting releases requires write
+#       uses: tannergolden/standards/.github/workflows/prune-drafts.yml@v1
+#
+# ---
+
+name: '🧹 Reusable: Prune Draft Releases'
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  prune:
+    name: '🧹 Delete All Draft Releases'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # deleting releases requires write
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🧹 Prune: deletes every draft release. Published releases are untouched.'
+
+      - name: '🧹 Prune'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Snapshot the FULL list before deleting anything: see the header.
+          DRAFTS=$(gh api "/repos/$REPO/releases" --paginate \
+            --jq '.[] | select(.draft) | [.id, .tag_name] | @tsv')
+          COUNT=0
+          while IFS=$'\t' read -r id tag; do
+            [ -n "$id" ] || continue
+            # A 404 means something else already removed it. For a broom,
+            # already-gone counts as done.
+            if OUT=$(gh api -X DELETE "/repos/$REPO/releases/$id" 2>&1); then
+              echo "Deleted draft: ${tag:-<untagged>} (id $id)"
+              COUNT=$((COUNT + 1))
+            elif printf '%s' "$OUT" | grep -q "HTTP 404"; then
+              echo "Already gone: ${tag:-<untagged>} (id $id)"
+            else
+              printf '%s\n' "$OUT"
+              exit 1
+            fi
+          done <<< "$DRAFTS"
+          echo "Pruned $COUNT draft release(s)."
+          {
+            echo "### 🧹 Draft Release Prune"
+            echo ""
+            echo "Deleted **$COUNT** draft release(s). Published releases were not touched."
+          } >> "$GITHUB_STEP_SUMMARY"
