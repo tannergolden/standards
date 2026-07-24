@@ -1,0 +1,87 @@
+# --- Dependabot Configuration ---
+#
+# Keeps the pinned third-party actions in this repository current. That
+# matters more here than in most repositories: every pin published here is
+# executed by every repository that calls these workflows, so a stale pin is
+# a stale pin everywhere at once.
+#
+# Dependabot reads this file only from the repository that owns it, so it
+# cannot be shared by any mechanism. Every consuming repository needs its
+# own copy.
+#
+# EVERY UPDATE IS A CONVENTIONAL COMMIT. `commit-message.prefix` makes
+# Dependabot title its pull requests `build(deps): ...`, which matters for two
+# reasons that are easy to miss:
+#
+#   1. On a squash merge the pull request TITLE becomes the commit that lands
+#      on the default branch. Dependabot's own default, "Bump x from 1 to 2",
+#      is not a Conventional Commit, so every merged update would put a
+#      non-conforming message into permanent history.
+#   2. git-cliff builds the changelog by parsing those messages. A
+#      non-conforming one is silently dropped, so dependency updates would
+#      simply be absent from the release notes.
+#
+# `build` is the Conventional Commits type for changes to the build system or
+# external dependencies, which is exactly what these are.
+#
+# EVERY SWEEP IS ONE PULL REQUEST. `groups` collapses an interval's updates
+# into a single branch, which matters here more than anywhere: this repository
+# pins twenty-four third-party actions across sixty-three call sites, and
+# ungrouped that arrives as a pull request per action. One week of ungrouped
+# updates put eight pull requests, eight merges and sixteen commits into
+# permanent history for what was a single sweep of the pins.
+#
+# The group name and pattern match the templates', so the three configurations
+# stay one file with three copies rather than three files that drifted.
+#
+# ---
+
+version: 2
+updates:
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      # Monthly, not weekly. Grouped updates make the cadence the only
+      # remaining source of noise, and a pin that is four weeks old is not a
+      # problem worth a weekly interruption. `day` is a weekly-only key and is
+      # dropped here; monthly runs on the first of the month.
+      interval: 'monthly'
+      time: '07:00'
+      timezone: 'Etc/UTC'
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'build'
+      include: 'scope'
+    labels:
+      - 'type: build'
+      - 'dependencies'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
+  # Composite actions are not discovered through the workflows directory, so
+  # their folders need naming separately.
+  #
+  # ⚠️ A GLOB, NOT AN ENUMERATION, and that is the point. This list was written
+  # out by hand and had already fallen five actions behind the tree - none of
+  # which happened to pin anything yet, so nothing was missed and nothing
+  # would have told us. The next one might. A pattern cannot fall behind.
+  - package-ecosystem: 'github-actions'
+    directories:
+      - '/actions/*'
+    schedule:
+      interval: 'monthly'
+      time: '07:00'
+      timezone: 'Etc/UTC'
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'build'
+      include: 'scope'
+    labels:
+      - 'type: build'
+      - 'dependencies'
+    groups:
+      github-actions:
+        patterns:
+          - '*'

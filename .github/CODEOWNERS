@@ -1,0 +1,3 @@
+# Every change here reaches every repository that calls these workflows the
+# moment a tag moves, so nothing merges without the owner seeing it.
+* @tannergolden

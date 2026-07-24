@@ -1,0 +1,43 @@
+# --- Ruff Configuration ---
+#
+# The rule set is declared EXPLICITLY rather than left to ruff's defaults,
+# because those defaults move between releases. An unpinned, undeclared
+# linter means CI can start failing on a commit that changed nothing, which
+# is precisely what happened here: a release turned on flake8-datetimez and
+# the check went red on untouched code.
+#
+# Ruff itself is pinned in the workflow. This file pins WHAT it checks.
+#
+# ---
+
+# Deliberately conservative: these scripts are shipped into other people's
+# repositories and may be run locally on an older interpreter, so pyupgrade
+# should not propose syntax newer than this.
+target-version = "py39"
+line-length = 100
+
+[lint]
+select = [
+  "E",    # pycodestyle errors
+  "F",    # pyflakes
+  "W",    # pycodestyle warnings
+  "I",    # import sorting
+  "UP",   # pyupgrade
+  "B",    # bugbear: likely bugs rather than style
+  "DTZ",  # timezone-naive datetimes, which silently mis-key dated records
+  "S",    # bandit: security findings
+  "RUF",  # ruff's own rules
+]
+ignore = [
+  # Scripts print operational messages by design; that is their interface.
+  "T201",
+  # subprocess use is the point of these scripts. Every call site passes an
+  # argument list rather than a shell string, which is the risk this flags.
+  "S603",
+  "S607",
+]
+
+[lint.per-file-ignores]
+# The line-length ceiling is advisory in long help text and error messages,
+# where breaking a sentence hurts the reader more than the width does.
+"scripts/*.py" = ["E501"]
