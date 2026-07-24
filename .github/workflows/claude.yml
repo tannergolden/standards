@@ -1,0 +1,196 @@
+# --- Reusable Workflow ---
+#
+# 🤖 Claude Agent
+#
+# Purpose: lets a maintainer drive an AI agent from an issue or pull request
+# by mentioning @claude. The agent reads the thread, makes changes on a
+# branch, and opens a pull request that goes through the same gates as any
+# other.
+#
+# ⚠️ THIS JOB CAN WRITE TO THE REPOSITORY, so it is gated three times over
+# and every gate matters:
+#
+#   1. MENTION. The triggering body must contain @claude. Nothing else wakes
+#      it, so ordinary conversation is never interpreted as an instruction.
+#   2. ASSOCIATION. The author must be OWNER, MEMBER, or COLLABORATOR,
+#      checked in the job condition before a runner starts.
+#   3. RESOLVED PERMISSION. The association gate is necessary but NOT
+#      sufficient: MEMBER proves organization membership, not write access
+#      to THIS repository. The actor's real permission is resolved through
+#      the API and must be write, maintain, or admin. This FAILS CLOSED on
+#      an API error, because an agent that can push must never be drivable
+#      by someone who cannot.
+#
+# Without an API key the workflow is inert. It posts a one-line notice
+# saying how to enable it and does nothing else, so a repository that never
+# opts in carries no risk and no noise.
+#
+# COMMITS ARE AUTHORED AS THE INVOKER, the human who asked. They directed
+# the work and they review the result. The agent's hand stays on the record:
+# the action appends a co-author trailer for the trigger user, and Claude
+# Code's own provenance trailer is kept on every commit it writes, so
+# nothing about the change's origin is hidden.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🤖 Claude Agent'
+#   on:
+#     issue_comment:
+#       types: [created]
+#     pull_request_review_comment:
+#       types: [created]
+#     issues:
+#       types: [opened]
+#   concurrency:
+#     group: ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     claude:
+#       permissions:
+#         actions: read # read CI results so the agent can react to failures
+#         contents: write # create branches carrying the requested changes
+#         id-token: write # OIDC exchange used by the action's auth flow
+#         issues: write # reply on issues and update checklists
+#         pull-requests: write # open and update pull requests, reply on threads
+#       uses: tannergolden/standards/.github/workflows/claude.yml@v1
+#       secrets: inherit
+#
+# ---
+
+name: '🤖 Reusable: Claude Agent'
+
+on:
+  workflow_call:
+    secrets:
+      ANTHROPIC_API_KEY:
+        description: 'API key. Either this or CLAUDE_CODE_OAUTH_TOKEN activates the agent.'
+        required: false
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: 'OAuth token, as an alternative to the API key.'
+        required: false
+
+permissions: {}
+
+jobs:
+  agent:
+    name: '🤖 Claude Code'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: >-
+      (github.event_name == 'issue_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'issues' &&
+        (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
+    permissions:
+      contents: write # create branches carrying the requested changes
+      pull-requests: write # open and update pull requests, reply on threads
+      issues: write # reply on issues and update checklists
+      id-token: write # OIDC exchange used by the action's auth flow
+      actions: read # read CI results so the agent can react to failures
+    env:
+      # Secrets are not readable in a job-level `if`, so the opt-in gate is
+      # evaluated here and consumed by the step conditions below.
+      CLAUDE_KEY_PRESENT: ${{ (secrets.ANTHROPIC_API_KEY != '' || secrets.CLAUDE_CODE_OAUTH_TOKEN != '') && 'true' || 'false' }}
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      - name: 'ℹ️ Opt-In Notice (no key configured)'
+        if: ${{ env.CLAUDE_KEY_PRESENT != 'true' }}
+        run: |
+          echo "::notice title=Claude Agent::@claude was mentioned, but no ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN secret is configured, so the agent is inert. Add one under Settings, Secrets and variables, Actions to activate it."
+
+      - name: '🔐 Verify Actor Write Permission'
+        id: trust
+        if: ${{ env.CLAUDE_KEY_PRESENT == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          # See gate 3 in the header. Fails closed: an unreadable permission
+          # is treated as no permission.
+          level=$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${ACTOR}/permission" --jq '.permission' 2>/dev/null || echo "unknown")
+          case "$level" in
+            admin | maintain | write)
+              echo "allowed=true" >> "$GITHUB_OUTPUT"
+              echo "Actor '$ACTOR' holds '$level' permission, so the agent may run."
+              ;;
+            *)
+              echo "allowed=false" >> "$GITHUB_OUTPUT"
+              echo "::notice title=Claude Agent::The @claude mention by '$ACTOR' was ignored: their resolved repository permission is '$level', and the agent requires write, maintain, or admin."
+              ;;
+          esac
+
+      - name: '📂 Checkout Calling Repository'
+        if: ${{ env.CLAUDE_KEY_PRESENT == 'true' && steps.trust.outputs.allowed == 'true' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: '🤖 Run Claude Code'
+        id: claude
+        if: ${{ env.CLAUDE_KEY_PRESENT == 'true' && steps.trust.outputs.allowed == 'true' }}
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # The invoker's login and numeric id form the account-linked
+          # no-reply address, which is what makes the commits attach to a
+          # real account rather than floating unlinked.
+          bot_name: ${{ github.actor }}
+          bot_id: ${{ github.actor_id }}
+          settings: |
+            {"includeCoAuthoredBy": true}
+
+      # Invoker-authored commits are held to the human DCO contract, since
+      # the [bot] exemption does not apply to them. The agent does not
+      # reliably sign off, so this signs the branch it pushed. Only when
+      # every commit in range is the invoker's, so nobody else's work is
+      # ever rewritten, and never failing the run.
+      - name: '✍️ DCO Backstop (sign off agent commits)'
+        if: ${{ env.CLAUDE_KEY_PRESENT == 'true' && steps.trust.outputs.allowed == 'true' && steps.claude.outputs.branch_name != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.claude.outputs.branch_name }}
+          ACTOR: ${{ github.actor }}
+          ACTOR_ID: ${{ github.actor_id }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -uo pipefail
+          NOREPLY="${ACTOR_ID}+${ACTOR}@users.noreply.github.com"
+
+          # The checkout above is depth-1 and the rebase needs a merge base.
+          git fetch --unshallow origin "$DEFAULT_BRANCH" "$BRANCH" 2>/dev/null \
+            || git fetch origin "$DEFAULT_BRANCH" "$BRANCH" \
+            || { echo "::warning::Could not fetch '$BRANCH'. Sign off by hand with 'git rebase --signoff'."; exit 0; }
+          BASE="$(git merge-base "origin/$DEFAULT_BRANCH" "origin/$BRANCH" 2>/dev/null || true)"
+          [ -n "$BASE" ] || { echo "::notice::No merge base for '$BRANCH', so the DCO backstop was skipped."; exit 0; }
+
+          UNSIGNED=0 FOREIGN=0
+          for sha in $(git rev-list "$BASE..origin/$BRANCH"); do
+            [ -z "$(git log -1 --format='%(trailers:key=Signed-off-by,valueonly)' "$sha")" ] && UNSIGNED=$((UNSIGNED + 1))
+            [ "$(git log -1 --format='%ae' "$sha")" != "$NOREPLY" ] && FOREIGN=$((FOREIGN + 1))
+          done
+          [ "$UNSIGNED" -eq 0 ] && { echo "Every agent commit is already signed off."; exit 0; }
+          if [ "$FOREIGN" -gt 0 ]; then
+            echo "::warning::'$BRANCH' carries commits not authored by '$ACTOR', so they were left alone. Sign off by hand with 'git rebase --signoff'."
+            exit 0
+          fi
+
+          git config user.name "$ACTOR"
+          git config user.email "$NOREPLY"
+          git checkout -f -B "$BRANCH" "origin/$BRANCH" \
+            && git rebase --signoff "$BASE" \
+            && git push --force-with-lease "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$BRANCH" \
+            && echo "::notice::Signed off $UNSIGNED agent commit(s) with the invoker's identity." \
+            || echo "::warning::Could not sign off '$BRANCH' mechanically. Run: git rebase --signoff && git push --force-with-lease"

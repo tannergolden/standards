@@ -1,0 +1,121 @@
+# --- Reusable Workflow ---
+#
+# 🙋 Issue Operations
+#
+# Purpose: slash commands on issues, built on the gh CLI and the built-in
+# token. No third-party action sits between a commenter and the repository's
+# issues.
+#
+# Commands, read from the FIRST LINE of a comment:
+#   /assign        assign yourself to the issue
+#   /unassign      unassign yourself from the issue
+#   /label <name>  add an existing label to the issue
+#   /label         add the triage label
+#
+# ⚠️ THE COMMENT BODY IS UNTRUSTED INPUT. Anyone who can comment can reach
+# this workflow, so two rules hold throughout: the body is read only through
+# an environment variable and never interpolated into the script text, which
+# is what keeps a crafted comment from becoming a shell command; and /label
+# accepts only labels that ALREADY EXIST, so a commenter cannot mint
+# arbitrary labels on the repository.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🙋 Issue Operations'
+#   on:
+#     issue_comment:
+#       types: [created]
+#   concurrency:
+#     group: ${{ github.workflow }}-${{ github.event.issue.number }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     issue-ops:
+#       permissions:
+#         issues: write # apply the command's label and assignment changes
+#       uses: tannergolden/standards/.github/workflows/issue-ops.yml@v1
+#
+# ---
+
+name: '🙋 Reusable: Issue Operations'
+
+on:
+  workflow_call:
+    inputs:
+      default-label:
+        description: 'Label applied by a bare /label with no argument.'
+        required: false
+        type: string
+        default: 'status: needs triage'
+
+permissions: {}
+
+jobs:
+  issue-ops:
+    name: '🤖 Issue Ops'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write # apply the command's label and assignment changes
+    # Issues only, and only for comments that begin with a slash. A pull
+    # request comment arrives on the same event and is not ours to handle.
+    if: ${{ !github.event.issue.pull_request && startsWith(github.event.comment.body, '/') }}
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      - name: '🤖 Handle Slash Command'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENTER: ${{ github.event.comment.user.login }}
+          DEFAULT_LABEL: ${{ inputs.default-label }}
+          # Untrusted: read from this variable only, never interpolated
+          # into the script below.
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          # First line only; strip CR so a CRLF comment body still parses.
+          COMMAND_LINE="$(printf '%s' "$COMMENT_BODY" | head -n 1 | tr -d '\r')"
+
+          case "$COMMAND_LINE" in
+            '/assign'*)
+              echo "Assigning @$COMMENTER to issue #$ISSUE_NUMBER"
+              gh issue edit "$ISSUE_NUMBER" --add-assignee "$COMMENTER" \
+                || { echo "::error::Could not assign @$COMMENTER to #$ISSUE_NUMBER. Check the issues: write permission, and that they are an assignable collaborator."; exit 1; }
+              ;;
+            '/unassign'*)
+              echo "Unassigning @$COMMENTER from issue #$ISSUE_NUMBER"
+              gh issue edit "$ISSUE_NUMBER" --remove-assignee "$COMMENTER" \
+                || { echo "::error::Could not unassign @$COMMENTER from #$ISSUE_NUMBER. Check the issues: write permission."; exit 1; }
+              ;;
+            '/label'*)
+              # Trimmed without xargs, which interprets quotes and would
+              # mangle a label such as "won't fix" into something else.
+              REQUESTED="$(printf '%s' "$COMMAND_LINE" | sed -e 's|^/label||' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+              if [ -z "$REQUESTED" ]; then
+                REQUESTED="$DEFAULT_LABEL"
+              fi
+              # Capture the list first. Under pipefail, a genuine API
+              # failure inside the `if` would fall to the else branch and be
+              # reported as "label does not exist", hiding the real cause.
+              if ! LABELS="$(gh label list --limit 200 --json name --jq '.[].name')"; then
+                echo "::error::Could not list repository labels, so '/label $REQUESTED' cannot be validated."
+                exit 1
+              fi
+              # Existing labels only: a commenter cannot mint new ones here.
+              if printf '%s\n' "$LABELS" | grep -Fxq "$REQUESTED"; then
+                echo "Adding label '$REQUESTED' to issue #$ISSUE_NUMBER"
+                gh issue edit "$ISSUE_NUMBER" --add-label "$REQUESTED" \
+                  || { echo "::error::Could not add label '$REQUESTED' to #$ISSUE_NUMBER. Check the issues: write permission."; exit 1; }
+              else
+                echo "::warning::Label '$REQUESTED' does not exist in this repository, so it was ignored."
+              fi
+              ;;
+            *)
+              echo "No recognized command in: $COMMAND_LINE"
+              ;;
+          esac

@@ -1,0 +1,105 @@
+# --- Reusable Workflow ---
+#
+# 🚨 CI Failure Alerts
+#
+# Purpose: mechanical failure escalation. When a watched workflow fails on a
+# long-lived branch this opens a labeled issue, deduplicated per workflow;
+# when the same workflow recovers, it closes it again. Nobody has to
+# remember to check the Actions tab.
+#
+# The failure this exists for is the quiet one. A required check going red
+# is noticed within minutes because it blocks a merge. A weekly scheduled
+# job that breaks is noticed in a month, if at all, because nothing about it
+# is on anyone's screen.
+#
+# THE WATCH LIST LIVES IN THE CALLER'S STUB, not here, because
+# `workflow_run` matches on workflow NAME and those names are the consuming
+# repository's to choose. List every workflow whose silent failure would
+# cost something.
+#
+# Escalation is scoped to the branches you name, defaulting to the
+# repository's own default branch. A topic branch failing is ordinary work
+# in progress and does not warrant a durable issue.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🚨 CI Failure Alerts'
+#   on:
+#     workflow_run:
+#       workflows:
+#         - '✨ CI: Validation'
+#         - '🔐 Security: Gitleaks'
+#         - '🧹 Prune'
+#         - '📊 Traffic Archive'
+#         # ... every workflow whose silent failure would cost something
+#       types: [completed]
+#   concurrency:
+#     group: ${{ github.workflow }}-${{ github.event.workflow_run.name }}-${{ github.event.workflow_run.head_branch }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     alert:
+#       permissions:
+#         issues: write # open the escalation issue, and close it on recovery
+#       uses: tannergolden/standards/.github/workflows/ci-failure-alert.yml@v1
+#
+# ⚠️ DO NOT ADD THE ALERT STUB TO ITS OWN WATCH LIST. It cannot escalate its
+# own failure, and listing it there only produces a loop that reports
+# nothing useful.
+#
+# ---
+
+name: '🚨 Reusable: CI Failure Alerts'
+
+on:
+  workflow_call:
+    inputs:
+      branches:
+        description: >-
+          JSON array of branches whose failures escalate. Empty escalates
+          only on the repository's own default branch, which is the right
+          default anywhere. Anything else is treated as work in progress.
+        required: false
+        type: string
+        default: ''
+
+permissions: {}
+
+jobs:
+  alert:
+    name: '🚨 Escalate or Resolve'
+    if: ${{ contains(fromJSON(inputs.branches || format('["{0}"]', github.event.repository.default_branch)), github.event.workflow_run.head_branch) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write # open the escalation issue, and close it on recovery
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      # No checkout: everything this needs arrives in the event payload,
+      # and the script travels with the action.
+      - name: '🚨 Open or Close Failure Issue'
+        uses: tannergolden/standards/actions/ci-failure-alert@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: ${{ github.event.workflow_run.name }}
+          conclusion: ${{ github.event.workflow_run.conclusion }}
+          branch: ${{ github.event.workflow_run.head_branch }}
+          run-url: ${{ github.event.workflow_run.html_url }}
+          head-sha: ${{ github.event.workflow_run.head_sha }}
+
+      - name: '📝 Report Escalator Failure'
+        if: ${{ failure() }}
+        run: |
+          echo "::error::The escalator itself failed, so no issue was opened or closed for this run. Check that the token has issues: write and that the API is reachable."
+          {
+            echo "### 🚨 CI failure escalation failed"
+            echo ""
+            echo "The escalator that opens and closes failure issues could not complete. It is deliberately not in its own watch list, so this failure does not escalate itself."
+            echo ""
+            echo "1. **Permissions:** the job needs \`issues: write\`."
+            echo "2. **Transient:** re-run it from the Actions tab once the API recovers."
+          } >> "$GITHUB_STEP_SUMMARY"
