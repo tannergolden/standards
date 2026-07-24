@@ -1,0 +1,68 @@
+# --- Composite Action ---
+#
+# 🚨 Escalate or Resolve a CI Failure
+#
+# Purpose: opens a labeled issue when a watched workflow fails, and closes it
+# when the same workflow recovers. Deduplicated per workflow, so a
+# repeatedly failing job produces one issue that stays open rather than a
+# new one every run.
+#
+# The point is that nobody has to remember to check the Actions tab. A
+# scheduled job that quietly breaks is the failure mode this exists for: it
+# can go unnoticed for weeks precisely because nothing about it is on
+# anyone's screen.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/ci-failure-alert@v1
+#     with:
+#       token: ${{ secrets.GITHUB_TOKEN }}
+#       workflow-name: ${{ github.event.workflow_run.name }}
+#       conclusion: ${{ github.event.workflow_run.conclusion }}
+#       branch: ${{ github.event.workflow_run.head_branch }}
+#       run-url: ${{ github.event.workflow_run.html_url }}
+#       head-sha: ${{ github.event.workflow_run.head_sha }}
+#
+# ---
+
+name: '🚨 Escalate or Resolve a CI Failure'
+description: 'Opens an issue when a watched workflow fails and closes it when the workflow recovers.'
+
+inputs:
+  token:
+    description: 'Token used to open and close the issue. Needs issues: write.'
+    required: true
+  repository:
+    description: 'Repository the issue belongs to, as owner/repo.'
+    required: false
+    default: ${{ github.repository }}
+  workflow-name:
+    description: 'Name of the workflow that completed. Deduplication is keyed to it.'
+    required: true
+  conclusion:
+    description: "The run's conclusion: 'failure' escalates, 'success' resolves."
+    required: true
+  branch:
+    description: 'Branch the run was on.'
+    required: true
+  run-url:
+    description: 'Link to the run, so the issue points at the evidence.'
+    required: true
+  head-sha:
+    description: 'Commit the run was against.'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: '🚨 Open or close the failure issue'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        GH_REPO: ${{ inputs.repository }}
+        WORKFLOW_NAME: ${{ inputs.workflow-name }}
+        CONCLUSION: ${{ inputs.conclusion }}
+        BRANCH: ${{ inputs.branch }}
+        RUN_URL: ${{ inputs.run-url }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+      run: bash "${GITHUB_ACTION_PATH}/../../scripts/ci-failure-alert.sh"
