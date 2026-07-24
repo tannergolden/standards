@@ -1,0 +1,199 @@
+# --- Reusable Workflow ---
+#
+# 🔓 Security Audit (CodeQL)
+#
+# Purpose: static analysis over the calling repository, using GitHub's CodeQL
+# engine with the extended security query pack.
+#
+# Languages are DETECTED, not declared. The matrix is built by walking the
+# calling repository's tree, so a repository that picks up a new language
+# starts being analyzed for it without anyone remembering to update a list.
+#
+# Two conditions make CodeQL skip cleanly rather than fail. Neither is a
+# problem with the code under analysis:
+#   - No supported language present. There is nothing to analyze.
+#   - The repository is not public. SARIF upload to code scanning requires a
+#     public repository or GitHub Advanced Security, and a repository without
+#     either would fail on EVERY push and every scheduled run. Since this
+#     workflow tends to sit on a failure-alert watch list, that would also
+#     open an escalation issue each time. A skipped job is neutral instead.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🔓 Security Audit'
+#   on:
+#     push:
+#       branches: ['Development']
+#     pull_request:
+#       branches: ['Development']
+#     schedule:
+#       - cron: '0 3 * * 1' # weekly sweep of code nothing has touched
+#     workflow_dispatch:
+#   permissions: {}
+#   jobs:
+#     codeql:
+#       permissions:
+#         actions: read # CodeQL resolves workflow run metadata during analysis
+#         contents: read # walk the checkout to build the language matrix
+#         security-events: write # upload CodeQL results to code scanning
+#       uses: tannergolden/standards/.github/workflows/codeql.yml@v1
+#
+# ---
+
+name: '🔓 Reusable: Security Audit'
+
+on:
+  workflow_call:
+    inputs:
+      queries:
+        description: >-
+          CodeQL query suite. 'security-extended' covers more vulnerability
+          classes than the default at the cost of more advisory findings;
+          append ',security-and-quality' to fold in code-quality queries.
+        required: false
+        type: string
+        default: 'security-extended'
+
+permissions: {}
+
+jobs:
+  detect-languages:
+    name: '🧭 Detect Languages'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # walk the checkout to build the language matrix
+    outputs:
+      languages: ${{ steps.detect.outputs.languages }}
+      is_public: ${{ steps.visibility.outputs.is_public }}
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🔓 Security Audit: performs CodeQL static analysis.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🕵️ Detect Languages'
+        id: detect
+        shell: python
+        run: |
+          import os
+          import json
+
+          # Extension to CodeQL language identifier.
+          # https://codeql.github.com/docs/codeql-overview/supported-languages-and-frameworks/
+          mapping = {
+              "cpp": {".c", ".cpp", ".h", ".hpp", ".cc", ".cxx"},
+              "csharp": {".cs"},
+              "go": {".go"},
+              "java": {".java"}, # Kotlin is also supported via 'java'
+              "javascript-typescript": {".js", ".ts", ".jsx", ".tsx", ".vue"},
+              "python": {".py"},
+              "ruby": {".rb", ".erb", ".rake"},
+              "swift": {".swift"}
+          }
+
+          found_languages = set()
+
+          for root, dirs, files in os.walk("."):
+              # Skip housekeeping directories: vendored and generated code
+              # produces findings nobody in this repository can act on.
+              skip_dirs = {".git", "node_modules", ".config", "dist", "tmp", "vendor", "third_party", ".venv", "venv", "target", "build", "out"}
+              dirs[:] = [d for d in dirs if d not in skip_dirs]
+
+              for file in files:
+                  ext = os.path.splitext(file)[1]
+                  for lang, extensions in mapping.items():
+                      if ext in extensions:
+                          found_languages.add(lang)
+
+          print(f"Detected languages: {found_languages}")
+
+          # An empty list makes the matrix skip rather than fail.
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as gh_output:
+              print(f"languages={json.dumps(sorted(found_languages))}", file=gh_output)
+
+      - name: '🔎 Detect Repository Visibility'
+        id: visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Resolved through the API rather than the event payload, because
+          # schedule and workflow_dispatch events carry no repository object
+          # and would otherwise read as private on every scheduled run.
+          vis=$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.visibility' 2>/dev/null || echo "unknown")
+          echo "Repository visibility: ${vis}"
+          if [ "${vis}" = "public" ]; then
+            echo "is_public=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_public=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=CodeQL skipped::This repository is not public, so code scanning cannot accept the results. A repository with GitHub Advanced Security can analyze privately using GitHub's built-in default CodeQL setup."
+          fi
+
+  analyze:
+    needs: detect-languages
+    if: ${{ needs.detect-languages.outputs.languages != '[]' && needs.detect-languages.outputs.is_public == 'true' }}
+    name: '🔍 Analyze (${{ matrix.language }})'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      actions: read # CodeQL resolves workflow run metadata during analysis
+      contents: read # check out the code being analyzed
+      security-events: write # upload CodeQL results to code scanning
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ${{ fromJson(needs.detect-languages.outputs.languages) }}
+
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🟢 Initialize CodeQL'
+        uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          languages: ${{ matrix.language }}
+          queries: ${{ inputs.queries }}
+
+      - name: '🏗️ Autobuild'
+        uses: github/codeql-action/autobuild@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+
+      - name: '🔍 Perform CodeQL Analysis'
+        uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          category: '/language:${{ matrix.language }}'
+
+      - name: '📊 Analysis Summary'
+        if: always()
+        env:
+          LANGUAGE: ${{ matrix.language }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          {
+            echo "### 🔐 CodeQL Analysis Summary"
+            echo "- **Language analyzed**: $LANGUAGE"
+            echo "- **Status**: $([ "$JOB_STATUS" = success ] && echo "✅ Success" || echo "❌ Failure")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$JOB_STATUS" = failure ]; then
+            echo "::error::CodeQL analysis failed for ${LANGUAGE}."
+            {
+              echo "#### 📝 Troubleshooting"
+              echo "- Ensure the build succeeds locally (\`make build\`): autobuild fails where a real build would."
+              echo "- Verify the detected language is one this repository actually builds."
+              echo "- Check the **Security** tab for detailed alerts."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
