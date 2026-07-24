@@ -1,0 +1,153 @@
+# --- This Repository's Own Release ---
+#
+# 🏷️ Cut Release
+#
+# Purpose: publishes a version of these standards and moves the major tag
+# that consumers pin.
+#
+# ⚠️ THIS IS THE MOST CONSEQUENTIAL WORKFLOW HERE. Moving `v1` changes what
+# every repository pinned to `@v1` executes, on their next run, without
+# anyone on their side doing anything. Treat a release as a production
+# change to every consumer at once.
+#
+# TWO TAGS, TWO CONTRACTS:
+#   vX.Y.Z  immutable. Cut once, never moved. For anyone who wants exactness.
+#   vX      moving. Re-pointed at each release in that major line. The
+#           normal pin, and the reason a fix reaches everyone.
+#
+# A change that renames a required check, removes an input, or changes a
+# default in a way that alters behavior is BREAKING, and belongs in a new
+# major line rather than a move of the current one.
+#
+# ---
+
+name: '🏷️ Cut Release'
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish, as vX.Y.Z'
+        required: true
+        type: string
+      move-major:
+        description: 'Also move the major tag (vX) to this release'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  release:
+    name: '🏷️ Publish Version & Move Major Tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # create tags and publish the release
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: '📂 Checkout'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: '🔍 Validate Version'
+        id: check
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::'$VERSION' is not a vX.Y.Z version."
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+            echo "::error::Tag '$VERSION' already exists. A published version is immutable; cut a new patch instead."
+            exit 1
+          fi
+          echo "major=${VERSION%%.*}" >> "$GITHUB_OUTPUT"
+
+      # Actions resolve `uses:` against the ref they are called at, so every
+      # action a workflow names must exist at the tag being cut. Checked
+      # here rather than discovered by a consumer's failing run.
+      - name: '🔗 Verify Internal References Resolve'
+        run: |
+          set -euo pipefail
+          missing=0
+          while read -r ref; do
+            [ -n "$ref" ] || continue
+            if [ ! -f "${ref}/action.yml" ]; then
+              echo "::error::A workflow references ${ref}, which does not exist at this commit."
+              missing=1
+            fi
+          done < <(grep -rhoE 'tannergolden/standards/(actions/[A-Za-z0-9._-]+)@' .github/workflows/ \
+                   | sed -E 's|tannergolden/standards/||; s|@$||' | sort -u)
+          [ "$missing" -eq 0 ] || exit 1
+          echo "Every referenced action exists at this commit."
+
+      - name: '🏷️ Tag and Publish'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          MAJOR: ${{ steps.check.outputs.major }}
+          MOVE_MAJOR: ${{ inputs.move-major }}
+          ACTOR: ${{ github.actor }}
+          ACTOR_ID: ${{ github.actor_id }}
+        run: |
+          set -euo pipefail
+          git config user.name "$ACTOR"
+          git config user.email "${ACTOR_ID}+${ACTOR}@users.noreply.github.com"
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push "$REMOTE" "$VERSION"
+          echo "Published immutable tag $VERSION."
+
+          if [ "$MOVE_MAJOR" = "true" ]; then
+            # Force-moved by design: this IS the moving major tag, and
+            # moving it is what makes a fix reach everyone pinned to it.
+            git tag -f -a "$MAJOR" -m "Moving major tag: $MAJOR -> $VERSION"
+            git push --force "$REMOTE" "$MAJOR"
+            echo "::warning title=Major tag moved::${MAJOR} now points at ${VERSION}. Every repository pinned to @${MAJOR} runs this code on its next workflow run."
+          fi
+
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --generate-notes \
+            --latest
+
+          {
+            echo "### 🏷️ Released $VERSION"
+            echo ""
+            echo "| Tag | Meaning |"
+            echo "| :--- | :--- |"
+            echo "| \`$VERSION\` | Immutable. Pin this for exactness. |"
+            if [ "$MOVE_MAJOR" = "true" ]; then
+              echo "| \`$MAJOR\` | Now points here. Every consumer pinned to it runs this next. |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # After the release publishes and the major tag moves, the releases it
+  # superseded come down. This lives INSIDE Cut Release rather than on a
+  # release-event listener so the whole chain is one run: cut, move, prune.
+  # The tags behind the pruned releases are never touched - vX.Y.Z stays
+  # resolvable for anyone who pinned it; only the release PAGES go.
+  prune:
+    name: '🧹 Prune Superseded Releases'
+    needs: release
+    permissions:
+      contents: write # deleting releases requires write
+    uses: ./.github/workflows/prune-releases.yml
+    with:
+      keep: 1
+      dry-run: false
