@@ -1,0 +1,180 @@
+# --- Reusable Workflow ---
+#
+# 🎯 Apply Standards
+#
+# Purpose: brings a repository up to standard in one run. Installs the
+# trigger stubs so the shared workflows actually run on push, writes the
+# label taxonomy, and optionally writes the branch and tag rulesets.
+#
+# WHY STUBS ARE COPIED AND NOTHING ELSE IS. GitHub only runs a workflow that
+# lives in the repository being pushed to; a `workflow_call` definition
+# elsewhere cannot fire on its own. The trigger file is therefore the one
+# thing a consumer must hold, and this writes it for them, pinned and
+# pointed at their own default branch. Every line of logic stays behind the
+# `uses:`, so nothing else is ever copied.
+#
+# ⚠️ INSTALLING STUBS NEEDS A PAT WITH `workflow` SCOPE. The default
+# GITHUB_TOKEN cannot push files under .github/workflows/ at all, not even
+# to a topic branch. Without one the pull request fails on the push, so this
+# checks for the token first and says so.
+#
+# ⚠️ RULESETS REQUIRE AN ADMIN TOKEN. The default GITHUB_TOKEN cannot write
+# them at all, no matter what permissions the job requests. Provide a PAT or
+# GitHub App token with administration write as ADMIN_TOKEN. Without one,
+# labels still apply and the ruleset step says clearly why it was skipped.
+#
+# ⚠️ RUN IT WITH dry-run FIRST. A ruleset names required status checks, and
+# a check that never reports blocks every merge in the repository. The dry
+# run prints exactly what would be created or updated and changes nothing.
+#
+# THE CHECK NAMES DEPEND ON YOUR STUB JOB IDS. A called workflow reports as
+# `<job id> / <job name>`, so the published rulesets expect the job ids
+# documented in data/README.md. Use different ids and the checks will not
+# match. Either match them or pass your own rulesets directory.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🎯 Apply Standards'
+#   on:
+#     workflow_dispatch:
+#       inputs:
+#         dry-run:
+#           type: boolean
+#           default: true
+#   permissions: {}
+#   jobs:
+#     apply:
+#       permissions:
+#         contents: write # push the topic branch carrying the stubs
+#         issues: write # create and update labels
+#         pull-requests: write # open the pull request that delivers them
+#       uses: tannergolden/standards/.github/workflows/apply-standards.yml@v1
+#       with:
+#         apply-rulesets: true
+#         dry-run: ${{ inputs.dry-run }}
+#       secrets: inherit
+#
+# ---
+
+name: '🎯 Reusable: Apply Standards'
+
+on:
+  workflow_call:
+    inputs:
+      apply-labels:
+        description: 'Write the shared label taxonomy. Create-or-update, never pruning.'
+        required: false
+        type: boolean
+        default: true
+      apply-rulesets:
+        description: >-
+          Write the branch and tag rulesets. Off by default because a
+          ruleset can block every merge in the repository, and needs an
+          admin token.
+        required: false
+        type: boolean
+        default: false
+      dry-run:
+        description: 'For rulesets: print what would be applied and change nothing.'
+        required: false
+        type: boolean
+        default: true
+      labels-file:
+        description: 'Path to a label taxonomy in the CALLING repository. Empty uses the shared one.'
+        required: false
+        type: string
+        default: ''
+      rulesets-dir:
+        description: 'Path to a rulesets directory in the CALLING repository. Empty uses the shared set.'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      BOT_ACCESS_TOKEN:
+        description: >-
+          PAT with repo and workflow scopes. Required to install stubs,
+          because the default token cannot push workflow files.
+        required: false
+      ADMIN_TOKEN:
+        description: >-
+          Token with administration write on this repository. Required for
+          rulesets; the default GITHUB_TOKEN cannot write them.
+        required: false
+
+permissions: {}
+
+jobs:
+  labels:
+    name: '🏷️ Apply Label Taxonomy'
+    if: ${{ inputs.apply-labels }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # check the calling repository out when labels-file names a file in it
+      issues: write # create and update labels
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🏷️ Standards: applying the shared label taxonomy.'
+
+      # Checked out only when an override path is given, since the shared
+      # taxonomy travels with the action and needs no tree.
+      - name: '📂 Checkout Calling Repository'
+        if: ${{ inputs.labels-file != '' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🔖 Sync Labels'
+        uses: tannergolden/standards/actions/sync-labels@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          labels-file: ${{ inputs.labels-file }}
+          dry-run: ${{ inputs.dry-run }}
+
+  rulesets:
+    name: '🛡️ Apply Rulesets'
+    if: ${{ inputs.apply-rulesets }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      # Fail early and say why. The alternative is a 403 from the API that
+      # reads like a bug rather than a missing token.
+      - name: '🔑 Verify Admin Token'
+        env:
+          HAVE_ADMIN: ${{ secrets.ADMIN_TOKEN != '' }}
+        run: |
+          if [ "$HAVE_ADMIN" != "true" ]; then
+            echo "::error title=Admin token required::Rulesets need a token with administration write. The default GITHUB_TOKEN cannot write them regardless of the permissions this job requests. Add a PAT or GitHub App token as the ADMIN_TOKEN secret, or set apply-rulesets to false."
+            exit 1
+          fi
+
+      - name: '📂 Checkout Calling Repository'
+        if: ${{ inputs.rulesets-dir != '' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🛡️ Apply Rulesets'
+        uses: tannergolden/standards/actions/apply-rulesets@v1
+        with:
+          token: ${{ secrets.ADMIN_TOKEN }}
+          rulesets-dir: ${{ inputs.rulesets-dir }}
+          dry-run: ${{ inputs.dry-run }}
+
+      - name: '📝 Next Step'
+        if: ${{ inputs.dry-run }}
+        run: |
+          {
+            echo ""
+            echo "> [!NOTE]"
+            echo "> This was a dry run. Re-run with \`dry-run: false\` to apply, once the plan above looks right."
+          } >> "$GITHUB_STEP_SUMMARY"
