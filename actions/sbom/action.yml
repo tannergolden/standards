@@ -1,0 +1,99 @@
+# --- Composite Action ---
+#
+# 🧾 Generate SBOM
+#
+# Purpose: writes a Software Bill of Materials for the checked-out tree, in
+# any ecosystem, so a release can answer "what was this built from?" months
+# after it shipped.
+#
+# ⚠️ WHY THIS IS AN ACTION AND NOT A STEP IN A WORKFLOW. It ships a script,
+# and a reusable workflow cannot read a file published beside it: its
+# checkout resolves to the CALLING repository. Only an action is fetched
+# with its own repository attached.
+#
+# Ecosystem-native tools do not generalize. `npm sbom` covers npm and
+# nothing else, so every non-JavaScript repository would silently get no
+# inventory at all. The generator here reads whatever manifests and
+# lockfiles it finds, which is the only thing consistent with standards that
+# claim to be language agnostic.
+#
+# NON-FATAL BY DEFAULT: a missing SBOM warns loudly rather than sinking an
+# otherwise good release. Set `strict` where the release must fail instead.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/sbom@v1
+#     id: sbom
+#     with:
+#       output: 'release/sbom.cdx.json'
+#       token: ${{ secrets.GITHUB_TOKEN }}
+#
+# ---
+
+name: '🧾 Generate SBOM'
+description: 'Writes a CycloneDX or SPDX dependency inventory for any ecosystem, from the checked-out tree.'
+
+inputs:
+  output:
+    description: 'Where to write the SBOM. Parent directories are created.'
+    required: false
+    default: 'sbom.cdx.json'
+  format:
+    description: >-
+      SBOM format, as the generator names it: cyclonedx-json, spdx-json,
+      syft-json, or any other it supports.
+    required: false
+    default: 'cyclonedx-json'
+  source:
+    description: >-
+      What to catalog. `dir:.` reads the working tree; `docker:image:tag`
+      reads a built image instead.
+    required: false
+    default: 'dir:.'
+  generator-version:
+    description: >-
+      Pin the generator, as 1.2.3 or v1.2.3. Empty resolves the current
+      release, which is the right default for a tool that only describes the
+      build and never touches the artifact.
+    required: false
+    default: ''
+  strict:
+    description: 'Fail the step when no SBOM could be produced, instead of warning.'
+    required: false
+    default: 'false'
+  token:
+    description: >-
+      Token used only to look up the generator release. Optional, and worth
+      passing: the anonymous API is rate limited per IP, which a shared
+      runner pool hits in practice.
+    required: false
+    default: ''
+
+outputs:
+  generated:
+    description: 'true when an SBOM was written, false when the step gave up.'
+    value: ${{ steps.sbom.outputs.generated }}
+  path:
+    description: 'Path to the SBOM that was written, empty when none was.'
+    value: ${{ steps.sbom.outputs.path }}
+  packages:
+    description: 'Number of packages cataloged.'
+    value: ${{ steps.sbom.outputs.packages }}
+  generator-version:
+    description: 'Exact generator version used, so the run is reconstructable.'
+    value: ${{ steps.sbom.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: '🧾 Generate SBOM'
+      id: sbom
+      shell: bash
+      env:
+        SBOM_OUTPUT: ${{ inputs.output }}
+        SBOM_FORMAT: ${{ inputs.format }}
+        SBOM_SOURCE: ${{ inputs.source }}
+        SYFT_VERSION: ${{ inputs.generator-version }}
+        SBOM_STRICT: ${{ inputs.strict }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: bash "${GITHUB_ACTION_PATH}/../../scripts/generate-sbom.sh"
