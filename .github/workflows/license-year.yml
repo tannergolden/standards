@@ -1,0 +1,132 @@
+# --- Reusable Workflow ---
+#
+# 🕒 License Year Update
+#
+# Purpose: keeps the copyright year current across a repository's license
+# records: the root LICENSE, the REUSE.toml blanket annotation, and every
+# SPDX-FileCopyrightText header naming the project's copyright holder.
+#
+# The holder is an anchor, not a wildcard. Only headers naming it are
+# rewritten, so vendored assets declaring a holder of their own are left
+# alone. Rewriting those would misattribute somebody else's copyright, which
+# is a worse outcome than a stale year.
+#
+# Idempotent, so it is safe to run more often than the year changes. A
+# January run rolls the year; a mid-year run is a verify pass that opens
+# nothing unless something drifted.
+#
+# The change arrives as a pull request, never a direct push, because
+# automation is held to the same PR-only contract as everyone else.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🕒 License Year Update'
+#   on:
+#     schedule:
+#       - cron: '0 3 1 1,7 *' # January rolls the year, July verifies
+#     workflow_dispatch:
+#   permissions: {}
+#   jobs:
+#     license:
+#       permissions:
+#         contents: write # push the fixed topic branch (PR-only flow)
+#         pull-requests: write # open or update the license-year pull request
+#       uses: tannergolden/standards/.github/workflows/license-year.yml@v1
+#       secrets: inherit
+#
+# ---
+
+name: '🕒 Reusable: License Year Update'
+
+on:
+  workflow_call:
+    inputs:
+      copyright-holder:
+        description: >-
+          Name anchoring which SPDX headers get rewritten; headers naming
+          any other holder are left untouched. Empty resolves the
+          repository owner's display name.
+        required: false
+        type: string
+        default: ''
+      base:
+        description: >-
+          Branch the pull request targets. Empty uses the repository's own
+          default branch.
+        required: false
+        type: string
+        default: ''
+      automerge:
+        description: >-
+          Merge the pull request automatically once required checks pass.
+          Still gated on green CI, and needs a BOT_ACCESS_TOKEN for those
+          checks to run at all.
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      BOT_ACCESS_TOKEN:
+        description: >-
+          Optional PAT with repo and workflow scopes. Without it the default
+          token opens the pull request but cannot trigger its required
+          checks, so they sit pending until somebody re-runs them.
+        required: false
+
+permissions: {}
+
+jobs:
+  license-year:
+    name: '🕒 License Update'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # push the fixed topic branch (PR-only flow)
+      pull-requests: write # open or update the license-year pull request
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🕒 License: rolls the copyright year across license records.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🕒 Update License Year'
+        id: license
+        uses: tannergolden/standards/actions/license-year@v1
+        with:
+          copyright-holder: ${{ inputs.copyright-holder }}
+
+      - name: '🚀 Propose Update as Pull Request'
+        uses: tannergolden/standards/actions/open-pr@v1
+        with:
+          token: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: 'chore/license-year'
+          base: ${{ inputs.base }}
+          automerge: ${{ inputs.automerge }}
+          # Measured per run, so no two of these commits read alike.
+          commit-title: 'build(license): 📅 update copyright year to ${{ steps.license.outputs.year }}'
+          commit-body: |
+            Rolled ${{ steps.license.outputs.changed }} file(s) to ${{ steps.license.outputs.year }} across the LICENSE, the
+            REUSE.toml blanket annotation, and ${{ steps.license.outputs.scanned }} scanned SPDX header file(s).
+
+            Delivered as a pull request because long-lived branches are
+            PR-only, for automation as much as for anyone else.
+          pr-title: 'build(license): 📅 update copyright year'
+          pr-body: |
+            ### 🕒 Automated License Year Update
+
+            Brings the copyright year in this repository's license records
+            in line with the calendar year. Headers naming a different
+            copyright holder, such as vendored assets, are deliberately left
+            untouched.
+
+            Merges through the normal gates like any other change.
+
+      - name: '📝 Report Failure (License)'
+        if: ${{ failure() }}
+        run: |
+          echo "::error::License year maintenance failed. If the update step failed, the repository may have no LICENSE or no matching SPDX headers. If the pull request step failed, check the token's scopes and any branch protection on chore/license-year."

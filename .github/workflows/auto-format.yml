@@ -1,0 +1,246 @@
+# --- Reusable Workflow ---
+#
+# 🖌️ Code Style Formatter
+#
+# Purpose: repairs formatting drift without ever writing to a protected
+# branch. When Prettier finds drift, the fix arrives as a pull request and
+# merges through the normal gates, because automation obeys the same PR-only
+# contract it enforces on humans.
+#
+# This is a safety net, not the primary mechanism. Editor hooks, pre-commit
+# hooks, and `make lint` catch drift long before this does; what reaches here
+# is the edit that bypassed all three, typically one made in the GitHub web
+# UI. So it runs on push rather than on a schedule, at the exact moment such
+# drift can land, and no-ops when the tree is already clean.
+#
+# ANY FORMATTER, NOT JUST PRETTIER. Pass `format-command` and that runs
+# instead: `gofmt -w .`, `cargo fmt`, `black .`, `mvn spotless:apply`,
+# whatever your project uses. With no command given and a package.json
+# present, Prettier runs against the shared config, which is the common case
+# rather than the only one.
+#
+# ⚠️ PINNED INSTALLS ONLY on the Prettier path. Without a lockfile there is
+# nothing to pin against, so the run skips rather than falling back to an
+# unpinned `npm install`. A formatting convenience is not worth an unpinned
+# dependency tree.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🖌️ Code Style Formatter'
+#   on:
+#     push:
+#       branches: ['Development']
+#     workflow_dispatch:
+#   concurrency:
+#     # Only the newest state needs formatting, so superseding in-flight
+#     # runs is correct here, unlike a required check.
+#     group: ${{ github.workflow }}-${{ github.ref }}
+#     cancel-in-progress: true
+#   permissions: {}
+#   jobs:
+#     format:
+#       permissions:
+#         contents: write # push the fixed topic branch (PR-only flow)
+#         pull-requests: write # open or update the auto-format pull request
+#       uses: tannergolden/standards/.github/workflows/auto-format.yml@v1
+#       secrets: inherit
+#
+# ---
+
+name: '🖌️ Reusable: Code Style Formatter'
+
+on:
+  workflow_call:
+    inputs:
+      format-command:
+        description: >-
+          Command that reformats the tree in place, for any language. Empty
+          falls back to Prettier when the repository has a package.json.
+        required: false
+        type: string
+        default: ''
+      prettier-config:
+        description: 'Path to a Prettier config in the CALLING repository. Empty uses the shared one.'
+        required: false
+        type: string
+        default: ''
+      base:
+        description: >-
+          Branch the pull request targets. Empty uses the repository's own
+          default branch.
+        required: false
+        type: string
+        default: ''
+      automerge:
+        description: 'Merge once required checks pass. Still gated on green CI.'
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      BOT_ACCESS_TOKEN:
+        description: >-
+          Optional PAT with repo and workflow scopes. Without it, formatting
+          changes to workflow files are reverted rather than pushed, because
+          the default token cannot write them.
+        required: false
+
+permissions: {}
+
+jobs:
+  format:
+    name: '🎨 Prettier Fix'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # push the fixed topic branch (PR-only flow)
+      pull-requests: write # open or update the auto-format pull request
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🖌️ Auto Format: proposes Prettier fixes as a pull request.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '⬢ Setup Node'
+        if: ${{ inputs.format-command == '' && hashFiles('package.json') != '' }}
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+
+      - name: '📦 Install Dependencies'
+        id: install
+        if: ${{ inputs.format-command == '' && hashFiles('package.json') != '' }}
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Auto-format skipped::No package-lock.json, so there is nothing to pin an install against. Commit a lockfile to enable this workflow."
+          fi
+
+      - name: '📄 Resolve Prettier configuration'
+        id: prettier-config
+        if: ${{ steps.install.outputs.ready == 'true' }}
+        uses: tannergolden/standards/actions/config@v1
+        with:
+          name: prettierrc.json
+          override: ${{ inputs.prettier-config }}
+
+      - name: '📄 Resolve Prettier ignore list'
+        id: prettier-ignore
+        if: ${{ steps.install.outputs.ready == 'true' }}
+        uses: tannergolden/standards/actions/config@v1
+        with:
+          name: prettierignore
+
+      - name: '🎨 Run Prettier'
+        id: prettier
+        if: ${{ steps.install.outputs.ready == 'true' }}
+        env:
+          CONFIG: ${{ steps.prettier-config.outputs.path }}
+          IGNORE: ${{ steps.prettier-ignore.outputs.path }}
+        run: npx --no-install prettier --config "$CONFIG" --ignore-path "$IGNORE" --write .
+
+      - name: '🎨 Run Format Command'
+        id: formatter
+        if: ${{ inputs.format-command != '' }}
+        env:
+          COMMAND: ${{ inputs.format-command }}
+        run: bash -c "$COMMAND"
+
+      # One flag for both paths, so every step after this tests one thing.
+      - name: '🚦 Did a formatter run?'
+        id: formatted
+        env:
+          PRETTIER_RAN: ${{ steps.install.outputs.ready == 'true' }}
+          COMMAND_RAN: ${{ inputs.format-command != '' }}
+        run: |
+          if [ "$PRETTIER_RAN" = true ] || [ "$COMMAND_RAN" = true ]; then
+            echo "ran=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ran=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Nothing to format::No format-command was given and this repository has no package.json, so no formatter ran."
+          fi
+
+      # The default GITHUB_TOKEN can never push files under
+      # .github/workflows/, not even to a topic branch. Rather than fail the
+      # push, revert formatting on those files and say so in the pull
+      # request body, so the rest of the fix still lands.
+      - name: '🔐 Resolve Workflow-File Policy'
+        id: policy
+        if: ${{ steps.formatted.outputs.ran == 'true' }}
+        env:
+          HAVE_PAT: ${{ secrets.BOT_ACCESS_TOKEN != '' }}
+        run: |
+          set -euo pipefail
+          NOTE=""
+          if [ "$HAVE_PAT" != "true" ]; then
+            SKIPPED=$(git status --porcelain -- .github/workflows | awk '{print $2}' | tr '\n' ' ')
+            if [ -n "$SKIPPED" ]; then
+              git checkout -- .github/workflows/ 2>/dev/null || true
+              NOTE="> [!WARNING]
+          > Workflow-file formatting was skipped because no \`BOT_ACCESS_TOKEN\` secret is configured (\`GITHUB_TOKEN\` cannot push workflow files). Skipped: \`$SKIPPED\`. Run Prettier on these files locally, or add a PAT with \`repo\` and \`workflow\` scopes as \`BOT_ACCESS_TOKEN\`."
+            fi
+          fi
+          {
+            echo "note<<NOTE_EOF"
+            echo "$NOTE"
+            echo "NOTE_EOF"
+          } >> "$GITHUB_OUTPUT"
+          # Counted after any revert, so the commit title reports what
+          # actually ships rather than what Prettier touched.
+          echo "count=$(git status --porcelain | wc -l | tr -d ' ')" >> "$GITHUB_OUTPUT"
+
+      - name: '🚀 Propose Fixes as Pull Request'
+        if: ${{ steps.formatted.outputs.ran == 'true' }}
+        uses: tannergolden/standards/actions/open-pr@v1
+        with:
+          token: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: 'style/auto-format'
+          base: ${{ inputs.base }}
+          automerge: ${{ inputs.automerge }}
+          commit-title: 'style(auto): 🎨 fix formatting drift in ${{ steps.policy.outputs.count }} file(s)'
+          commit-body: |
+            Automated Prettier pass. Long-lived branches are PR-only, so
+            formatting fixes arrive through a pull request rather than a
+            direct push.
+          pr-title: 'style(auto): 🎨 fix formatting drift'
+          pr-body: |
+            ### 🖌️ Automated Formatting Fix
+
+            Prettier found formatting drift and fixed it. This merges
+            through the same gates as any other change.
+
+            ${{ steps.policy.outputs.note }}
+
+            > [!NOTE]
+            > If required checks stay pending, this pull request was opened
+            > with the default `GITHUB_TOKEN`, which cannot trigger
+            > workflows. Re-run the checks by hand, or configure a
+            > `BOT_ACCESS_TOKEN` secret so automation pull requests run CI
+            > on their own.
+
+      - name: '📝 Report Failure (Format)'
+        if: ${{ failure() }}
+        env:
+          PRETTIER_CONCLUSION: ${{ steps.prettier.conclusion }}
+        run: |
+          if [ "$PRETTIER_CONCLUSION" = "failure" ]; then
+            echo "::error::Prettier failed. Reproduce locally with 'npx prettier --write .' using this repository's config."
+          else
+            echo "::error::Auto-format failed before formatting: dependency install, the workflow-file policy step, or pull request delivery. See the failing step above."
+          fi
+          {
+            echo "### 🎨 Auto-format failed"
+            echo ""
+            echo "1. **Dependency install:** \`npm ci\` failed; check \`package-lock.json\`."
+            echo "2. **Formatting:** Prettier errored; reproduce locally."
+            echo "3. **Delivery:** a push or pull-request failure; check token scopes and branch protection on \`style/auto-format\`."
+          } >> "$GITHUB_STEP_SUMMARY"
