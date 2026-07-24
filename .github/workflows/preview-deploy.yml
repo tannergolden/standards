@@ -1,0 +1,153 @@
+# --- Reusable Workflow ---
+#
+# 🚀 Preview Deploy
+#
+# Purpose: builds a branch and deploys it to a preview environment for
+# validation before promotion.
+#
+# THE DEPLOY COMMAND IS AN INPUT, NOT A PLACEHOLDER. The version of this
+# that shipped inside each repository ended its deploy step with a comment
+# telling you to replace it, which works exactly once and only where the
+# file can be edited. A called workflow cannot be edited by its consumer, so
+# the command has to arrive as an input.
+#
+# With no command given, the job still builds and reports loudly that
+# nothing was deployed. A workflow that says "deployed" without deploying is
+# worse than one that deploys nothing, because only one of the two lies.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🚀 Preview Deploy'
+#   on:
+#     push:
+#       branches: ['Preview']
+#     workflow_dispatch:
+#   concurrency:
+#     group: ${{ github.workflow }}-${{ github.ref }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     deploy:
+#       permissions:
+#         contents: read # check out the ref being previewed
+#         id-token: write # OIDC token for keyless auth to the deploy target
+#       uses: tannergolden/standards/.github/workflows/preview-deploy.yml@v1
+#       with:
+#         deploy-command: 'npx vercel deploy --prebuilt --token "$DEPLOY_TOKEN"'
+#       secrets: inherit
+#
+# ---
+
+name: '🚀 Reusable: Preview Deploy'
+
+on:
+  workflow_call:
+    inputs:
+      deploy-command:
+        description: >-
+          Shell command that performs the deploy. Empty builds and validates
+          without deploying, and says so.
+        required: false
+        type: string
+        default: ''
+      environment:
+        description: 'GitHub deployment environment this publishes to.'
+        required: false
+        type: string
+        default: 'preview'
+      environment-url:
+        description: 'URL shown on the deployment, normally a repository variable.'
+        required: false
+        type: string
+        default: ''
+      node-version:
+        description: 'Node.js version, used when the repository has a package.json.'
+        required: false
+        type: string
+        default: '22.x'
+    secrets:
+      DEPLOY_TOKEN:
+        description: 'Credential for the deploy target, available to the deploy command as $DEPLOY_TOKEN.'
+        required: false
+
+permissions: {}
+
+jobs:
+  deploy:
+    name: '🌐 Deploy Preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read # check out the ref being previewed
+      id-token: write # OIDC token for keyless auth to the deploy target
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.environment-url }}
+
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🌐 Preview Deploy: builds and publishes to the preview environment.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🧰 Setup Toolchain'
+        id: setup
+        uses: tannergolden/standards/actions/setup@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: '🏗️ Build Project'
+        id: build
+        run: |
+          if make -n build >/dev/null 2>&1; then make build; else
+            echo "::notice title=Skipped::no 'build' target in this repository's Makefile"
+          fi
+
+      - name: '🚀 Deploy to Preview'
+        id: deploy
+        env:
+          DEPLOY_COMMAND: ${{ inputs.deploy-command }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          # Read through the environment, never interpolated into the script.
+          # An expression expanded inline becomes shell source before bash
+          # sees it; a variable is only ever data.
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DEPLOY_COMMAND" ]; then
+            echo "::warning title=Nothing deployed::The build succeeded, but no deploy-command was given, so nothing was published. Pass one from your stub to enable preview deploys."
+            {
+              echo "### 🌐 Preview Deploy"
+              echo ""
+              echo "> [!WARNING]"
+              echo "> **Nothing was deployed.** The build was validated, but this call passed no \`deploy-command\`. Add one to your workflow stub to publish."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "Running the configured deploy command."
+          bash -c "$DEPLOY_COMMAND"
+          {
+            echo "### 🌐 Preview Deploy"
+            echo ""
+            echo "Deployed to the \`${ENVIRONMENT}\` environment."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: '📝 Report Failure (Deploy)'
+        if: ${{ failure() }}
+        env:
+          SETUP_CONCLUSION: ${{ steps.setup.conclusion }}
+          BUILD_CONCLUSION: ${{ steps.build.conclusion }}
+        run: |
+          if [ "$SETUP_CONCLUSION" = "failure" ]; then
+            echo "::error::Dependency setup failed, so nothing was built or deployed. Reproduce with 'make setup'."
+          elif [ "$BUILD_CONCLUSION" = "failure" ]; then
+            echo "::error::The build failed, so nothing was deployed. Reproduce with 'make build'."
+          else
+            echo "::error::The deploy command failed. The build was fine; check the deploy target's credentials and the command itself."
+          fi
