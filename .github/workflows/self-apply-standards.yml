@@ -1,0 +1,67 @@
+# --- Trigger Stub ---
+#
+# This repository applying its own label taxonomy to itself. A stub exactly
+# like the one a consumer writes, which is the point: the standards are
+# proven by being used, not asserted.
+#
+# The `uses:` here is a LOCAL path rather than a pinned tag, and only because
+# this is the repository that publishes them. Every consumer pins a tag
+# instead, so a change here cannot reach them until they move the pin.
+#
+# ⚠️ `labels-file` NAMES THE FILE ON PURPOSE. Left empty, the sync resolves
+# the taxonomy from the action's own ref - the last PUBLISHED release - so
+# this repository would apply the taxonomy it shipped last time and see no
+# effect from the registry it just edited. Naming the path checks this
+# repository out and uses the working tree, which is the only correct source
+# for the repository that owns the file.
+#
+# ⚠️ ONLY LABELS. `apply-rulesets` needs an admin token and is a
+# branch-protection change, so it stays a deliberate, separate act.
+#
+# Dispatch-only, and a dry run unless you say otherwise: it previews the plan
+# and writes nothing until `dry-run` is turned off.
+#
+# ---
+
+name: '🔁 Self: Apply Label Taxonomy'
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'List what would change and write nothing'
+        type: boolean
+        default: true
+
+concurrency:
+  # One sync at a time: a second run would race the first run's snapshot of
+  # the label list it is reconciling against.
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+# ⚠️ THE `permissions:` BELOW IS A CEILING, NOT A GRANT. For a job that calls a
+# reusable workflow, the caller's permissions cap what the called workflow may
+# request. Anything it asks for beyond them fails the run before a single job
+# starts: a startup failure, with no job, no step, and no log to read.
+#
+# They are written out rather than left to this repository's DEFAULT token
+# permissions, because a repository set to read-only - now the common default -
+# caps every write scope the same invisible way.
+#
+# The list is the union of what the called workflow's own jobs ask for,
+# including the one this run disables, because the ceiling is checked at
+# startup before any `if:` is evaluated.
+
+permissions: {}
+
+jobs:
+  apply:
+    permissions:
+      contents: read # check this repository out so labels-file resolves against its tree
+      issues: write # create and update the shared labels
+    uses: ./.github/workflows/apply-standards.yml
+    with:
+      apply-labels: true
+      labels-file: 'data/labels.yml'
+      apply-rulesets: false
+      dry-run: ${{ inputs.dry-run }}
