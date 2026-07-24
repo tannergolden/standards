@@ -1,0 +1,114 @@
+# --- Reusable Workflow ---
+#
+# 🧰 Lint Workflows
+#
+# Purpose: workflows are executable code with credentials attached, so they
+# get their own linters. actionlint validates GitHub Actions semantics
+# (expressions, needs/outputs, shellcheck on run blocks); zizmor audits them
+# for security smells (template injection, credential persistence, dangerous
+# triggers, cache poisoning) at the PEDANTIC persona, where style-level
+# findings such as undocumented permissions and missing concurrency limits
+# fail the job too.
+#
+# Both tools are version-pinned: actionlint through the Go module proxy,
+# zizmor by hash-checked PyPI install.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🧰 Lint Workflows'
+#   on:
+#     pull_request:
+#       paths: ['.github/workflows/**']
+#     workflow_dispatch:
+#   permissions: {}
+#   jobs:
+#     lint:
+#       permissions:
+#         contents: read # read the repository
+#       uses: tannergolden/standards/.github/workflows/lint-workflows.yml@v1
+#
+# ---
+
+name: '🧰 Reusable: Lint Workflows'
+
+on:
+  workflow_call:
+    inputs:
+      zizmor-config:
+        description: >-
+          Path to a zizmor config in the CALLING repository. Leave empty to use
+          the shared config published alongside this workflow, which is the
+          intended default; set it only when a repository has audited findings
+          of its own to justify.
+        required: false
+        type: string
+        default: ''
+      workflows-path:
+        description: 'Directory of workflows to audit in the calling repository.'
+        required: false
+        type: string
+        default: '.github/workflows/'
+
+permissions: {}
+
+jobs:
+  lint:
+    name: '🧰 Actionlint + zizmor'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: "🧰 Lint: actionlint and zizmor over this repository's workflows."
+
+      # actions/checkout defaults to the CALLING repository, which is the tree
+      # being audited. A reusable workflow never gets its own tree implicitly.
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The shared config travels with the action, so it needs no network
+      # fetch and no ref parsing to find. An `override` in the calling tree
+      # wins when a repository has audited findings of its own to justify.
+      - name: '📄 Resolve zizmor configuration'
+        id: zizmor-config
+        uses: tannergolden/standards/actions/config@v1
+        with:
+          name: zizmor.yml
+          override: ${{ inputs.zizmor-config }}
+
+      - name: '🔍 actionlint (Actions semantics)'
+        env:
+          # SC2129 ("consider { cmd; } >> file") is a style-level suggestion:
+          # step summaries interleave echoes with conditionals, where the
+          # grouped form reads worse. Correctness-level shellcheck findings
+          # (quoting, word splitting) still fail this job.
+          SHELLCHECK_OPTS: --exclude=SC2129
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          "$(go env GOPATH)/bin/actionlint" -color
+
+      - name: '🛡️ zizmor (Actions security audit)'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIG: ${{ steps.zizmor-config.outputs.path }}
+          WORKFLOWS_PATH: ${{ inputs.workflows-path }}
+        run: |
+          set -euo pipefail
+          # Hash-checked install: a version pin alone trusts PyPI; the hashes
+          # pin the exact artifacts (Scorecard: Pinned-Dependencies).
+          cat > "${RUNNER_TEMP}/zizmor-requirements.txt" <<'REQ'
+          zizmor==1.26.1 \
+            --hash=sha256:6a958d8a0941d7e1d0de8436670b5cb7fc64c8028b4d16e3f519ccc77f953cef \
+            --hash=sha256:0c2cc575007a4db99d89d5acc6120cfa7b61504bc2394c3b50af348c73f1916e
+          REQ
+          pip install --quiet --require-hashes -r "${RUNNER_TEMP}/zizmor-requirements.txt"
+
+          # Pedantic persona: style-level audits (undocumented permissions,
+          # concurrency limits, anonymous definitions) are part of the gate.
+          zizmor --no-progress --persona=pedantic --config "$CONFIG" "$WORKFLOWS_PATH"
