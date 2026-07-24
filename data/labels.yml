@@ -1,0 +1,322 @@
+# --- Shared Label Taxonomy ---
+#
+# The source of truth for GitHub labels across every repository that applies
+# these standards. Read from this repository at the ref it was called from
+# and applied to a target repository by the reusable governance workflow:
+# create-or-update for every label below, never pruning, so labels a
+# repository adds for itself survive.
+#
+# Renaming a label? Keep the entry, change its name, and add
+#   renamed_from: 'old name'
+# The sync then MOVES the old label onto the new identity, and every issue
+# and pull request already carrying it travels with it, instead of orphaning
+# the old label in every repository that has it.
+#
+# Descriptions are capped at 100 characters by the GitHub API. An entry over
+# that limit fails the whole sync with a 422, so the workflow validates
+# length before it writes anything.
+
+# 🚦 Workflow & Priority
+- name: 'priority: critical'
+  color: 'b60205'
+  description: '🚨 Urgent. Production outage, severe crash, or security breach. Must be fixed immediately.'
+
+- name: 'priority: high'
+  color: 'd93f0b'
+  description: '🛑 Blocking. Blocks a release or significant functionality. Needs attention very soon.'
+
+- name: 'priority: medium'
+  color: 'fbca04'
+  description: '🟡 Normal. Standard scheduled work. Important but does not block a release.'
+
+- name: 'priority: low'
+  color: '0e8a16'
+  description: '🟢 Optional. Nice-to-have features or cosmetic tweaks. Pick up when time permits.'
+
+# GitHub-default labels - kept so external tools and bots that hardcode
+# GitHub's stock names keep working; the issue forms apply 'type: bug' /
+# 'type: feature', and the release-notes configuration groups both spellings
+# into the same category.
+#
+# ⚠️ THESE NINE ARE BYTE-IDENTICAL TO WHAT GITHUB CREATES ON A NEW REPOSITORY -
+# name, colour and description, emoji-free, apostrophes and all. A sync that
+# rewrote them would show a diff on every repository that had never been
+# touched, and make a stock repository look customised when it is not. Edit
+# the 'type:' labels instead; these are not ours to style.
+- name: 'bug'
+  color: 'd73a4a'
+  description: 'Something isn''t working'
+
+- name: 'enhancement'
+  color: 'a2eeef'
+  description: 'New feature or request'
+
+- name: 'documentation'
+  color: '0075ca'
+  description: 'Improvements or additions to documentation'
+
+# Semantic Versioning
+- name: 'semver: major'
+  color: 'b60205'
+  description: '💥 Breaking Change. Incompatible API changes. Bumps MAJOR version.'
+
+- name: 'semver: minor'
+  color: '1d76db'
+  description: '🎉 New Feature. Backward-compatible functionality. Bumps MINOR version.'
+
+- name: 'semver: patch'
+  color: '0e8a16'
+  description: '🩹 Bug Fix. Backward-compatible fix. Bumps PATCH version.'
+
+- name: 'semver: none'
+  color: 'bfdadc'
+  description: '👻 Internal. Changes to tests, CI, or docs that do not require a version bump.'
+
+# ☢️ Risk Levels
+- name: 'risk: critical'
+  color: 'b60205'
+  description: '☢️ Extremely high risk. Likely to cause outages or break core functionality.'
+
+- name: 'risk: high'
+  color: 'd93f0b'
+  description: '🔥 High chance of side effects. Requires extensive regression testing.'
+
+- name: 'risk: medium'
+  color: 'fbca04'
+  description: '🌩️ Moderate risk. Changes logic that could impact other components.'
+
+- name: 'risk: low'
+  color: '0e8a16'
+  description: '🌤️ Minimal risk. Unlikely to cause regressions or side effects.'
+
+- name: 'risk: none'
+  color: 'c2e0c6'
+  description: '🏳️ Zero risk. Changes to documentation, comments, or formatting only.'
+
+# 📋 Status & Triage
+- name: 'status: needs triage'
+  color: 'f9d0c4'
+  description: '🔍 New issue waiting for a maintainer to validate and categorize it.'
+
+- name: 'status: ready'
+  color: '0e8a16'
+  description: '✅ Triaged and specified; ready for someone to pick up.'
+
+- name: 'status: needs info'
+  color: 'f7c6c7'
+  description: '🗣️ Waiting on the author for details; a reply un-sticks it, silence lets it go stale.'
+
+- name: 'status: in progress'
+  color: 'c5def5'
+  description: '🏗️ A contributor is actively working on this task.'
+
+- name: 'status: needs review'
+  color: 'bfd4f2'
+  description: '👀 Code is written and the Pull Request is waiting for peer review.'
+
+- name: 'status: blocked'
+  color: 'e99695'
+  description: '⛔ Work cannot proceed due to external factors or dependencies.'
+
+- name: 'status: on hold'
+  renamed_from: 'status: on-hold'
+  color: 'fbca04'
+  description: '⏸️ Intentionally paused; work is deferred for now.'
+
+- name: 'status: conflict'
+  color: 'd93f0b'
+  description: '🔀 The pull request has merge conflicts that must be resolved.'
+
+- name: 'ci: failure'
+  color: 'b60205'
+  description: '🚨 A core workflow is failing on a long-lived branch (opened/closed automatically).'
+
+- name: 'status: stale'
+  color: 'fef2c0'
+  description: '🕸️ Inactive for a long period; will be closed if no further activity occurs.'
+
+- name: 'status: awaiting release'
+  color: '5319e7'
+  description: '🚢 Merged and waiting for the next release; the fix exists but is not published yet.'
+
+- name: 'invalid'
+  color: 'e4e669'
+  description: 'This doesn''t seem right'
+
+- name: 'duplicate'
+  color: 'cfd3d7'
+  description: 'This issue or pull request already exists'
+
+- name: 'wontfix'
+  color: 'ffffff'
+  description: 'This will not be worked on'
+
+# 👕 Size Estimation
+- name: 'size: extra small'
+  color: 'c2e0c6'
+  description: '🐜 Tiny change. Likely a one-line fix, typo correction, or config tweak.'
+
+- name: 'size: small'
+  color: '0e8a16'
+  description: '🔹 Small task. Straightforward work that takes a few hours.'
+
+- name: 'size: medium'
+  color: 'fbca04'
+  description: '🔶 Medium task. Standard feature or bug fix taking a few days.'
+
+- name: 'size: large'
+  color: 'd93f0b'
+  description: '🟥 Large task. Significant logic changes or new feature implementation.'
+
+- name: 'size: extra large'
+  color: 'b60205'
+  description: '🦕 Massive task. High complexity; implies the issue should probably be broken down.'
+
+# 🏷️ Types
+- name: 'type: security'
+  color: 'b60205'
+  description: '🔒 Security fixes, patches, or vulnerability resolution.'
+
+- name: 'type: tests'
+  color: 'c2e0c6'
+  description: '🧪 Adding, updating, or fixing unit/integration/E2E tests.'
+
+- name: 'type: documentation'
+  color: '0052cc'
+  description: '📚 Improvements or additions to documentation/READMEs.'
+
+- name: 'type: chore'
+  color: 'bfdadc'
+  description: '🔧 Routine maintenance, dependency updates, or build scripts.'
+
+- name: 'type: refactor'
+  color: 'c5def5'
+  description: '♻️ Code changes that improve structure or quality without changing behavior.'
+
+- name: 'type: performance'
+  color: 'fbca04'
+  description: '⚡ Improvements to speed, memory usage, or resource optimization.'
+
+- name: 'type: discussion'
+  color: 'd4c5f9'
+  description: '💬 Requires conversation or a decision before coding begins.'
+
+- name: 'type: release'
+  color: '5319e7'
+  description: '🚀 Tasks specifically related to shipping a new version or deploying.'
+
+- name: 'type: accessibility'
+  color: '006b75'
+  description: '♿ Fixes or features to ensure A11y compliance.'
+
+- name: 'type: bug'
+  color: 'd73a4a'
+  description: '🐛 An unexpected problem or unintended behavior in the code.'
+
+- name: 'type: feature'
+  color: '1d76db'
+  description: '✨ A request for new functionality or capability.'
+
+- name: 'type: feedback'
+  color: 'fef2c0'
+  description: '💡 General feedback, suggestions, or impressions from users.'
+
+- name: 'type: build'
+  color: 'e4e669'
+  description: '🏗️ Build system, packaging, or external dependency changes.'
+
+- name: 'type: ci'
+  color: 'bfd4f2'
+  description: '⚙️ CI configuration, workflows, or pipeline changes.'
+
+- name: 'type: style'
+  color: 'f9d0c4'
+  description: '🎨 Formatting and whitespace only; no change to behaviour.'
+
+- name: 'type: revert'
+  color: 'e99695'
+  description: '⏪ Reverts an earlier change; the commit undone is named in the body.'
+
+- name: 'type: deprecation'
+  color: 'd93f0b'
+  description: '⚠️ Still works today, scheduled for removal in a future major; the warning before the break.'
+
+# 🏗️ Areas
+- name: 'area: infrastructure'
+  color: '006b75'
+  description: '🧱 Core infrastructure, cloud resources, CI/CD pipelines, or hosting.'
+
+- name: 'area: dx'
+  color: 'c5def5'
+  description: '💻 Developer Experience: Tooling, scripts, and workflows to improve productivity.'
+
+- name: 'area: governance'
+  color: '5319e7'
+  description: '⚖️ Licenses, code of conduct, security policies, and contribution guidelines.'
+
+- name: 'area: frontend'
+  color: 'bfdadc'
+  description: '🌐 Client-side code, web interface, or browser logic.'
+
+- name: 'area: backend'
+  color: '008672'
+  description: '⚙️ Server-side logic, databases, or API endpoints.'
+
+- name: 'area: mobile'
+  color: '1d76db'
+  description: '📱 iOS, Android, or React Native specific code.'
+
+- name: 'area: ui/ux'
+  color: 'fef2c0'
+  description: '🎨 Visual design, CSS styling, or user experience flows.'
+
+- name: 'area: database'
+  color: 'fbca04'
+  description: '🗄️ SQL queries, schema changes, or migrations.'
+
+- name: 'area: api'
+  color: 'bfd4f2'
+  description: '📡 REST or GraphQL interface definitions.'
+
+- name: 'area: analytics'
+  color: 'd4c5f9'
+  description: '📈 Tracking, data logging, or business intelligence.'
+
+- name: 'area: i18n'
+  color: '0052cc'
+  description: '🌍 Internationalization, translations, or localization.'
+
+# 👥 Community & Dependencies
+# Description must stay within GitHub's 100-character label limit - the API
+# rejects longer ones with a 422 and the sync then fails in every repository.
+- name: 'automated'
+  color: 'c0a062'
+  description: '🤖 Opened by repository automation (sync, formatting, refresh) - stale-exempt and ready to merge.'
+
+- name: 'dependencies'
+  color: '0052cc'
+  description: '📦 Pull requests that update a dependency file (usually created by bots).'
+
+- name: 'regression'
+  color: 'b60205'
+  description: '📉 Worked in an earlier release and does not now; a fix should add a test.'
+
+- name: 'upstream'
+  color: '5319e7'
+  description: '⬆️ The cause is in a dependency; tracked here, fixed there.'
+
+- name: 'pinned'
+  color: '1d76db'
+  description: '📌 Never auto-close. The stale sweep skips anything carrying this.'
+
+- name: 'good first issue'
+  color: '7057ff'
+  description: 'Good for newcomers'
+
+- name: 'help wanted'
+  color: '008672'
+  description: 'Extra attention is needed'
+
+- name: 'question'
+  color: 'd876e3'
+  description: 'Further information is requested'
