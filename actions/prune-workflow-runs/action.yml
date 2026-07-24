@@ -1,0 +1,61 @@
+# --- Composite Action ---
+#
+# 🧹 Prune Workflow Runs
+#
+# Purpose: keeps the Actions history lean. For each workflow it keeps the
+# most recent runs and deletes the rest, which removes their logs and
+# artifacts too.
+#
+# Two protections stop this from eating history that still matters. Runs
+# tied to any of the last N default-branch commits are always kept, so
+# recent history survives regardless of the per-workflow count. And
+# in-flight runs are never deleted, which includes the run executing this
+# action, so it cannot delete the job it is running in.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/prune-workflow-runs@v1
+#     with:
+#       token: ${{ secrets.GITHUB_TOKEN }}
+#       dry-run: true
+#
+# ---
+
+name: '🧹 Prune Workflow Runs'
+description: 'Deletes old workflow runs, keeping recent ones and anything tied to recent commits.'
+
+inputs:
+  token:
+    description: 'Token used to prune. Needs actions: write and contents: read.'
+    required: true
+  repository:
+    description: 'Repository to prune, as owner/repo.'
+    required: false
+    default: ${{ github.repository }}
+  keep:
+    description: 'How many recent runs to keep per workflow.'
+    required: false
+    default: '1'
+  keep-recent-commits:
+    description: >-
+      Never delete runs from this many latest default-branch commits.
+      The default of 35 is one page of the commit-history view.
+    required: false
+    default: '35'
+  dry-run:
+    description: 'Log what would be deleted and delete nothing.'
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: '🧹 Prune workflow runs'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_REPOSITORY: ${{ inputs.repository }}
+        KEEP_PER_WORKFLOW: ${{ inputs.keep }}
+        KEEP_RECENT_COMMITS: ${{ inputs.keep-recent-commits }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: python3 "${GITHUB_ACTION_PATH}/../../scripts/prune-workflow-runs.py"

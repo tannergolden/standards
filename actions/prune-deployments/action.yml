@@ -1,0 +1,60 @@
+# --- Composite Action ---
+#
+# 🧹 Prune Deployments
+#
+# Purpose: deletes superseded and non-passing deployments, leaving the
+# current SUCCESSFUL deployment for each environment in place. In-flight
+# deployments (in_progress, queued, pending) are never touched, so a prune
+# cannot land on a deploy that is still happening.
+#
+# Environments are selected rather than assumed, because the two cases are
+# genuinely different: a documentation site publishes from everywhere, while
+# application environments exist only where something is deployed. Pass
+# `only` or `exclude` to draw that line.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/prune-deployments@v1
+#     with:
+#       token: ${{ secrets.GITHUB_TOKEN }}
+#       exclude: github-pages
+#       dry-run: true
+#
+# ---
+
+name: '🧹 Prune Deployments'
+description: 'Deletes superseded deployments, keeping the current successful one per environment.'
+
+inputs:
+  token:
+    description: 'Token used to prune. Needs deployments: write.'
+    required: true
+  repository:
+    description: 'Repository to prune, as owner/repo.'
+    required: false
+    default: ${{ github.repository }}
+  only:
+    description: 'Comma-separated environments to prune. Empty means all of them.'
+    required: false
+    default: ''
+  exclude:
+    description: 'Comma-separated environments to leave alone.'
+    required: false
+    default: ''
+  dry-run:
+    description: 'Log what would be deleted and delete nothing.'
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: '🧹 Prune deployments'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_REPOSITORY: ${{ inputs.repository }}
+        ONLY_ENVIRONMENTS: ${{ inputs.only }}
+        EXCLUDE_ENVIRONMENTS: ${{ inputs.exclude }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: python3 "${GITHUB_ACTION_PATH}/../../scripts/prune-deployments.py"
