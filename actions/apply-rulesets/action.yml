@@ -1,0 +1,85 @@
+# --- Composite Action ---
+#
+# 🛡️ Apply Rulesets
+#
+# Purpose: applies the published branch and tag rulesets to a repository.
+# Matched BY NAME, so a ruleset that already exists is updated in place and
+# one that does not is created. Nothing is ever deleted, which means
+# rulesets a repository defines for itself survive.
+#
+# ⚠️ RULESETS PROTECT BRANCHES, so a wrong one blocks every merge in the
+# target repository. Run with `dry-run: true` the first time; it prints
+# exactly what would be created or updated and changes nothing.
+#
+# The required status checks in these rulesets name specific caller job ids
+# (see data/README.md). If your workflow stubs use different job ids, the
+# checks will never report and every pull request will wait forever. Match
+# the ids, or pass your own rulesets directory.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/apply-rulesets@v1
+#     with:
+#       token: ${{ secrets.ADMIN_TOKEN }}
+#       repository: owner/repo
+#       dry-run: true
+#
+# ---
+
+name: '🛡️ Apply Rulesets'
+description: 'Creates or updates the published branch and tag rulesets on a repository, matched by name.'
+
+inputs:
+  token:
+    description: >-
+      Token that can administer the target repository. The default
+      GITHUB_TOKEN cannot write rulesets, so this needs a PAT or app token
+      with administration write.
+    required: true
+  repository:
+    description: 'Repository to apply the rulesets to, as owner/repo.'
+    required: false
+    default: ${{ github.repository }}
+  rulesets-dir:
+    description: >-
+      Directory of ruleset JSON in the CALLING repository. Empty uses the
+      published set.
+    required: false
+    default: ''
+  dry-run:
+    description: >-
+      Print what would be applied and change nothing. This action defaults it
+      to false because a caller passing nothing has asked for the thing to
+      happen; the script defaults it to TRUE for a hand-run, where nobody has
+      declared an intent yet. `apply-standards.yml` always passes it through.
+    required: false
+    default: 'false'
+  require-checks:
+    description: >-
+      Refuse to apply a ruleset whose required status checks no workflow in the
+      target repository can report. Leave this on: a check that never reports
+      leaves every pull request PENDING rather than failed, which blocks every
+      merge in the repository with nothing anywhere to explain why. Turn it off
+      only when the workflows are arriving in the same change.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: '🛡️ Apply rulesets'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        TARGET_REPO: ${{ inputs.repository }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        REQUIRE_CHECKS: ${{ inputs.require-checks }}
+        OVERRIDE_DIR: ${{ inputs.rulesets-dir }}
+      run: |
+        set -euo pipefail
+        if [ -n "$OVERRIDE_DIR" ]; then
+          export RULESETS_DIR="$OVERRIDE_DIR"
+        else
+          export RULESETS_DIR="${GITHUB_ACTION_PATH}/../../data/rulesets"
+        fi
+        bash "${GITHUB_ACTION_PATH}/../../scripts/apply-rulesets.sh"

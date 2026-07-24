@@ -1,0 +1,139 @@
+# --- Composite Action ---
+#
+# 🏷️ Sync Labels
+#
+# Purpose: applies the shared label taxonomy to a repository through the
+# GitHub API. Create-or-update for every declared label, never pruning, so
+# labels a repository added for its own reasons survive the sync.
+#
+# Renames are first class. An entry carrying `renamed_from:` is MOVED onto
+# its new identity with a PATCH whenever the old name still exists, so every
+# issue and pull request already labeled travels with it. Without that, a
+# rename would orphan the old label in every repository holding it and quietly
+# empty every saved filter that named it. The move is one-shot and
+# idempotent: once the old name is gone, the entry behaves like any other.
+#
+# Both the taxonomy and the script travel with this action, which is the only
+# reason this can work at all: a reusable workflow's checkout resolves to the
+# calling repository and would find neither.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/sync-labels@v1
+#     with:
+#       token: ${{ secrets.GITHUB_TOKEN }}
+#
+# ---
+
+name: '🏷️ Sync Labels'
+description: 'Applies the shared label taxonomy to a repository, create-or-update, never pruning.'
+
+inputs:
+  token:
+    description: 'Token used to write labels. Needs issues: write.'
+    required: true
+  repository:
+    description: 'Repository to apply the taxonomy to, as owner/repo.'
+    required: false
+    default: ${{ github.repository }}
+  labels-file:
+    description: >-
+      Path to a replacement taxonomy in the CALLING repository. Empty uses
+      the shared one, which is the intended default.
+
+      ⚠️ Empty resolves the taxonomy from THIS ACTION'S ref - the published
+      release - not from the calling repository's tree. A repository editing
+      the registry and applying it to itself must name the file, or it will
+      install the last release's taxonomy and see no change.
+    required: false
+    default: ''
+  dry-run:
+    description: >-
+      Log the plan and write nothing. The calling workflow advertises a dry
+      run; without this input the label sync wrote regardless, which made
+      that promise false for the one job that is hardest to undo.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: '📄 Resolve label taxonomy'
+      id: taxonomy
+      shell: bash
+      env:
+        OVERRIDE: ${{ inputs.labels-file }}
+      run: |
+        set -euo pipefail
+        if [ -n "$OVERRIDE" ]; then
+          if [ ! -f "$OVERRIDE" ]; then
+            echo "::error title=Labels file not found::'${OVERRIDE}' does not exist in this repository."
+            exit 1
+          fi
+          echo "file=${OVERRIDE}" >> "$GITHUB_OUTPUT"
+        else
+          echo "file=${GITHUB_ACTION_PATH}/../../data/labels.yml" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Descriptions over 100 characters are rejected by the API with a 422.
+    # Validated up front so the whole taxonomy fails before any of it is
+    # written, rather than half-applying and leaving the repository split
+    # between the old set and the new one.
+    - name: '🔍 Validate taxonomy'
+      shell: bash
+      env:
+        LABELS_FILE: ${{ steps.taxonomy.outputs.file }}
+      run: |
+        python3 - <<'PY'
+        import os, re, sys
+
+        path = os.environ["LABELS_FILE"]
+        field = re.compile(r"^(?:-\s+)?(name|color|description|renamed_from):\s*'(.*)'\s*$")
+        labels, current, problems = [], {}, []
+
+        with open(path, encoding="utf-8") as fh:
+            for n, raw in enumerate(fh, 1):
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                m = field.match(line)
+                if not m:
+                    continue
+                key, value = m.group(1), m.group(2)
+                if key == "name":
+                    if current:
+                        labels.append(current)
+                    current = {"name": value, "_line": n}
+                else:
+                    current[key] = value
+        if current:
+            labels.append(current)
+
+        seen = {}
+        for label in labels:
+            name, line = label["name"], label["_line"]
+            desc = label.get("description", "")
+            if len(desc) > 100:
+                problems.append(f"line {line}: '{name}' description is {len(desc)} characters (limit 100)")
+            color = label.get("color", "")
+            if not re.fullmatch(r"[0-9a-fA-F]{6}", color):
+                problems.append(f"line {line}: '{name}' color '{color}' is not a 6-digit hex value")
+            if name in seen:
+                problems.append(f"line {line}: '{name}' is declared twice (first at line {seen[name]})")
+            seen[name] = line
+
+        if problems:
+            for p in problems:
+                print(f"::error title=Invalid label::{p}")
+            sys.exit(1)
+        print(f"✅ {len(labels)} labels validated.")
+        PY
+
+    - name: '🔖 Apply labels'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        GITHUB_REPOSITORY: ${{ inputs.repository }}
+        LABELS_FILE: ${{ steps.taxonomy.outputs.file }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: bash "${GITHUB_ACTION_PATH}/../../scripts/sync-labels.sh"
