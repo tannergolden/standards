@@ -1,0 +1,164 @@
+# --- Reusable Workflow ---
+#
+# 🦾 Automate Dependabot
+#
+# Purpose: approves Dependabot's patch and minor updates and queues them to
+# merge once the required checks pass. The merge still waits on green CI, so
+# nothing lands unvalidated; what this removes is the manual click, not the
+# verification.
+#
+# MAJOR VERSION BUMPS ARE DELIBERATELY EXCLUDED. A major bump is where
+# breaking changes live, and it deserves a human read of the changelog. Those
+# pull requests get a notice and are otherwise left alone.
+#
+# Approving and enabling auto-merge are both best-effort. Either can fail on
+# repository settings a maintainer has not turned on, and failing the job
+# would redden every Dependabot pull request in an unconfigured repository
+# for a reason that has nothing to do with the update.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🦾 Automate Dependabot'
+#   on:
+#     pull_request:
+#       types: [opened, reopened, synchronize]
+#   permissions: {}
+#   jobs:
+#     dependabot:
+#       permissions:
+#         contents: write # allow the squash merge once required checks pass
+#         pull-requests: write # approve the pull request
+#       uses: tannergolden/standards/.github/workflows/dependabot-automerge.yml@v1
+#       secrets: inherit
+#
+# ---
+
+name: '🦾 Reusable: Automate Dependabot'
+
+on:
+  workflow_call:
+    inputs:
+      base-branch:
+        description: >-
+          Only automate pull requests targeting this branch. Empty means the
+          repository's own default branch.
+        required: false
+        type: string
+        default: ''
+    secrets:
+      BOT_ACCESS_TOKEN:
+        description: >-
+          Optional PAT. Useful where 'Allow GitHub Actions to create and
+          approve pull requests' is off, since the default token cannot
+          approve in that configuration.
+        required: false
+
+permissions: {}
+
+jobs:
+  dependabot:
+    name: '🤖 Dependabot Auto-Merge'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pull-requests: write # approve the pull request
+      contents: write # allow the squash merge once required checks pass
+    # Keyed to the pull request AUTHOR rather than the actor, so a
+    # maintainer pushing to a Dependabot branch does not turn their own
+    # commit into an auto-approved one.
+    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && github.base_ref == (inputs.base-branch || github.event.repository.default_branch) }}
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🦾 Dependabot: approves and queues patch and minor updates.'
+
+      - name: '🤖 Dependabot Metadata'
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+
+      # ⚠️ THE TITLE BECOMES THE COMMIT SUBJECT ON A SQUASH MERGE, and this
+      # repository requires a lowercase subject: semantic-pr's subjectPattern
+      # is `[a-z].*` after an optional emoji. Dependabot writes "Bump", and
+      # offers no setting to change it, so eight capital-B subjects are
+      # already in this repository's permanent history.
+      #
+      # Bot-authored pull requests are exempt from the title check, so nothing
+      # fails - the subject simply lands inconsistent with every human one.
+      # This is the last point at which the title is still ours to edit:
+      # before the approval and before the merge queue.
+      #
+      # Only a leading capital followed by a lowercase letter is touched, so
+      # an acronym such as 'API' is left exactly as written.
+      - name: '🔤 Normalise the Title to a Lowercase Subject'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          TITLE: ${{ github.event.pull_request.title }}
+          GH_TOKEN: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # The title goes in through the environment, never interpolated into
+          # this script: a pull request title is attacker-controlled text.
+          NEW="$(python3 -c '
+          import os, re, sys
+          t = os.environ["TITLE"]
+          m = re.match(r"^([a-z]+(?:\([^)]*\))?!?: )([A-Z][a-z].*)$", t, re.S)
+          sys.stdout.write(t if not m else m.group(1) + m.group(2)[0].lower() + m.group(2)[1:])
+          ')"
+          if [ "$NEW" = "$TITLE" ]; then
+            echo "Title already conforms: ${TITLE}"
+            exit 0
+          fi
+          echo "Retitling:"
+          echo "  from: ${TITLE}"
+          echo "  to:   ${NEW}"
+          gh pr edit "$PR_URL" --title "$NEW" ||
+            echo "::warning::Could not retitle. The squash subject will keep its capital letter."
+
+      - name: '🖐️ Flag Major Update for Human Review'
+        if: ${{ steps.meta.outputs.update-type == 'version-update:semver-major' }}
+        env:
+          DEPENDENCY_NAMES: ${{ steps.meta.outputs.dependency-names }}
+        run: |
+          echo "::notice title=Major bump, needs a human::${DEPENDENCY_NAMES} is a major version bump, so it is not auto-approved or auto-merged. Read the changelog before merging."
+          {
+            echo "### 🖐️ Major version bump"
+            echo ""
+            echo "\`${DEPENDENCY_NAMES}\` crosses a major version, which is where breaking changes live."
+            echo "This pull request was deliberately left for a human to review and merge."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: '👍 Approve Dependabot PR'
+        id: approve
+        if: ${{ steps.meta.outputs.update-type != 'version-update:semver-major' }}
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr review --approve "$PR_URL" ||
+            echo "::warning::Could not approve. Enable 'Allow GitHub Actions to create and approve pull requests' in Settings, or set a BOT_ACCESS_TOKEN secret."
+
+      - name: '🚀 Enable Auto-Merge'
+        if: ${{ steps.meta.outputs.update-type != 'version-update:semver-major' }}
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge --auto --squash "$PR_URL" ||
+            echo "::warning::Could not enable auto-merge. Turn on 'Allow auto-merge' (Settings, General, Pull Requests); until then this pull request needs a manual merge once its checks pass."
+
+      - name: '📝 Report Failure'
+        if: ${{ failure() }}
+        run: |
+          echo "::error::Dependabot automation failed before it could approve or queue the merge. The update itself is unaffected and can still be reviewed and merged by hand."
+          {
+            echo "### 🤖 Dependabot automation failed"
+            echo ""
+            echo "1. **Metadata fetch:** the action could not read the update metadata, usually a transient API error."
+            echo "2. **Approve:** the review could not be posted; check that the token has \`pull-requests: write\`."
+            echo ""
+            echo "Enabling auto-merge is best-effort and only ever warns, so it is never the cause of this failure."
+          } >> "$GITHUB_STEP_SUMMARY"
