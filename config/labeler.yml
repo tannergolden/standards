@@ -1,0 +1,128 @@
+# --- Shared Labeler Rules ---
+#
+# Maps changed file paths to type and area labels, applied to a pull request
+# by the governance workflow.
+#
+# The globs are deliberately broad and cover several ecosystems at once, so
+# one file serves a Go service, a TypeScript front end, and a documentation
+# repository without any of them editing it. A path that matches nothing
+# simply never fires.
+#
+# Every label named here must EXIST in the repository before it can be
+# applied, which is what the label sync is for. A rule naming a label that
+# was never synced fails the triage job.
+
+# --- Types ---
+
+'type: documentation':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**'
+          - 'LICENSE'
+
+'type: tests':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.test.*'
+          - '**/*.spec.*'
+          - 'tests/**'
+
+'type: chore':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - '.vscode/**'
+          - 'Makefile'
+          - 'package.json'
+          - '.gitignore'
+
+'type: security':
+  - changed-files:
+      - any-glob-to-any-file:
+          # '**/' also matches a root-level file, so this covers both the
+          # shipped .github/SECURITY.md and a repository that relocates it.
+          - '**/SECURITY.md'
+
+'type: accessibility':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.a11y.*'
+
+# --- Areas ---
+
+'area: infrastructure':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/**'
+          - 'src/infra/**'
+          - 'Dockerfile'
+          - 'docker-compose.yml'
+          - 'terraform/**'
+          - 'k8s/**'
+
+'area: backend':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'backend/**'
+          - 'api/**'
+          - 'src/backend/**'
+          # The shipped scaffold's layered layout (see the Source-Code
+          # standard): application and domain layers are backend code.
+          - 'src/app/**'
+          - 'src/domain/**'
+          - '**/*.go'
+          - '**/*.py'
+          - '**/*.java'
+
+'area: frontend':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'frontend/**'
+          - 'web/**'
+          - 'src/frontend/**'
+          - '**/*.html'
+          - '**/*.css'
+          - '**/*.tsx'
+          - '**/*.jsx'
+
+'area: database':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'db/**'
+          - 'migrations/**'
+          - '**/*.sql'
+          - '**/*.prisma'
+
+'area: mobile':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'ios/**'
+          - 'android/**'
+          - 'mobile/**'
+
+'area: governance':
+  - changed-files:
+      - any-glob-to-any-file:
+          # The label's own description claims licences, code of conduct,
+          # security policy and contribution guidelines. The globs covered
+          # the first two, so a SECURITY.md or CONTRIBUTING.md change was
+          # never labelled by the thing that says it labels them.
+          - 'LICENSE'
+          - 'LICENSE.*'
+          - 'LICENSES/**'
+          - 'REUSE.toml'
+          - '.reuse/**'
+          - '**/CODE_OF_CONDUCT.md'
+          - '**/CONTRIBUTING.md'
+          - '**/SECURITY.md'
+          - '**/GOVERNANCE.md'
+          - '.github/CODEOWNERS'
+
+'area: dx':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.devcontainer/**'
+          - '.vscode/**'
+          - '.husky/**'
+          - 'Makefile'
