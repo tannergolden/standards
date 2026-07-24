@@ -1,0 +1,145 @@
+# --- Composite Action ---
+#
+# 🧰 Setup Toolchain
+#
+# Purpose: makes whichever toolchains a repository actually uses available,
+# decided by what is present in its tree rather than by configuration it has
+# to keep in sync. A repository with no go.mod gets no Go; one with no
+# Cargo.toml gets no Rust. Nothing is declared twice, and adding a language
+# to a project does not mean remembering to edit its CI.
+#
+# Detection is by manifest file, which is the one thing every ecosystem
+# agrees on:
+#
+#   Node.js   package.json
+#   Python    requirements.txt, pyproject.toml, setup.py, Pipfile
+#   Go        go.mod
+#   Rust      Cargo.toml
+#   Java      pom.xml, build.gradle, build.gradle.kts
+#   Ruby      Gemfile
+#   .NET      any *.csproj, *.fsproj, or *.sln
+#
+# TWO MECHANISMS, ON PURPOSE. Node and Python are installed by their setup
+# actions, because those give exact version control and dependency caching.
+# Everything else uses the toolchain PREINSTALLED on the runner image, which
+# is deliberate rather than lazy: it adds no third-party action to the
+# supply chain, and each of those ecosystems already reads its own version
+# from the repository. `go.mod` names the Go version and the toolchain
+# fetches it; `rust-toolchain.toml` pins rustup; Gradle wrappers pin
+# themselves. Installing over that would override a decision the repository
+# already made.
+#
+# Caching follows one rule throughout: enable it only where a lockfile
+# exists, because cache keys derive from one. Asking for a cache without a
+# lockfile fails the setup step rather than quietly skipping it.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/setup@v1
+#
+# ---
+
+name: '🧰 Setup Toolchain'
+description: 'Makes the toolchains a repository uses available, detected from the manifests in its tree.'
+
+inputs:
+  node-version:
+    description: 'Node.js version, used when a package.json is present.'
+    required: false
+    default: '22.x'
+  python-version:
+    description: 'Python version, used when a Python manifest is present.'
+    required: false
+    default: '3.12'
+  java-version:
+    description: >-
+      Preinstalled Java major version to select, used when a Maven or Gradle
+      build file is present. Falls back to the image default if the runner
+      does not carry it.
+    required: false
+    default: '21'
+  cache:
+    description: >-
+      Enable dependency caching where a lockfile makes it safe. Turn this
+      off for jobs that publish artifacts, where a poisoned cache could
+      reach a release.
+    required: false
+    default: 'true'
+  install:
+    description: >-
+      Run the repository's own dependency install after the toolchains are
+      available. Set to false for jobs that only need a runtime present.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: '🟢 Setup Node.js'
+      if: hashFiles('package.json') != ''
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        # Cache only alongside a lockfile: `npm ci` requires one, and the
+        # cache step fails outright in a repository that has none.
+        cache: ${{ (inputs.cache == 'true' && hashFiles('package-lock.json') != '') && 'npm' || '' }}
+
+    - name: '🐍 Setup Python'
+      if: hashFiles('requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile', 'scripts/*.py') != ''
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: ${{ (inputs.cache == 'true' && hashFiles('requirements.txt') != '') && 'pip' || '' }}
+
+    - name: '☕ Select Java'
+      if: hashFiles('pom.xml', 'build.gradle', 'build.gradle.kts') != ''
+      shell: bash
+      env:
+        WANTED: ${{ inputs.java-version }}
+      run: |
+        set -euo pipefail
+        # Runner images expose each preinstalled JDK as JAVA_HOME_<major>_X64.
+        VAR="JAVA_HOME_${WANTED}_X64"
+        SELECTED="${!VAR:-}"
+        if [ -n "$SELECTED" ] && [ -d "$SELECTED" ]; then
+          echo "JAVA_HOME=$SELECTED" >> "$GITHUB_ENV"
+          echo "$SELECTED/bin" >> "$GITHUB_PATH"
+          echo "Selected preinstalled Java $WANTED."
+        else
+          echo "::notice title=Java version::Java $WANTED is not preinstalled on this runner, so the image default ($(java -version 2>&1 | head -n 1)) is used. A Gradle or Maven wrapper in the repository still governs the build itself."
+        fi
+
+    - name: '🔎 Report Detected Toolchains'
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Go, Rust, Ruby, and .NET ship with the runner image, and each
+        # reads its own version from the repository. Report what is
+        # available so a version surprise is visible in the log rather than
+        # inferred from a failure three steps later.
+        report() {
+          if command -v "$1" >/dev/null 2>&1; then
+            printf '  %-8s %s\n' "$1" "$("${@:2}" 2>&1 | head -n 1)"
+          else
+            echo "::warning title=Toolchain missing::'$1' was detected as needed by this repository but is not on the runner. Install it in your stub before calling this workflow."
+          fi
+        }
+        echo "Toolchains available for this repository:"
+        [ -f go.mod ] && report go go version
+        [ -f Cargo.toml ] && report cargo cargo --version
+        [ -f Gemfile ] && report ruby ruby --version
+        if ls ./*.sln ./*.csproj ./*.fsproj >/dev/null 2>&1; then report dotnet dotnet --version; fi
+        exit 0
+
+    - name: '📦 Install Dependencies'
+      if: inputs.install == 'true' && hashFiles('Makefile') != ''
+      shell: bash
+      run: |
+        # `make setup` is the repository's own answer to "get ready to
+        # build", whatever its language. Skipped rather than failed where
+        # the Makefile does not define it.
+        if make -n setup >/dev/null 2>&1; then
+          make setup
+        else
+          echo "::notice title=No setup target::This repository's Makefile does not define 'setup', so dependency installation was left to the toolchain steps above."
+        fi

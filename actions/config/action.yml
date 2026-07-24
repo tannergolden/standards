@@ -1,0 +1,82 @@
+# --- Composite Action ---
+#
+# 📄 Provide Shared Config
+#
+# Purpose: hands a workflow one of the shared configuration files from
+# `config/`, and returns the path to use.
+#
+# This exists because of an asymmetry worth stating plainly. A reusable
+# workflow's checkout resolves to the CALLING repository, so it cannot see
+# the configuration published beside it. A composite action is fetched with
+# its whole repository, so it can. Routing config through an action turns an
+# awkward problem into a file copy.
+#
+# A calling repository that has audited findings of its own passes
+# `override` with a path in its own tree, and that path is returned
+# untouched. The shared file is the default, never the mandate.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/config@v1
+#     id: cfg
+#     with:
+#       name: zizmor.yml
+#       override: ${{ inputs.zizmor-config }}
+#   - run: zizmor --config "${{ steps.cfg.outputs.path }}" .github/workflows/
+#
+# ---
+
+name: '📄 Provide Shared Config'
+description: 'Resolves a shared configuration file to a path, honoring a calling repository override.'
+
+inputs:
+  name:
+    description: "File name within this repository's config/ folder, such as zizmor.yml."
+    required: true
+  override:
+    description: >-
+      Path to a replacement in the CALLING repository. When set, it is
+      returned as-is and the shared file is not used.
+    required: false
+    default: ''
+
+outputs:
+  path:
+    description: 'Path to the configuration file the workflow should read.'
+    value: ${{ steps.resolve.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - name: '📄 Resolve configuration'
+      id: resolve
+      shell: bash
+      env:
+        CONFIG_NAME: ${{ inputs.name }}
+        CONFIG_OVERRIDE: ${{ inputs.override }}
+      run: |
+        set -euo pipefail
+
+        if [ -n "$CONFIG_OVERRIDE" ]; then
+          if [ ! -f "$CONFIG_OVERRIDE" ]; then
+            echo "::error title=Config not found::'${CONFIG_OVERRIDE}' does not exist in this repository. Fix the path or drop the input to use the shared default."
+            exit 1
+          fi
+          echo "path=${CONFIG_OVERRIDE}" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Shared config::using ${CONFIG_OVERRIDE} from this repository"
+          exit 0
+        fi
+
+        # Copied out of this action's own checkout rather than fetched over
+        # the network: no egress, no rate limit, and it works the same in a
+        # private repository as in a public one.
+        SRC="${GITHUB_ACTION_PATH}/../../config/${CONFIG_NAME}"
+        if [ ! -f "$SRC" ]; then
+          echo "::error title=Unknown shared config::'${CONFIG_NAME}' is not published in config/."
+          exit 1
+        fi
+
+        DEST="${RUNNER_TEMP}/shared-${CONFIG_NAME}"
+        cp "$SRC" "$DEST"
+        echo "path=${DEST}" >> "$GITHUB_OUTPUT"
+        echo "::notice title=Shared config::using the shared ${CONFIG_NAME}"

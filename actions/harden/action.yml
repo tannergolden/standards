@@ -1,0 +1,61 @@
+# --- Composite Action ---
+#
+# 🛡️ Harden Runner
+#
+# Purpose: one place that pins the runner-hardening action. Every job in
+# every repository starts with this step, so pinning it here means a
+# security update is one bump rather than a sweep across every workflow
+# that would otherwise carry its own copy of the SHA.
+#
+# Egress policy defaults to `audit`, which records every outbound connection
+# a job makes without blocking any of them. Move a job to `block` with an
+# allowlist once its endpoints are known and stable; auditing first is what
+# tells you what that allowlist should contain.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/harden@v1
+#     with:
+#       egress-policy: audit
+#       notice: '👷 Primary CI: lint, test, and build.'
+#
+# ---
+
+name: '🛡️ Harden Runner'
+description: 'Audits or blocks runner egress, and posts the job notice.'
+
+inputs:
+  egress-policy:
+    description: >-
+      'audit' records outbound connections without blocking them.
+      'block' denies everything outside allowed-endpoints.
+    required: false
+    default: 'audit'
+  allowed-endpoints:
+    description: >-
+      Newline-separated endpoints permitted under `block`. Ignored when the
+      policy is `audit`, where nothing is denied in the first place.
+    required: false
+    default: ''
+  notice:
+    description: >-
+      One line describing what this job does, surfaced as an annotation on
+      the run. Leave empty to post nothing.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: '🛡️ Harden Runner'
+      uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      with:
+        egress-policy: ${{ inputs.egress-policy }}
+        allowed-endpoints: ${{ inputs.allowed-endpoints }}
+
+    - name: 'ℹ️ Workflow Notice'
+      if: inputs.notice != ''
+      shell: bash
+      env:
+        NOTICE: ${{ inputs.notice }}
+      run: echo "::notice title=Workflow Info::${NOTICE}"
