@@ -1,0 +1,105 @@
+# --- Shared zizmor Configuration ---
+#
+# Accepted findings, each with the reasoning that accepts it. Read by the
+# reusable `lint-workflows.yml` at the ref it was called from, so this file
+# and the workflow that applies it can never drift apart.
+#
+# Everything not listed here is a real finding: fix it. Do not add an entry
+# without a comment explaining why the risk does not apply.
+#
+# Entries are keyed by workflow FILE NAME, which makes them match in two
+# places at once: the reusable workflows in this repository, and the trigger
+# stubs in a consuming repository. That only holds while both use the same
+# names, which is why stub file names are part of the published contract.
+# Rename a stub and it stops being covered here.
+#
+# ---
+
+rules:
+  # A reusable workflow cannot carry a dangerous trigger; `workflow_call` is
+  # its only entry point. These triggers therefore live in the CONSUMER'S
+  # stub, which is what this ignore list covers.
+  #
+  # All three follow the documented-safe pattern: none check out or execute
+  # pull-request HEAD code. They call GitHub APIs only (labels, size,
+  # first-interaction greeting, PR-title lint, DCO trailer reads, failure
+  # issues). The single checkout among them, in semantic-pr's DCO job, takes
+  # the BASE repository at its default state purely to run the trusted
+  # dco-check script. `pull_request_target` is REQUIRED for fork pull
+  # requests to receive labels and status checks at all.
+  dangerous-triggers:
+    ignore:
+      # Consumer stub names (and this repository's own `self-` stubs, which
+      # are the same stubs under a prefix, since the unprefixed names are
+      # taken here by the reusable definitions themselves).
+      - governance.yml
+      - semantic-pr.yml
+      - ci-failure-alert.yml
+      - self-governance.yml
+      - self-semantic-pr.yml
+      - self-ci-failure-alert.yml
+
+  # `ci.yml` caches npm and pip deliberately: it validates branches and pull
+  # requests and publishes no artifacts, so a poisoned cache has nothing
+  # downstream to reach. `release-publish.yml` is flagged at LOW confidence
+  # merely for containing setup-node and setup-python under a release
+  # trigger; caching is explicitly disabled in both of those steps.
+  cache-poisoning:
+    ignore:
+      - ci.yml
+      - release-publish.yml
+
+  # softprops/action-gh-release is kept over a raw `gh release` script for
+  # its glob-based multi-file upload and create-or-update semantics, both
+  # used by the draft and publish flow. It is SHA-pinned like every other
+  # third-party action.
+  superfluous-actions:
+    ignore:
+      - release-notes.yml
+      - release-publish.yml
+
+  # (auditor persona) The audit asks that jobs reading a secret other than
+  # GITHUB_TOKEN run inside a GitHub deployment environment. The flagged
+  # secrets are the optional BOT_ACCESS_TOKEN, always hoisted into env as a
+  # direct assignment or an A-or-B fallback and consumed only by gh and git,
+  # and the Claude agent's API key, which the action's documented interface
+  # takes as an input (the presence gate yields only 'true' or 'false',
+  # never the value itself). Wrapping formatting, agent, and
+  # dependency-approval jobs in deployment environments would write a
+  # deployment record on every automation run while adding no protection,
+  # since the secret stays repository-scoped either way. Deploy-shaped jobs
+  # DO use real environments: preview-deploy takes `preview`, pages-deploy
+  # takes `github-pages`.
+  secrets-outside-env:
+    ignore:
+      - auto-format.yml
+      - claude.yml
+      - dependabot-automerge.yml
+      - maintenance.yml
+
+  # crates.io does support trusted publishing, but claiming it needs an OIDC
+  # exchange: either a third-party action, which would have to be pinned to a
+  # SHA verified here first, or a hand-rolled token exchange in a step that
+  # publishes real crates and cannot be rehearsed from this repository. The
+  # `cargo publish` path therefore keeps CARGO_REGISTRY_TOKEN, which the caller
+  # supplies and this workflow never prints. PyPI's trusted publishing IS
+  # supported and documented in the stub, because there it costs nothing.
+  use-trusted-publishing:
+    ignore:
+      - publish-package.yml
+
+  # --- Pinning policy ---
+  #
+  # Everything gets hash-pinned. The single exception is this repository's OWN
+  # actions and reusable workflows, which consumers call at the moving major
+  # tag `@v1` BY DESIGN: that tag is how a fix reaches every repository at once
+  # without 40 Dependabot pull requests, and it is under the same owner as the
+  # code it points at. A hash pin here would also be circular, since a stub
+  # published from this repository cannot name a commit that does not exist yet.
+  #
+  # `ref-pin` still REQUIRES a ref: `@main` or a bare `uses:` is a finding.
+  unpinned-uses:
+    config:
+      policies:
+        'tannergolden/standards/*': ref-pin
+        '*': hash-pin

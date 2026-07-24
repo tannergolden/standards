@@ -1,0 +1,132 @@
+# git-cliff configuration
+# https://git-cliff.org/docs/configuration
+
+[changelog]
+# Changelog header
+header = ""
+
+# Template for the changelog body
+body = """
+## {% if get_env(name="GITHUB_REF_NAME", default="") == "Development" %}🚀{% elif get_env(name="GITHUB_REF_NAME", default="") == "Preview" %}✨{% elif get_env(name="GITHUB_REF_NAME", default="") == "Release" %}🚢{% else %}📦{% endif %} {{ get_env(name="GITHUB_REF_NAME", default="Project") }} Update: {% if version %}{{ version }}{% else %}[Unreleased]{% endif %}
+
+{% if version %}
+> **Release Date:** {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}
+> **Status:** 🚧 Unreleased
+{% endif %}
+
+### 📈 Stats
+| Type | Count |
+| :--- | :--- |
+| ✨ Features | {{ commits | filter(attribute="group", value="✨ New Features") | length }} |
+| 🐛 Fixes | {{ commits | filter(attribute="group", value="🐛 Bug Fixes") | length }} |
+| 📚 Docs | {{ commits | filter(attribute="group", value="📚 Documentation & Styling") | length }} |
+| ♻️ Refactor | {{ commits | filter(attribute="group", value="♻️ Refactoring") | length }} |
+| ⚡ Performance | {{ commits | filter(attribute="group", value="⚡ Performance") | length }} |
+| 🔒 Security | {{ commits | filter(attribute="group", value="🔒 Security") | length }} |
+| 🔧 Tooling | {{ commits | filter(attribute="group", value="🔧 Miscellaneous & Tooling") | length }} |
+| ⏪ Reverts | {{ commits | filter(attribute="group", value="⏪ Reverts") | length }} |
+
+---
+
+{% if commits | filter(attribute="breaking", value=true) | length > 0 %}
+### ⚠️ Breaking Changes
+> [!WARNING]
+> This release includes breaking changes. Please review carefully.
+
+{% for commit in commits | filter(attribute="breaking", value=true) %}\
+- **{{ commit.scope | default(value="general") }}**: {{ commit.message | upper_first }}
+{% endfor %}
+{% endif %}
+
+### ✨ New Features
+{% for commit in commits | filter(attribute="group", value="✨ New Features") %}\
+- **{{ commit.scope | default(value="general") }}**: {{ commit.message | upper_first }} ([{{ commit.id | truncate(length=7, end="") }}]({{ commit.id }}))
+{% else %}\
+* _No new user-facing features in this update._
+{% endfor %}
+
+### 🐛 Bug Fixes
+{% for commit in commits | filter(attribute="group", value="🐛 Bug Fixes") %}\
+- **{{ commit.scope | default(value="general") }}**: {{ commit.message | upper_first }} ([{{ commit.id | truncate(length=7, end="") }}]({{ commit.id }}))
+{% else %}\
+* _No bug fixes in this update._
+{% endfor %}
+
+### ♻️ Refactoring
+{% for commit in commits | filter(attribute="group", value="♻️ Refactoring") %}\
+- **{{ commit.scope | default(value="general") }}**: {{ commit.message | upper_first }}
+{% endfor %}
+
+### 📚 Documentation & Styling
+{% for commit in commits | filter(attribute="group", value="📚 Documentation & Styling") %}\
+- **{{ commit.scope | default(value="general") }}**: {{ commit.message | upper_first }}
+{% endfor %}
+
+### 🔧 Miscellaneous & Tooling
+{% for commit in commits | filter(attribute="group", value="🔧 Miscellaneous & Tooling") %}\
+- **{{ commit.scope | default(value="general") }}**: {{ commit.message | upper_first }}
+{% endfor %}
+
+### ⚡ Performance
+{% for commit in commits | filter(attribute="group", value="⚡ Performance") %}\
+- **{{ commit.scope | default(value="general") }}**: {{ commit.message | upper_first }}
+{% endfor %}
+
+### 🔒 Security
+{% for commit in commits | filter(attribute="group", value="🔒 Security") %}\
+- **{{ commit.scope | default(value="general") }}**: {{ commit.message | upper_first }}
+{% endfor %}
+
+### ⏪ Reverts
+{% for commit in commits | filter(attribute="group", value="⏪ Reverts") %}\
+- **{{ commit.scope | default(value="general") }}**: {{ commit.message | upper_first }}
+{% endfor %}
+
+---
+
+### 👥 Contributors
+*Special thanks to the contributors who made this release possible:*
+{% for contributor in github.contributors %}\
+- [@{{ contributor.username }}](https://github.com/{{ contributor.username }})
+{% endfor %}
+"""
+
+# Remove leading and trailing whitespace from the template
+trim = true
+# Changelog footer
+footer = ""
+
+[git]
+# Parse conventional commits
+conventional_commits = true
+# Filter out commits that don't match conventional commit format
+filter_unconventional = true
+# Process each line of a commit as an individual commit
+split_commits = false
+# Regex for parsing and grouping commits
+commit_parsers = [
+    { message = "^feat", group = "✨ New Features" },
+    { message = "^fix", group = "🐛 Bug Fixes" },
+    { message = "^refactor", group = "♻️ Refactoring" },
+    { message = "^doc|^style", group = "📚 Documentation & Styling" },
+    { message = "^chore|^ci|^build", group = "🔧 Miscellaneous & Tooling" },
+    { message = "^test", skip = true },
+    { message = "^perf", group = "⚡ Performance" },
+    { message = "^security", group = "🔒 Security" },
+    { message = "^revert", group = "⏪ Reverts" },
+]
+# Protect breaking changes from being skipped
+protect_breaking_commits = true
+# Filter out commits by patterns
+filter_commits = false
+# Skip commits from the bot
+skip_commits = "chore\\(docs\\): 🏥 update repository health status on.*"
+# Tag pattern
+tag_pattern = "v[0-9].*"
+# Sort order (oldest or newest first)
+sort_commits = "oldest"
+
+[bump]
+# Initial tag for the project
+initial_tag = "v0.1.0"
