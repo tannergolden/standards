@@ -1,0 +1,59 @@
+# --- Composite Action ---
+#
+# ⬆️ Standards Version Check
+#
+# Purpose: opens one issue when a newer MAJOR of the shared standards is
+# published, and does nothing else ever.
+#
+# A moving major tag (`@v1`) already delivers every fix and feature in its
+# line with no pull request and no action. The one thing it cannot do is
+# become `@v2`, because a major is a breaking change and must never arrive by
+# itself. Nothing otherwise tells a consumer that v2 exists.
+#
+# ⚠️ NOT A DEPENDENCY UPDATER. Dependabot already updates `uses:` references
+# including reusable-workflow calls. This notifies; it never edits a pin.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/standards-version@v1
+#     with:
+#       token: ${{ secrets.GITHUB_TOKEN }}
+#
+# ---
+
+name: '⬆️ Standards Version Check'
+description: 'Opens one issue when a newer major of the shared standards is published.'
+
+inputs:
+  token:
+    description: 'Token used to read releases and open the notice.'
+    required: true
+  repository:
+    description: 'Repository whose stubs are inspected, as owner/repo.'
+    required: false
+    default: ${{ github.repository }}
+  standards-repository:
+    description: 'Repository publishing the standards, as owner/repo.'
+    required: false
+    default: 'tannergolden/standards'
+  workflow-dir:
+    description: 'Directory holding the trigger stubs to inspect.'
+    required: false
+    default: '.github/workflows'
+  label:
+    description: 'Optional label applied to the notice. Empty applies none.'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: '⬆️ Check for a newer major'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ inputs.repository }}
+        STANDARDS_REPO: ${{ inputs.standards-repository }}
+        WORKFLOW_DIR: ${{ inputs.workflow-dir }}
+        LABEL: ${{ inputs.label }}
+      run: python3 "${GITHUB_ACTION_PATH}/../../scripts/check-standards-version.py"

@@ -1,0 +1,84 @@
+# --- Composite Action ---
+#
+# 🎉 Initialise From Template
+#
+# Purpose: makes a repository generated from a template belong to its new
+# owner, once, then disables itself.
+#
+# GitHub's "Use this template" copies files verbatim and substitutes nothing.
+# Every generated repository therefore starts out carrying the template
+# author's licence holder, funding target, documentation footers, and contact
+# links. This rewrites them and removes the sentinel that let it run.
+#
+# ⚠️ IT DOES NOT REWRITE THE SHARED STANDARDS PATH. `<owner>/standards` is the
+# repository every consumer calls; pointing it at the new owner would name a
+# repository that does not exist. That is why the substitution is a set of
+# targeted rules rather than a find-and-replace.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/init-template@v1
+#     with:
+#       token: ${{ secrets.GITHUB_TOKEN }}
+#
+# ---
+
+name: '🎉 Initialise From Template'
+description: 'Rewrites a generated repository''s identity to its new owner, once, then disables itself.'
+
+inputs:
+  token:
+    description: 'Token used to read the owner profile and push the result.'
+    required: true
+  repository:
+    description: 'Generated repository, as owner/repo.'
+    required: false
+    default: ${{ github.repository }}
+  owner:
+    description: 'Account that now owns the repository.'
+    required: false
+    default: ${{ github.repository_owner }}
+  sentinel:
+    description: >-
+      Marker file whose presence means "not yet initialised". Removed on
+      success, which is what makes this run exactly once.
+    required: false
+    default: '.github/TEMPLATE_INIT'
+  template-owner:
+    description: 'Account that owns the template, whose identity is being replaced.'
+    required: false
+    default: 'tannergolden'
+  is-template:
+    description: >-
+      Whether THIS repository is itself a template. True refuses to run, which
+      is what stops the template initialising itself and deleting its own
+      sentinel. Matched on the flag rather than on a repository name, so
+      renaming the template cannot break it.
+    required: false
+    default: ${{ github.event.repository.is_template }}
+  default-branch:
+    description: 'Branch to push to. Empty uses the checked-out branch.'
+    required: false
+    default: ''
+  amend-initial:
+    description: >-
+      Rewrite the generation commit into a Conventional Commit when it is the
+      only commit present. Off leaves it and adds a second commit instead.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: '🎉 Initialise from template'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ inputs.repository }}
+        OWNER: ${{ inputs.owner }}
+        SENTINEL: ${{ inputs.sentinel }}
+        TEMPLATE_OWNER: ${{ inputs.template-owner }}
+        IS_TEMPLATE: ${{ inputs.is-template }}
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
+        AMEND_INITIAL: ${{ inputs.amend-initial }}
+      run: python3 "${GITHUB_ACTION_PATH}/../../scripts/init-template.py"
