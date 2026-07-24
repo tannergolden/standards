@@ -1,0 +1,113 @@
+# --- Reusable Workflow ---
+#
+# 🎉 Initialise From Template
+#
+# Purpose: runs once in a repository generated from the template and rewrites
+# the template author's identity to the new owner's.
+#
+# GitHub's "Use this template" copies files VERBATIM. It substitutes nothing:
+# not the licence holder, not the funding target, not the contact links, not
+# the documentation footers. Without this, every generated repository carries
+# somebody else's name until a human notices, and most never do.
+#
+# ⚠️ THE SENTINEL IS WHAT MAKES THIS RUN EXACTLY ONCE. The template ships
+# `.github/TEMPLATE_INIT`; this removes it on success. Every later trigger
+# finds no sentinel and exits immediately, so the stub can stay in the tree
+# forever without ever acting again. That also means it is safe to trigger on
+# push, on create, and by hand at the same time - whichever fires first wins
+# and the rest are no-ops.
+#
+# THE INITIAL COMMIT IS AMENDED when it is the only commit. Template
+# generation leaves a bare "Initial commit", which would fail the very
+# Conventional Commits gate these standards apply to every other commit. A
+# generated repository should not begin its life non-compliant.
+#
+# Called, not triggered. The template ships this stub:
+#
+#   name: '🎉 Initialise From Template'
+#   on:
+#     push:
+#       branches: ['__DEFAULT_BRANCH__']
+#     create:
+#     workflow_dispatch:
+#   permissions: {}
+#   jobs:
+#     init:
+#       permissions:
+#         contents: write # rewrite the identity and push the result
+#       uses: tannergolden/standards/.github/workflows/init-template.yml@v1
+#
+# ---
+
+name: '🎉 Reusable: Initialise From Template'
+
+on:
+  workflow_call:
+    inputs:
+      sentinel:
+        description: >-
+          Marker whose presence means "not yet initialised". Removed on
+          success, which is what makes this run exactly once.
+        required: false
+        type: string
+        default: '.github/TEMPLATE_INIT'
+      template-owner:
+        description: 'Account owning the template, whose identity is replaced.'
+        required: false
+        type: string
+        default: 'tannergolden'
+      amend-initial:
+        description: >-
+          Rewrite the generation commit into a Conventional Commit when it is
+          the only commit present.
+        required: false
+        type: boolean
+        default: true
+
+permissions: {}
+
+jobs:
+  init:
+    name: '🎉 Claim This Repository'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # rewrite the identity and push the result
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🎉 Init: claiming this generated repository for its owner.'
+
+      # Full history, because amending the initial commit needs to know
+      # whether there is exactly one. persist-credentials stays off; the push
+      # authenticates explicitly rather than leaving a token in git config.
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: '🎉 Initialise from template'
+        uses: tannergolden/standards/actions/init-template@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sentinel: ${{ inputs.sentinel }}
+          template-owner: ${{ inputs.template-owner }}
+          is-template: ${{ github.event.repository.is_template }}
+          default-branch: ${{ github.event.repository.default_branch }}
+          amend-initial: ${{ inputs.amend-initial }}
+
+      - name: '📝 Report Failure'
+        if: ${{ failure() }}
+        run: |
+          echo "::error::Initialisation could not complete. The most common cause is branch protection already active on the default branch, which blocks the push."
+          {
+            echo "### 🎉 Template Init Failed"
+            echo ""
+            echo "The substitution ran but the result could not be pushed."
+            echo ""
+            echo "1. **Branch protection:** a ruleset on the default branch blocks this. Re-run it before applying protection, or apply the changes by hand."
+            echo "2. **Re-runnable:** the sentinel is only removed on success, so running this again is safe."
+          } >> "$GITHUB_STEP_SUMMARY"

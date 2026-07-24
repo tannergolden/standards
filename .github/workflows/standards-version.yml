@@ -1,0 +1,86 @@
+# --- Reusable Workflow ---
+#
+# ⬆️ Standards Version
+#
+# Purpose: tells a consuming repository when a newer MAJOR of the shared
+# standards exists. That is the whole job.
+#
+# Stubs pin `@v1`, a MOVING major tag, so every fix and feature in the v1 line
+# already arrives with no pull request and nothing to maintain. The one thing
+# a moving tag cannot do is become `@v2`: a major is a breaking change - a
+# renamed required check, a removed input - and must never arrive on its own.
+#
+# But nothing otherwise announces that v2 exists, so a repository can sit on a
+# superseded major indefinitely with no signal at all. This is that signal.
+#
+# ONE ISSUE, EVER, PER MAJOR. A notice repeated weekly is a notice nobody
+# reads. It changes no files and moves no pins, because adopting a major is a
+# decision rather than a chore.
+#
+# ⚠️ THIS IS NOT A DEPENDENCY UPDATER. Dependabot already updates `uses:`
+# references, reusable-workflow calls included, and the dependabot stub
+# enables it. A third mechanism doing the same work would be maintenance
+# invented to solve a solved problem.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '⬆️ Standards Version'
+#   on:
+#     schedule:
+#       - cron: '0 7 * * 1'
+#     workflow_dispatch:
+#   permissions: {}
+#   jobs:
+#     standards:
+#       permissions:
+#         contents: read # read this repository's own stubs
+#         issues: write # open the one notice
+#       uses: tannergolden/standards/.github/workflows/standards-version.yml@v1
+#
+# ---
+
+name: '⬆️ Reusable: Standards Version'
+
+on:
+  workflow_call:
+    inputs:
+      standards-repository:
+        description: 'Repository publishing the standards, as owner/repo.'
+        required: false
+        type: string
+        default: 'tannergolden/standards'
+      label:
+        description: 'Optional label applied to the notice. Empty applies none.'
+        required: false
+        type: string
+        default: ''
+
+permissions: {}
+
+jobs:
+  version:
+    name: '⬆️ Check For A Newer Major'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read # read this repository's own stubs
+      issues: write # open the one notice
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      # The stubs are the thing being inspected, so the caller's tree is what
+      # matters here. Shallow is enough: only the current files are read.
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '⬆️ Check for a newer major'
+        uses: tannergolden/standards/actions/standards-version@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          standards-repository: ${{ inputs.standards-repository }}
+          label: ${{ inputs.label }}
