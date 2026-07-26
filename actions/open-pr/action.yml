@@ -28,11 +28,11 @@
 #   - uses: tannergolden/standards/actions/open-pr@v1
 #     with:
 #       token: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
-#       branch: chore/license-year
-#       commit-title: 'build(license): 📅 update copyright year to 2027'
-#       pr-title: 'build(license): 📅 update copyright year'
+#       branch: style/auto-format
+#       commit-title: 'style(auto): 🎨 fix formatting drift in 12 file(s)'
+#       pr-title: 'style(auto): 🎨 fix formatting drift'
 #       pr-body: |
-#         ### 🕒 Automated License Year Update
+#         ### 🖌️ Automated Formatting Fix
 #
 # ---
 
@@ -48,7 +48,7 @@ inputs:
       lifts both limits.
     required: true
   branch:
-    description: 'The fixed topic branch for this concern, such as chore/license-year.'
+    description: 'The fixed topic branch for this concern, such as style/auto-format.'
     required: true
   commit-title:
     description: >-

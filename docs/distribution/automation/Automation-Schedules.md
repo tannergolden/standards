@@ -80,7 +80,7 @@ together means competing for the same rate limit at the same instant.
 ## 🛡️ Nothing Scheduled Pushes To A Protected Branch
 
 Workflows that produce changes propose them as a pull request and merge through the same gates as a
-human change. That covers `license-year.yml` and `auto-format.yml`.
+human change. That covers `auto-format.yml`.
 `release-notes.yml` is the one exception in form rather than principle: it maintains a single
 evolving **draft** release, which publishes nothing until somebody presses publish.
 

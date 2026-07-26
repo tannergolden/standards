@@ -39,7 +39,7 @@
 # Required env:
 #   GH_TOKEN - token for gh (PR creation) and, when set to a PAT,
 #                    for the branch push (see token contract below)
-#   BRANCH_PREFIX - the fixed topic branch, e.g. 'chore/license-year'
+#   BRANCH_PREFIX - the fixed topic branch, e.g. 'style/auto-format'
 #   COMMIT_TITLE - Conventional Commit title for the change
 #   PR_TITLE - pull request title (Conventional Commit format)
 #   PR_BODY - pull request body (markdown)

@@ -168,9 +168,10 @@ def main() -> int:
         # The YEAR is restamped too: it is the year this repository was
         # created, not the year the template was written. Carrying the
         # template's year forward would put a copyright date on a generated
-        # repository that predates the work it covers, and nothing would ever
-        # correct it - `license-year` only rolls a year forward, it never
-        # questions the one already there.
+        # repository that predates the work it covers, and NOTHING WOULD EVER
+        # CORRECT IT: the year is fixed at generation by design, and no
+        # workflow rolls it afterwards. This substitution is the only chance
+        # to get it right.
         # A lambda, not a replacement string: a display name is arbitrary user
         # input and `\1` in it would be read as a backreference.
         text = re.sub(

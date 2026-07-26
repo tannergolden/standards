@@ -57,7 +57,6 @@ only describes jobs is a workflow.
 | `sbom`                | script                      | Writes a dependency inventory for any ecosystem, not just npm                 |
 | `init-template`       | script                      | Rewrites a generated repository's identity to its new owner, once             |
 | `standards-version`   | script                      | Opens one issue when a newer major of these standards is published            |
-| `license-year`        | script                      | Rolls the copyright year across license records                               |
 | `ci-failure-alert`    | script                      | Opens an issue when a watched workflow fails, closes it on recovery           |
 | `prune-deployments`   | script                      | Deletes superseded deployments, keeping the current successful one            |
 | `prune-workflow-runs` | script                      | Deletes old runs, keeping recent history and anything in flight               |
