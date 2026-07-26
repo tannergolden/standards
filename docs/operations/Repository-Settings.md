@@ -39,7 +39,7 @@ Dispatch **🎯 Apply Standards** with `apply-settings: true` (and an [`ADMIN_TO
 | **Actions policy**     | Workflow token on _Read and write_, Actions may create and approve pull requests, fork workflows from first-time contributors wait for approval                                    | Settings → Actions → General       |
 | **Security features**  | Secret scanning + push protection + non-provider patterns, Dependabot alerts + security updates, private vulnerability reporting                                                   | Settings → Advanced Security       |
 
-Rulesets are **not** in this list on purpose: a wrong setting is a checkbox, while a wrong ruleset blocks every merge in the repository, so branch and tag protection is a [separate job with a separate switch](./Branch-Protection.md).
+Your part is the dispatch and the token - see [🙋 What You Do By Hand](../introduction/What-You-Do-By-Hand.md) for every manual step in one place. Rulesets are **not** in this list on purpose: a wrong setting is a checkbox, while a wrong ruleset blocks every merge in the repository, so branch and tag protection is a [separate job with a separate switch](./Branch-Protection.md).
 
 > [!NOTE]
 > **A skip is not a failure.** Some security features are gated by visibility or plan - secret scanning needs Advanced Security on a private repository, private vulnerability reporting and the fork pull request approval policy are public-only, non-provider patterns need Secret Protection. The script detects each case and reports `SKIP` with the reason, because a repository that cannot have a feature has not misconfigured anything.

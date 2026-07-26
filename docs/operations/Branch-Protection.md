@@ -132,6 +132,11 @@ token under any `permissions:` block you write. This is a platform restriction, 
 a configuration mistake, which is why the job checks for the secret up front and
 fails with that sentence rather than a bare `403` that reads like a bug.
 
+> [!TIP]
+> Making this token is one of only a handful of things you do by hand. The
+> whole list, in the order you meet it, is
+> [🙋 What You Do By Hand](../introduction/What-You-Do-By-Hand.md).
+
 ### Make the token
 
 A **fine-grained personal access token** is the right choice: it can be limited to

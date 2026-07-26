@@ -85,6 +85,7 @@ The interfaces a consuming repository is expected to satisfy.
 
 | Standard                                                                              | Covers                                             |
 | :------------------------------------------------------------------------------------ | :------------------------------------------------- |
+| [What You Do By Hand](introduction/What-You-Do-By-Hand.md)                            | Every step automation cannot take for you          |
 | [Guiding Principles](introduction/Guiding-Principles.md)                              | The engineering principles behind every other rule |
 | [Environment & Technologies](introduction/Environment-&-Technologies.md)              | The language-agnostic `make` interface CI assumes  |
 | [Document Styling & Formatting](technical/interface/Document-Styling-&-Formatting.md) | The binding documentation specification            |
