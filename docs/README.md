@@ -71,6 +71,7 @@ The guardrails, and what to do when one trips.
 | :----------------------------------------------------------- | :------------------------------------------ |
 | [Operations & Security](operations/Operations-&-Security.md) | Section overview                            |
 | [Branch Protection](operations/Branch-Protection.md)         | Protection rules, applied as code           |
+| [Repository Settings](operations/Repository-Settings.md)     | Every setting mapped: written or explained  |
 | [Security & Secrets](operations/Security-&-Secrets.md)       | Secret handling, scanning, and response     |
 | [Dependency Management](operations/Dependency-Management.md) | Update cadence and supply-chain safety      |
 | [Repository Hygiene](operations/Repository-Hygiene.md)       | Keeping a repository clean over time        |
