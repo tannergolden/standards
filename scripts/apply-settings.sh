@@ -14,8 +14,13 @@
 # anything else in the summary is a real difference.
 #
 # THREE ENDPOINT GROUPS, ONE PLAN: the repository object, the Actions
-# workflow-token policy (Settings → Actions → General), and the security
-# features. The settings file mirrors that shape.
+# policies (the workflow token and fork pull requests, under Settings →
+# Actions → General), and the security features. The settings file mirrors
+# that shape, and everything deliberately NOT written lives in its _excluded
+# block so absence is a decision rather than an oversight.
+#
+# In Actions, the plan is also written to the job's step summary, so the
+# dry-run verdict is readable without opening the log.
 #
 # DRY RUN BY DEFAULT, like apply-rulesets.sh. A caller that forgets the flag
 # gets a plan rather than a change.
@@ -56,6 +61,22 @@ fi
 
 DRY_RUN="$(printf '%s' "${DRY_RUN:-true}" | tr '[:upper:]' '[:lower:]')"
 
+# Every plan line goes to stdout AND is kept for the Actions step summary,
+# so a dispatcher reads the verdict without opening the log. Outside Actions
+# (no GITHUB_STEP_SUMMARY) the summary is simply skipped.
+PLAN=''
+plan() { printf '%s\n' "$1"; PLAN="${PLAN}${1}"$'\n'; }
+write_summary() {
+  [ -z "${GITHUB_STEP_SUMMARY:-}" ] && return 0
+  {
+    echo "### ⚙️ Repository settings plan: \`${TARGET_REPO}\`"
+    echo
+    echo '```text'
+    printf '%s' "$PLAN"
+    echo '```'
+  } >> "$GITHUB_STEP_SUMMARY"
+}
+
 # One read of the repository, reused for every comparison below.
 CURRENT="$(gh api "repos/${TARGET_REPO}" 2>/dev/null || true)"
 if [ -z "$CURRENT" ]; then
@@ -86,7 +107,7 @@ while IFS=$'\t' read -r key want; do
     UNCHANGED=$((UNCHANGED + 1))
     continue
   fi
-  printf '  CHANGE  %-32s %s -> %s\n' "$key" "$have" "$want"
+  plan "$(printf '  CHANGE  %-32s %s -> %s' "$key" "$have" "$want")"
   PATCH="$(printf '%s' "$PATCH" | jq -c --arg k "$key" --argjson v "$want" '.[$k] = $v')"
   CHANGED=$((CHANGED + 1))
 done < <(jq -r '.repository | to_entries[] | [.key, (.value | tojson)] | @tsv' "$SETTINGS_FILE")
@@ -102,14 +123,14 @@ WANT_APPROVE="$(jq -r '(.actions // {}) | if has("can_approve_pull_request_revie
 if [ -n "$WANT_WFP" ] || [ -n "$WANT_APPROVE" ]; then
   ACT_CURRENT="$(gh api "repos/${TARGET_REPO}/actions/permissions/workflow" 2>/dev/null || true)"
   if [ -z "$ACT_CURRENT" ]; then
-    echo "  SKIP    workflow_permissions             could not be read; is Actions enabled here?"
+    plan "  SKIP    workflow_permissions             could not be read; is Actions enabled here?"
   else
     if [ -n "$WANT_WFP" ]; then
       have="$(printf '%s' "$ACT_CURRENT" | jq -r '.default_workflow_permissions // ""')"
       if [ "$have" = "$WANT_WFP" ]; then
         UNCHANGED=$((UNCHANGED + 1))
       else
-        printf '  CHANGE  %-32s %s -> %s\n' "default_workflow_permissions" "$have" "$WANT_WFP"
+        plan "$(printf '  CHANGE  %-32s %s -> %s' "default_workflow_permissions" "$have" "$WANT_WFP")"
         ACT_PATCH="$(printf '%s' "$ACT_PATCH" | jq -c --arg v "$WANT_WFP" '.default_workflow_permissions = $v')"
         CHANGED=$((CHANGED + 1))
       fi
@@ -119,10 +140,32 @@ if [ -n "$WANT_WFP" ] || [ -n "$WANT_APPROVE" ]; then
       if [ "$have" = "$WANT_APPROVE" ]; then
         UNCHANGED=$((UNCHANGED + 1))
       else
-        printf '  CHANGE  %-32s %s -> %s\n' "can_approve_pull_request_reviews" "$have" "$WANT_APPROVE"
+        plan "$(printf '  CHANGE  %-32s %s -> %s' "can_approve_pull_request_reviews" "$have" "$WANT_APPROVE")"
         ACT_PATCH="$(printf '%s' "$ACT_PATCH" | jq -c --argjson v "$WANT_APPROVE" '.can_approve_pull_request_reviews = $v')"
         CHANGED=$((CHANGED + 1))
       fi
+    fi
+  fi
+fi
+
+# ── Fork pull request approval policy ────────────────────────────────────────
+# Its own endpoint again. This is the gate between an external fork and your
+# runners: first-time contributors wait for a maintainer before their
+# workflows execute. Readable, so it diffs like everything else.
+FORK_WANT="$(jq -r '(.actions // {}).fork_pr_approval_policy // ""' "$SETTINGS_FILE")"
+FORK_APPLY=''
+if [ -n "$FORK_WANT" ]; then
+  FORK_CURRENT="$(gh api "repos/${TARGET_REPO}/actions/permissions/fork-pr-contributor-approval" 2>/dev/null || true)"
+  if [ -z "$FORK_CURRENT" ]; then
+    plan "  SKIP    fork_pr_approval_policy          could not be read; not available here"
+  else
+    have="$(printf '%s' "$FORK_CURRENT" | jq -r '.approval_policy // ""')"
+    if [ "$have" = "$FORK_WANT" ]; then
+      UNCHANGED=$((UNCHANGED + 1))
+    else
+      plan "$(printf '  CHANGE  %-32s %s -> %s' "fork_pr_approval_policy" "$have" "$FORK_WANT")"
+      FORK_APPLY="$FORK_WANT"
+      CHANGED=$((CHANGED + 1))
     fi
   fi
 fi
@@ -138,11 +181,11 @@ if [ "$(want_bool secret_scanning)" = "true" ]; then
   if [ "$have" = "enabled" ]; then
     UNCHANGED=$((UNCHANGED + 1))
   elif [ "$IS_PUBLIC" = "true" ] || [ "$have" != "unavailable" ]; then
-    echo "  CHANGE  secret_scanning                  ${have} -> enabled"
+    plan "  CHANGE  secret_scanning                  ${have} -> enabled"
     SEC_ENABLE+=("secret_scanning")
     CHANGED=$((CHANGED + 1))
   else
-    echo "  SKIP    secret_scanning                  needs Advanced Security on a private repository"
+    plan "  SKIP    secret_scanning                  needs Advanced Security on a private repository"
   fi
 fi
 
@@ -151,11 +194,28 @@ if [ "$(want_bool secret_scanning_push_protection)" = "true" ]; then
   if [ "$have" = "enabled" ]; then
     UNCHANGED=$((UNCHANGED + 1))
   elif [ "$IS_PUBLIC" = "true" ] || [ "$have" != "unavailable" ]; then
-    echo "  CHANGE  secret_scanning_push_protection  ${have} -> enabled"
+    plan "  CHANGE  secret_scanning_push_protection  ${have} -> enabled"
     SEC_ENABLE+=("secret_scanning_push_protection")
     CHANGED=$((CHANGED + 1))
   else
-    echo "  SKIP    secret_scanning_push_protection  needs Advanced Security on a private repository"
+    plan "  SKIP    secret_scanning_push_protection  needs Advanced Security on a private repository"
+  fi
+fi
+
+# Non-provider patterns are stricter than the two above: plan-gated even on
+# public repositories, so this is written only where the repository already
+# REPORTS the feature. An absent field means the plan does not have it, and
+# that is a skip, not a change.
+if [ "$(want_bool secret_scanning_non_provider_patterns)" = "true" ]; then
+  have="$(printf '%s' "$CURRENT" | jq -r '.security_and_analysis.secret_scanning_non_provider_patterns.status // "unavailable"')"
+  if [ "$have" = "enabled" ]; then
+    UNCHANGED=$((UNCHANGED + 1))
+  elif [ "$have" != "unavailable" ]; then
+    plan "  CHANGE  secret_scanning_non_provider_patterns  ${have} -> enabled"
+    SEC_ENABLE+=("secret_scanning_non_provider_patterns")
+    CHANGED=$((CHANGED + 1))
+  else
+    plan "  SKIP    secret_scanning_non_provider_patterns  not reported by this repository's plan"
   fi
 fi
 
@@ -169,15 +229,16 @@ if [ "$(want_bool private_vulnerability_reporting)" = "true" ]; then
   if [ "$IS_PUBLIC" = "true" ]; then
     TOGGLES+=("private-vulnerability-reporting")
   else
-    echo "  SKIP    private_vulnerability_reporting  public repositories only"
+    plan "  SKIP    private_vulnerability_reporting  public repositories only"
   fi
 fi
 for t in "${TOGGLES[@]}"; do
-  echo "  ENSURE  ${t}"
+  plan "  ENSURE  ${t}"
 done
 
 echo
-echo "Plan: ${CHANGED} change(s), ${UNCHANGED} already correct, ${#TOGGLES[@]} ensured."
+plan "Plan: ${CHANGED} change(s), ${UNCHANGED} already correct, ${#TOGGLES[@]} ensured."
+write_summary
 
 if [ "$CHANGED" -eq 0 ] && [ "${#TOGGLES[@]}" -eq 0 ]; then
   echo "Nothing to do."
@@ -198,6 +259,12 @@ fi
 if [ "$ACT_PATCH" != '{}' ]; then
   printf '%s' "$ACT_PATCH" | gh api --method PUT "repos/${TARGET_REPO}/actions/permissions/workflow" --input - >/dev/null
   echo "Applied the Actions workflow-token policy."
+fi
+
+if [ -n "$FORK_APPLY" ]; then
+  gh api --method PUT "repos/${TARGET_REPO}/actions/permissions/fork-pr-contributor-approval" \
+    -f "approval_policy=${FORK_APPLY}" >/dev/null
+  echo "Applied the fork pull request approval policy."
 fi
 
 for name in "${SEC_ENABLE[@]}"; do

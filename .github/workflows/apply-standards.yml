@@ -173,6 +173,15 @@ jobs:
           settings-file: ${{ inputs.settings-file }}
           dry-run: ${{ inputs.dry-run }}
 
+      - name: '📝 Next Step'
+        if: ${{ inputs.dry-run }}
+        run: |
+          {
+            echo ""
+            echo "> [!NOTE]"
+            echo "> This was a dry run. Re-run with \`dry-run: false\` to apply, once the plan above looks right."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   rulesets:
     name: '🛡️ Apply Rulesets'
     if: ${{ inputs.apply-rulesets }}
