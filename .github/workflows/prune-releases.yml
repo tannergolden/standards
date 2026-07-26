@@ -16,11 +16,19 @@
 #   THIS ONE          published releases. Someone may have linked to the
 #                     notes, and the notes are the only changelog there is.
 #
-# ⚠️ DELETING A RELEASE DOES NOT DELETE ITS TAG, and that is deliberate. A
-# release is a page; a tag is a contract. `vX.Y.Z` is documented in
-# `release.yml` as immutable, and anything pinned to it keeps resolving after
-# its release page is gone. `delete-tags` exists for repositories that
-# publish throwaway tags, and MUST stay false anywhere consumers pin.
+# ⚠️ DELETING A RELEASE DOES NOT DELETE ITS TAG unless you ask. A release is
+# a page; a tag is a contract. `vX.Y.Z` is documented in `release.yml` as
+# immutable, and anything pinned to it keeps resolving after its release page
+# is gone. Leave `delete-tags` false wherever consumers pin a full version.
+#
+# Turn it on only where they pin the MOVING MAJOR instead, which is how this
+# repository is consumed: `@v1` is the pin, so a superseded `v1.2.0` has
+# nothing resolving to it and its tag is just clutter.
+#
+# ⚠️ A BARE MAJOR TAG IS NEVER DELETED, whatever `delete-tags` says. `v1` is
+# the pointer every consumer resolves; deleting it breaks every one of them
+# at once. It carries no release, so the prune should never see it, and the
+# guard below means a stray release attached to one cannot take it out.
 #
 # The release list is snapshotted in full before anything is deleted.
 # Deleting while pagination is still fetching shifts the pages underneath
@@ -96,7 +104,7 @@ jobs:
         uses: tannergolden/standards/actions/harden@v1
         with:
           egress-policy: audit
-          notice: '🧹 Prune Releases: deletes published releases that a newer one supersedes. Tags are kept unless delete-tags is on.'
+          notice: '🧹 Prune Releases: deletes published releases that a newer one supersedes. Tags are kept unless delete-tags is on; a bare major tag is kept regardless.'
 
       - name: '🧹 Prune'
         env:
@@ -153,13 +161,21 @@ jobs:
             exit 0
           fi
 
-          args=(--yes)
           if [ "$DELETE_TAGS" = "true" ]; then
-            echo "::warning::delete-tags is on. Every pin to these versions will stop resolving."
-            args+=(--cleanup-tag)
+            echo "::warning::delete-tags is on. Every pin to a full version below will stop resolving."
           fi
 
           while read -r tag; do
+            args=(--yes)
+            if [ "$DELETE_TAGS" = "true" ]; then
+              # A bare major is the moving pointer consumers pin, not a
+              # release artifact. Never delete one, whatever was asked for.
+              if printf '%s' "$tag" | grep -qE '^v[0-9]+$'; then
+                echo "::notice::Keeping the tag ${tag}: a bare major is a moving pointer, not a version."
+              else
+                args+=(--cleanup-tag)
+              fi
+            fi
             echo "Deleting release ${tag}"
             gh release delete "$tag" --repo "$REPO" "${args[@]}"
           done < <(jq -r '.[].tag_name' <<<"$doomed")

@@ -140,14 +140,19 @@ jobs:
   # After the release publishes and the major tag moves, the releases it
   # superseded come down. This lives INSIDE Cut Release rather than on a
   # release-event listener so the whole chain is one run: cut, move, prune.
-  # The tags behind the pruned releases are never touched - vX.Y.Z stays
-  # resolvable for anyone who pinned it; only the release PAGES go.
+  #
+  # The superseded tag goes WITH its release page here, which is safe only
+  # because of how this repository is consumed: every stub pins `@v1`, the
+  # moving major, and nothing pins a `vX.Y.Z`. A bare major is never a
+  # release artifact, so the prune cannot reach `v1`, and the called
+  # workflow refuses it by name besides.
   prune:
     name: '🧹 Prune Superseded Releases'
     needs: release
     permissions:
-      contents: write # deleting releases requires write
+      contents: write # deleting releases and their tags requires write
     uses: ./.github/workflows/prune-releases.yml
     with:
       keep: 1
+      delete-tags: true
       dry-run: false
