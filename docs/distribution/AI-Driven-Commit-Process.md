@@ -74,7 +74,7 @@ This binds every commit that lands in a repository on these standards:
 | :--- | :--- |
 | Ordinary human-authored work | Yes |
 | The initial commit written at repository generation | Yes, and `scripts/init-template.py` writes one |
-| Automated maintenance commits (formatting, licence year, dependency bumps) | Yes, from the workflow that opens them |
+| Automated maintenance commits (formatting, dependency bumps) | Yes, from the workflow that opens them |
 | A squash merge | Yes. The pull request body becomes it, so write that body |
 | A revert | Yes. State what broke, not only what is being undone |
 

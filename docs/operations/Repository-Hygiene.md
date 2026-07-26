@@ -129,8 +129,43 @@ We utilize **Husky** to ensure that code hygiene is enforced before it ever reac
 | :--------------- | :------------------------------------------- | :------------------------------------------------------ |
 | **On merge**     | Delete merged head branches.                 | GitHub setting: **Automatically delete head branches**. |
 | **Weekly**       | Triage open issues and label staleness.      | Automated (`governance.yml`).                           |
-| **Twice a year** | License year refresh (Jan) and verify (Jul). | Automated (`license-year.yml`), delivered as a PR.      |
 | **Monthly**      | Prune unused artifacts and update ADR index. | Maintainer.                                             |
+
+---
+
+## 📄 The Copyright Year Is Fixed At Generation
+
+**REQUIRED.** A repository's `LICENSE` carries the year it was generated, and
+that year never changes afterwards. Nothing rolls it, on a schedule or
+otherwise.
+
+`init-template` stamps it once, replacing the template's own year with the
+year the new repository was created, in the same substitution that writes the
+new owner's name. From that moment it is a fact about the repository, not a
+setting to maintain.
+
+This is deliberate, and it is the opposite of a common habit:
+
+- **A copyright notice records when a work was published**, not what today's
+  date is. Advancing it every January states something untrue about a project
+  that has not been republished.
+- **The year in a notice does not set or extend the term.** Copyright runs
+  from actual creation or publication as a matter of fact. Rolling the year
+  buys nothing and costs a pull request, a review, and a commit in every
+  repository, twice a year, forever.
+- **A year that moves is a year nobody can trust.** If it always says the
+  current year, it tells a reader nothing they could not get from a calendar.
+
+If a project genuinely is republished with substantial new work and you want
+that reflected, widen it to a range by hand once: `Copyright (c) 2026-2029
+<holder>`. That is an editorial decision about the work, and it belongs to a
+person rather than a cron.
+
+> [!IMPORTANT]
+> Keep `Copyright (c) <4-digit year> <holder>` intact as a contiguous string
+> in any template. That exact shape is what generation matches to restamp. A
+> `[year]` placeholder does not match and would survive, unreplaced, into
+> every repository generated from it.
 
 ---
 

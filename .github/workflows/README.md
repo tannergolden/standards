@@ -73,7 +73,7 @@ that lives somewhere else. `apply-standards.yml` writes those files for you; see
 | :------------------------- | :--------------------------------------------------------------------------------- |
 | `governance.yml`           | Welcomes newcomers, labels pull requests, ages out and locks threads, syncs labels |
 | `auto-format.yml`          | Repairs formatting drift as a pull request. Any formatter                          |
-| `license-year.yml`         | Rolls the copyright year across license records                                    |
+| `license-year.yml`         | Rolls the copyright year. **Not part of the standard**, see Repository Hygiene     |
 | `issue-ops.yml`            | `/assign`, `/unassign`, `/label` slash commands                                    |
 | `ci-failure-alert.yml`     | Opens an issue when a watched workflow fails, closes it on recovery                |
 | `dependabot-automerge.yml` | Approves and queues patch and minor updates. Majors need a human                   |
