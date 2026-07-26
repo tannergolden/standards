@@ -167,7 +167,7 @@ jobs:
           persist-credentials: false
 
       - name: '⚙️ Apply Repository Settings'
-        uses: tannergolden/standards/actions/apply-repo-settings@v1
+        uses: tannergolden/standards/actions/apply-settings@v1
         with:
           token: ${{ secrets.ADMIN_TOKEN }}
           settings-file: ${{ inputs.settings-file }}

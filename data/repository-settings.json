@@ -1,7 +1,7 @@
 {
   "_comment": [
     "The repository settings a repository on these standards is expected to have.",
-    "Applied by scripts/apply-repo-settings.sh, which reads before it writes and",
+    "Applied by scripts/apply-settings.sh, which reads before it writes and",
     "previews by default. Every value here is required by something documented:",
     "the reason is on the line beside it, and a setting nothing needs is not here.",
     "",

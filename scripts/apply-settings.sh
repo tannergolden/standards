@@ -27,9 +27,9 @@
 # have a feature has not misconfigured anything.
 #
 # Usage:
-#     bash scripts/apply-repo-settings.sh                  # preview
-#     DRY_RUN=false bash scripts/apply-repo-settings.sh    # apply
-#     TARGET_REPO=owner/name DRY_RUN=false bash scripts/apply-repo-settings.sh
+#     bash scripts/apply-settings.sh                  # preview
+#     DRY_RUN=false bash scripts/apply-settings.sh    # apply
+#     TARGET_REPO=owner/name DRY_RUN=false bash scripts/apply-settings.sh
 #
 # Requires: gh, authenticated with a token holding administration write.
 # Optional: TARGET_REPO   defaults to the repository gh is pointed at

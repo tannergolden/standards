@@ -25,7 +25,7 @@
 #
 # Used as:
 #
-#   - uses: tannergolden/standards/actions/apply-repo-settings@v1
+#   - uses: tannergolden/standards/actions/apply-settings@v1
 #     with:
 #       token: ${{ secrets.ADMIN_TOKEN }}
 #       repository: owner/repo
@@ -80,4 +80,4 @@ runs:
         else
           export SETTINGS_FILE="${GITHUB_ACTION_PATH}/../../data/repository-settings.json"
         fi
-        bash "${GITHUB_ACTION_PATH}/../../scripts/apply-repo-settings.sh"
+        bash "${GITHUB_ACTION_PATH}/../../scripts/apply-settings.sh"

@@ -60,7 +60,7 @@ only describes jobs is a workflow.
 | `ci-failure-alert`    | script                      | Opens an issue when a watched workflow fails, closes it on recovery           |
 | `prune-deployments`   | script                      | Deletes superseded deployments, keeping the current successful one            |
 | `prune-workflow-runs` | script                      | Deletes old runs, keeping recent history and anything in flight               |
-| `apply-repo-settings` | script                      | Brings a repository's settings in line with the published set                 |
+| `apply-settings`      | script                      | Brings a repository's settings in line with the published set                 |
 
 ---
 
