@@ -205,29 +205,67 @@ def main() -> int:
 
     commit_count = int(run("git", "rev-list", "--count", "HEAD") or "0")
     before_amend = run("git", "rev-parse", "HEAD")
+
+    # The subject names the ACTUAL template, read from the API rather than
+    # hardcoded, so a rename never falsifies history. Guarded against the
+    # subject-length law for pathological repository names.
+    subject = f"feat: 🎉 initialise {name} from {generated_from}" if generated_from else f"feat: 🎉 initialise {name} from its template"
+    if len(subject) > 100:
+        subject = f"feat: 🎉 initialise {name}"
+    if len(subject) > 100:
+        subject = "feat: 🎉 initialise the generated repository"
+
+    # The two templates ship deliberately different shapes, so the body is
+    # chosen by what is actually IN the tree - the public path carries a
+    # structure and its own community health files, the private one is a
+    # standards-wired foundation - rather than by a name a fork could change.
+    if pathlib.Path("docs/templates").is_dir():
+        shape = (
+            "This is the public golden path. A working structure arrived with\n"
+            "it - src/, tests/, packages/, benchmarks/, assets/, docs/ - along\n"
+            "with the community health files, while every engineering standard\n"
+            "is followed by link to the shared standards repository rather than\n"
+            "by copy.\n"
+        )
+    elif pathlib.Path(".github/docs/templates").is_dir():
+        shape = (
+            "This is the private golden path. A standards-wired foundation with\n"
+            "no imposed structure: seed documents live under .github/docs/, the\n"
+            "community health files are inherited from the account's .github\n"
+            "repository, and every engineering standard is followed by link to\n"
+            "the shared standards repository rather than by copy.\n"
+        )
+    else:
+        shape = (
+            "This is a golden-path template whose engineering standards are\n"
+            "followed by link to the shared standards repository rather than by\n"
+            "copy.\n"
+        )
+
+    source_line = f"Generated from {generated_from}.\n" if generated_from else "Generated from a template.\n"
     message = (
-        f"feat: 🎉 initialise {name} from the repository template\n"
+        subject + "\n"
         "\n"
-        + (f"Generated from {generated_from}, a language-agnostic scaffold that\n"
-           if generated_from else "Generated from a language-agnostic scaffold that\n")
-        + "carries structure, community health files, and document templates while every\n"
-        "engineering standard is followed by link rather than copied.\n"
+        + source_line + shape +
         "\n"
-        "Initialisation rewrote the template author's identity to this repository's\n"
-        "owner: the licence holder, the funding target, the documentation footers, and\n"
-        "the issue-chooser contact link. References to the shared standards repository\n"
-        "were deliberately left alone, since those are what the workflow stubs call.\n"
+        "Initialisation rewrote every identity the template stamped - the\n"
+        "licence holder, the documentation footers, the contact links - to this\n"
+        "repository's owner, and set the licence year to the year of\n"
+        "generation, where it stays. References to the shared standards\n"
+        "repository were deliberately left alone: those are what the workflow\n"
+        "stubs call.\n"
         "\n"
-        "What is wired already: continuous integration, secret scanning, static\n"
-        "analysis, workflow linting, governance automation, and pull request validation\n"
-        "all run from the first push, calling shared workflows pinned to a major tag so\n"
-        "fixes arrive without a pull request.\n"
+        "Already wired: continuous integration, secret scanning, static\n"
+        "analysis, workflow linting, governance automation, and pull request\n"
+        "validation all run from the first push, calling shared workflows\n"
+        "pinned to a major tag so fixes arrive without a pull request.\n"
         "\n"
-        "What is not wired yet: this repository has no build system, deliberately. CI\n"
-        "fails until .github/workflows/checks.yml is given the lint, test, and build\n"
-        "commands for whatever language this project turns out to be written in. A\n"
-        "check that checked nothing would report green to branch protection, so it\n"
-        "refuses to.\n"
+        "Not wired yet, and deliberately so. checks.yml fails until it is\n"
+        "given this project's real lint, test, and build commands, because a\n"
+        "check that checks nothing would report green to branch protection.\n"
+        "The repository settings and the branch and tag rulesets are written\n"
+        "by dispatching 🎯 Apply Standards with an ADMIN_TOKEN. The README's\n"
+        "first five minutes walks through both.\n"
     )
 
     # A fresh generation has exactly one commit, and template generation
