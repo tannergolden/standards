@@ -135,13 +135,39 @@ fails with that sentence rather than a bare `403` that reads like a bug.
 A **fine-grained personal access token** is the right choice: it can be limited to
 one repository and one permission, which a classic token cannot.
 
-1. Go to **[Settings → Developer settings → Personal access tokens → Fine-grained
-   tokens](https://github.com/settings/personal-access-tokens/new)**.
-2. **Repository access** → *Only select repositories* → pick the one repository.
-3. **Repository permissions** → **Administration** → **Read and write**. That single
-   permission is the whole requirement; grant nothing else.
-4. Set the shortest expiry you will tolerate. Rulesets are applied rarely, so a token
-   that expires between uses costs you a minute and removes a standing credential.
+Go to **[Settings → Developer settings → Personal access tokens → Fine-grained
+tokens](https://github.com/settings/personal-access-tokens/new)** and fill the form
+exactly like this, substituting your own repository:
+
+| Field                      | Value                                                                 |
+| :------------------------- | :-------------------------------------------------------------------- |
+| **Token name**             | `apply-standards-rulesets-<repo>`                                     |
+| **Description**            | see below                                                             |
+| **Expiration**             | **30 days**                                                           |
+| **Repository access**      | *Only select repositories* → the one repository                       |
+| **Repository permissions** | **Administration** → **Read and write**, and nothing else             |
+
+Description, which you can paste as-is after substituting the repository:
+
+```text
+Writes branch and tag rulesets for <owner>/<repo> through the Apply Standards
+workflow. Administration: Read and write, this repository only. Read from the
+ADMIN_TOKEN secret in that repository. Safe to revoke: rulesets already applied
+are unaffected, and re-applying only needs a new token.
+```
+
+**Why the name matters.** GitHub lists your tokens by name on one page across every
+repository you own. `admin` or `token` tells you nothing six months later, when the
+question is which of five credentials you can safely revoke. Naming it for the job
+and the repository answers that without opening it.
+
+**Why 30 days, and not "No expiration".** Rulesets are applied once or twice in a
+repository's whole life: at setup, and again if the required checks change. A
+credential that can rewrite branch protection should not outlive the ten minutes of
+work it was made for. If it lapses and you need it again, making another takes about
+a minute, which is cheaper than carrying a permanent administration token. Choose a
+longer window only if you have a scheduled job re-applying rulesets, which nothing
+here does.
 
 A GitHub App installation token with the same permission works identically, and is
 the better answer for an organisation, where a personal token ties repository
