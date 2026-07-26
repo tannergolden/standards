@@ -43,7 +43,7 @@ _PR-only merges. Linear history. Restricted pushes._
 >
 > Or paste each file into **Settings → Rules → Rulesets → Import a ruleset**; they are already in GitHub's import shape.
 >
-> To have a **workflow** do it instead, dispatch `apply-standards.yml` with `apply-rulesets: true`. That path needs an `ADMIN_TOKEN` secret, because the workflow is not you: `GITHUB_TOKEN` cannot write rulesets under any permissions, and the job fails with that explanation rather than a bare 403.
+> To have a **workflow** do it instead, dispatch `apply-standards.yml` with `apply-rulesets: true`. That path needs an `ADMIN_TOKEN` secret, because the workflow is not you: `GITHUB_TOKEN` cannot write rulesets under any permissions, and the job fails with that explanation rather than a bare 403. See [Creating the `ADMIN_TOKEN`](#-creating-the-admin_token) for how to make one.
 >
 > **Either way it previews first.** A ruleset names required status checks, and a check that nothing can report leaves pull requests *pending* rather than failed - blocking every merge with no error to explain it. The script refuses to apply a ruleset whose checks no workflow in the target declares; `REQUIRE_CHECKS=false` overrides that when the workflows are arriving in the same change.
 
@@ -115,6 +115,62 @@ TARGET_REPO=owner/name DRY_RUN=false bash scripts/apply-rulesets.sh
 > **Do not loop `gh api --method POST` over the files.** POST creates, so re-running gives you a second copy of every ruleset under the same name rather than updating the first. The script matches by **name** and switches to `PUT` when the name already exists, which is what makes it safe to run repeatedly - and it never deletes, so rulesets you added yourself survive.
 
 Hardening beyond the shipped default is a settings change, not a new file - for example, raising required approvals to 1 once a second maintainer exists (edit the ruleset in **Settings → Rules → Rulesets**, or adjust `required_approving_review_count` in the JSON before importing).
+
+---
+
+## 🔑 Creating The `ADMIN_TOKEN`
+
+**You only need this for the workflow path.** Running `apply-rulesets.sh` yourself
+needs no token at all, because you already hold the rights. The secret exists so a
+*workflow* can do it, and the workflow is not you.
+
+**The built-in `GITHUB_TOKEN` can never do this.** Writing a ruleset requires the
+repository `administration` permission, which GitHub does not grant to the built-in
+token under any `permissions:` block you write. This is a platform restriction, not
+a configuration mistake, which is why the job checks for the secret up front and
+fails with that sentence rather than a bare `403` that reads like a bug.
+
+### Make the token
+
+A **fine-grained personal access token** is the right choice: it can be limited to
+one repository and one permission, which a classic token cannot.
+
+1. Go to **[Settings → Developer settings → Personal access tokens → Fine-grained
+   tokens](https://github.com/settings/personal-access-tokens/new)**.
+2. **Repository access** → *Only select repositories* → pick the one repository.
+3. **Repository permissions** → **Administration** → **Read and write**. That single
+   permission is the whole requirement; grant nothing else.
+4. Set the shortest expiry you will tolerate. Rulesets are applied rarely, so a token
+   that expires between uses costs you a minute and removes a standing credential.
+
+A GitHub App installation token with the same permission works identically, and is
+the better answer for an organisation, where a personal token ties repository
+governance to one person's account.
+
+### Store it
+
+In the repository that will run the workflow: **Settings → Secrets and variables →
+Actions → New repository secret**, named exactly `ADMIN_TOKEN`.
+
+Store it on the repository being protected, not on the standards repository. The
+stub runs in *your* repository, so that is where the secret is read from.
+
+### Then
+
+Dispatch **🎯 Apply Standards** with `apply-rulesets: true` and `dry-run` left **on**.
+Read the plan, then run it again with `dry-run` off.
+
+> [!NOTE]
+> **Labels never need this token.** Applying the taxonomy uses `issues: write` from
+> the built-in token, so a repository with no `ADMIN_TOKEN` still gets its labels.
+> Only the rulesets half is gated.
+
+> [!CAUTION]
+> A token with `administration` write can change branch protection, which is the
+> control everything else rests on. Scope it to the single repository, give it only
+> that permission, and revoke it at
+> **[Settings → Personal access tokens](https://github.com/settings/tokens)** when
+> the work is done. If it leaks, revoking it is the first move and it is instant.
 
 ---
 
