@@ -2,21 +2,14 @@
 #
 # 🎯 Apply Standards
 #
-# Purpose: brings a repository up to standard in one run. Installs the
-# trigger stubs so the shared workflows actually run on push, writes the
-# label taxonomy, and optionally writes the branch and tag rulesets.
+# Purpose: writes the label taxonomy into a repository, and optionally the
+# branch and tag rulesets. Two jobs, nothing else.
 #
-# WHY STUBS ARE COPIED AND NOTHING ELSE IS. GitHub only runs a workflow that
-# lives in the repository being pushed to; a `workflow_call` definition
-# elsewhere cannot fire on its own. The trigger file is therefore the one
-# thing a consumer must hold, and this writes it for them, pinned and
-# pointed at their own default branch. Every line of logic stays behind the
-# `uses:`, so nothing else is ever copied.
-#
-# ⚠️ INSTALLING STUBS NEEDS A PAT WITH `workflow` SCOPE. The default
-# GITHUB_TOKEN cannot push files under .github/workflows/ at all, not even
-# to a topic branch. Without one the pull request fails on the push, so this
-# checks for the token first and says so.
+# ⚠️ IT DOES NOT INSTALL STUBS. It once did, and the trigger files now ship
+# in the template repositories instead, which is where a consumer gets them.
+# GitHub only runs a workflow living in the repository being pushed to, so
+# the stub is still the one thing a consumer must hold; it simply arrives by
+# generating from a template rather than by a pull request from here.
 #
 # ⚠️ RULESETS REQUIRE AN ADMIN TOKEN. The default GITHUB_TOKEN cannot write
 # them at all, no matter what permissions the job requests. Provide a PAT or
@@ -45,9 +38,8 @@
 #   jobs:
 #     apply:
 #       permissions:
-#         contents: write # push the topic branch carrying the stubs
+#         contents: read # check the repository out when labels-file names a file in it
 #         issues: write # create and update labels
-#         pull-requests: write # open the pull request that delivers them
 #       uses: tannergolden/standards/.github/workflows/apply-standards.yml@v1
 #       with:
 #         apply-rulesets: true
@@ -90,11 +82,6 @@ on:
         type: string
         default: ''
     secrets:
-      BOT_ACCESS_TOKEN:
-        description: >-
-          PAT with repo and workflow scopes. Required to install stubs,
-          because the default token cannot push workflow files.
-        required: false
       ADMIN_TOKEN:
         description: >-
           Token with administration write on this repository. Required for
