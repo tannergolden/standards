@@ -135,27 +135,28 @@ fails with that sentence rather than a bare `403` that reads like a bug.
 ### Make the token
 
 A **fine-grained personal access token** is the right choice: it can be limited to
-one repository and one permission, which a classic token cannot.
+exactly the repositories you name and one permission, which a classic token cannot.
 
 Go to **[Settings → Developer settings → Personal access tokens → Fine-grained
 tokens](https://github.com/settings/personal-access-tokens/new)** and fill the form
-exactly like this, substituting your own repository:
+exactly like this:
 
 | Field                      | Value                                                                 |
 | :------------------------- | :-------------------------------------------------------------------- |
-| **Token name**             | `apply-standards-rulesets-<repo>`                                     |
+| **Token name**             | `apply-standards-generated-repos`                                     |
 | **Description**            | see below                                                             |
 | **Expiration**             | **30 days**                                                           |
 | **Repository access**      | *Only select repositories* → the generated repositories only          |
 | **Repository permissions** | **Administration** → **Read and write**, and nothing else             |
 
-Description, which you can paste as-is after substituting the repository:
+Description, which you can paste as-is:
 
 ```text
-Writes branch and tag rulesets for <owner>/<repo> through the Apply Standards
-workflow. Administration: Read and write, this repository only. Read from the
-ADMIN_TOKEN secret in that repository. Safe to revoke: rulesets already applied
-are unaffected, and re-applying only needs a new token.
+Writes repository settings and branch and tag rulesets through the Apply
+Standards workflow, on repositories generated from the templates only.
+Administration: Read and write, nothing else. Read from the ADMIN_TOKEN secret
+in each repository it is applied to. Safe to revoke: settings and rulesets
+already applied are unaffected, and re-applying only needs a new token.
 ```
 
 **Select repositories, and select the right ones.** *All repositories* hands a token
@@ -172,14 +173,14 @@ two-click edit, so start narrow.
 **Why the name matters.** GitHub lists your tokens by name on one page across every
 repository you own. `admin` or `token` tells you nothing six months later, when the
 question is which of five credentials you can safely revoke. Naming it for the job
-and the repository answers that without opening it.
+and the repositories it covers answers that without opening it.
 
-**Why 30 days, and not "No expiration".** Rulesets are applied once or twice in a
-repository's whole life: at setup, and again if the required checks change. A
+**Why 30 days, and not "No expiration".** Settings and rulesets are applied once
+or twice in a repository's whole life: at setup, and again if the standard changes. A
 credential that can rewrite branch protection should not outlive the ten minutes of
 work it was made for. If it lapses and you need it again, making another takes about
 a minute, which is cheaper than carrying a permanent administration token. Choose a
-longer window only if you have a scheduled job re-applying rulesets, which nothing
+longer window only if you have a scheduled job re-applying them, which nothing
 here does.
 
 A GitHub App installation token with the same permission works identically, and is
@@ -196,18 +197,18 @@ stub runs in *your* repository, so that is where the secret is read from.
 
 ### Then
 
-Dispatch **🎯 Apply Standards** with `apply-rulesets: true` and `dry-run` left **on**.
-Read the plan, then run it again with `dry-run` off.
+Dispatch **🎯 Apply Standards** with `apply-settings: true`, `apply-rulesets: true`,
+and `dry-run` left **on**. Read the plans, then run it again with `dry-run` off.
 
 > [!NOTE]
 > **Labels never need this token.** Applying the taxonomy uses `issues: write` from
 > the built-in token, so a repository with no `ADMIN_TOKEN` still gets its labels.
-> Only the rulesets half is gated.
+> Only the settings and rulesets jobs are gated.
 
 > [!CAUTION]
 > A token with `administration` write can change branch protection, which is the
-> control everything else rests on. Scope it to the single repository, give it only
-> that permission, and revoke it at
+> control everything else rests on. Scope it to the generated repositories it is
+> for, give it only that permission, and revoke it at
 > **[Settings → Personal access tokens](https://github.com/settings/tokens)** when
 > the work is done. If it leaks, revoking it is the first move and it is instant.
 
