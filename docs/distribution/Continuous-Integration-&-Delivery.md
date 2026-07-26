@@ -70,7 +70,7 @@ flowchart LR
 
 <strong>📦 Standard CI (for PRs and Development)</strong>
 
-The template ships with `.github/workflows/ci.yml` (**✨ CI: Validation**), which runs on pushes and pull requests to all four long-lived branches:
+The template ships with `.github/workflows/checks.yml` (**✅ Checks**), whose `ci` job calls the **✨ CI Validation** reusable workflow on pushes and pull requests to all four long-lived branches:
 
 - **🧪 Lint, Test & Build** - the required gate. It runs the `lint-command`, `test-command`, and `build-command` you pass it, falling back to the `lint`, `test`, and `build` targets of a `Makefile` if you have one. If every stage resolves to nothing it **fails**, rather than reporting a green check that checked nothing.
 - **📝 Check Spelling** - `typos` catches misspellings across code and docs.

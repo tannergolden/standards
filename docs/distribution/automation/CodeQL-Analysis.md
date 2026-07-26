@@ -51,7 +51,7 @@ The analysis runs the **`security-extended`** query pack - a broader vulnerabili
 
 The analysis engine is configured within the repository's infrastructure layer to provide reliable, long-running security intelligence.
 
-- **Workflow**: `.github/workflows/codeql.yml`
+- **Workflow**: `.github/workflows/checks.yml` (the `codeql` job)
 - **Supported Languages**: C++, C#, Go, Java, JavaScript/TypeScript, Python, Ruby, and Swift.
 - **Analysis Window**: Configured for a 6-hour timeout to ensure deep, multi-pass analysis of complex dependencies.
 

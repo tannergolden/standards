@@ -27,10 +27,10 @@
 #   on:
 #     workflow_run:
 #       workflows:
-#         - '✨ CI: Validation'
-#         - '🔐 Security: Gitleaks'
-#         - '🧹 Prune'
-#         - '📊 Traffic Archive'
+#         - '✅ Checks'
+#         - '⚖️ Governance'
+#         - '📦 Release'
+#         - '🧹 Maintenance'
 #         # ... every workflow whose silent failure would cost something
 #       types: [completed]
 #   concurrency:

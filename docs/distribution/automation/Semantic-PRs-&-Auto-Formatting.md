@@ -38,7 +38,7 @@ This layer is composed of two primary workflows:
 
 Ensures that the title of every Pull Request matches the conventional pattern required for automated changelog generation and versioning (em dashes are rejected outright - squash titles become commits, and the Output Rules ban the character) - and, in companion jobs, that the source branch follows the naming law and every human commit carries its DCO sign-off.
 
-- **Workflow**: `.github/workflows/semantic-pr.yml` (Standalone for high visibility)
+- **Workflow**: `.github/workflows/governance.yml` (the `pr` job, on a privileged trigger)
 - **Pattern**: `type(scope): description` (e.g., `feat(auth): add login support`)
 - **Branch naming**: a companion `branch-name` job in the same workflow enforces `<type>/<topic>` on the PR's source branch (19 accepted prefixes - see `AGENTS.md`).
 - **DCO sign-off**: a companion `dco` job verifies the `Signed-off-by:` trailer mandated by CONTRIBUTING on every human-authored commit. Exemptions are per **commit**, never per PR: bot-authored commits and merge commits pass individually while the job still runs on every PR (a required check must never skip itself). The check reads commits through the API and never executes PR code, and it **fails closed**: `gh api` is the primary client with a retrying direct-HTTPS fallback, and if both clients fail the gate fails rather than passing blind.

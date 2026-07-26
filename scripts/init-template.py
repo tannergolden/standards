@@ -222,7 +222,7 @@ def main() -> int:
         "fixes arrive without a pull request.\n"
         "\n"
         "What is not wired yet: this repository has no build system, deliberately. CI\n"
-        "fails until .github/workflows/ci.yml is given the lint, test, and build\n"
+        "fails until .github/workflows/checks.yml is given the lint, test, and build\n"
         "commands for whatever language this project turns out to be written in. A\n"
         "check that checked nothing would report green to branch protection, so it\n"
         "refuses to.\n"
@@ -267,7 +267,7 @@ def main() -> int:
         "\n"
         "The sentinel has been removed, so this workflow is now inert and will not run again.\n"
         "\n"
-        "> **Next:** give `.github/workflows/ci.yml` the lint, test, and build commands for "
+        "> **Next:** give `.github/workflows/checks.yml` the lint, test, and build commands for "
         "your language. Until then CI fails on purpose.\n"
     )
     return 0
