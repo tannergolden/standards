@@ -10,8 +10,12 @@
 # that can lock a repository's own automation out of it.
 #
 # READ BEFORE WRITE. Every setting is compared against its current value and
-# only the differences are sent, so a no-op run makes one API call and reports
-# "0 changed". Anything else in the summary is a real difference.
+# only the differences are sent, so a no-op run reports "0 changed" and
+# anything else in the summary is a real difference.
+#
+# THREE ENDPOINT GROUPS, ONE PLAN: the repository object, the Actions
+# workflow-token policy (Settings → Actions → General), and the security
+# features. The settings file mirrors that shape.
 #
 # DRY RUN BY DEFAULT, like apply-rulesets.sh. A caller that forgets the flag
 # gets a plan rather than a change.
@@ -87,6 +91,42 @@ while IFS=$'\t' read -r key want; do
   CHANGED=$((CHANGED + 1))
 done < <(jq -r '.repository | to_entries[] | [.key, (.value | tojson)] | @tsv' "$SETTINGS_FILE")
 
+# ── Actions workflow-token policy ────────────────────────────────────────────
+# A separate endpoint from the repository object, and the one setting whose
+# absence has no error log: a narrowed token fails a called workflow before
+# any job starts. Read before write, like everything above.
+ACT_PATCH='{}'
+WANT_WFP="$(jq -r '(.actions // {}).default_workflow_permissions // ""' "$SETTINGS_FILE")"
+WANT_APPROVE="$(jq -r '(.actions // {}) | if has("can_approve_pull_request_reviews") then (.can_approve_pull_request_reviews | tostring) else "" end' "$SETTINGS_FILE")"
+
+if [ -n "$WANT_WFP" ] || [ -n "$WANT_APPROVE" ]; then
+  ACT_CURRENT="$(gh api "repos/${TARGET_REPO}/actions/permissions/workflow" 2>/dev/null || true)"
+  if [ -z "$ACT_CURRENT" ]; then
+    echo "  SKIP    workflow_permissions             could not be read; is Actions enabled here?"
+  else
+    if [ -n "$WANT_WFP" ]; then
+      have="$(printf '%s' "$ACT_CURRENT" | jq -r '.default_workflow_permissions // ""')"
+      if [ "$have" = "$WANT_WFP" ]; then
+        UNCHANGED=$((UNCHANGED + 1))
+      else
+        printf '  CHANGE  %-32s %s -> %s\n' "default_workflow_permissions" "$have" "$WANT_WFP"
+        ACT_PATCH="$(printf '%s' "$ACT_PATCH" | jq -c --arg v "$WANT_WFP" '.default_workflow_permissions = $v')"
+        CHANGED=$((CHANGED + 1))
+      fi
+    fi
+    if [ -n "$WANT_APPROVE" ]; then
+      have="$(printf '%s' "$ACT_CURRENT" | jq -r '.can_approve_pull_request_reviews | tostring')"
+      if [ "$have" = "$WANT_APPROVE" ]; then
+        UNCHANGED=$((UNCHANGED + 1))
+      else
+        printf '  CHANGE  %-32s %s -> %s\n' "can_approve_pull_request_reviews" "$have" "$WANT_APPROVE"
+        ACT_PATCH="$(printf '%s' "$ACT_PATCH" | jq -c --argjson v "$WANT_APPROVE" '.can_approve_pull_request_reviews = $v')"
+        CHANGED=$((CHANGED + 1))
+      fi
+    fi
+  fi
+fi
+
 # ── Security settings, each gated on what this repository can actually have ──
 # Reported separately because they use their own endpoints, and because a skip
 # here is a fact about the repository rather than a failure.
@@ -153,6 +193,11 @@ echo
 if [ "$PATCH" != '{}' ]; then
   printf '%s' "$PATCH" | gh api --method PATCH "repos/${TARGET_REPO}" --input - >/dev/null
   echo "Applied repository settings."
+fi
+
+if [ "$ACT_PATCH" != '{}' ]; then
+  printf '%s' "$ACT_PATCH" | gh api --method PUT "repos/${TARGET_REPO}/actions/permissions/workflow" --input - >/dev/null
+  echo "Applied the Actions workflow-token policy."
 fi
 
 for name in "${SEC_ENABLE[@]}"; do

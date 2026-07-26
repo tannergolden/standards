@@ -8,6 +8,10 @@
     "SETTINGS ONLY. Branch and tag protection live in data/rulesets/ and are",
     "applied separately, because they are the change that can lock you out.",
     "",
+    "Three endpoint groups, one plan: the repository block is the repository",
+    "object, the actions block is the workflow-token policy under Settings →",
+    "Actions → General, and the security block has endpoints of its own.",
+    "",
     "Some settings are gated on repository visibility or plan. Secret scanning is",
     "free on public repositories and needs Advanced Security on private ones, and",
     "private vulnerability reporting is a public-repository feature. The script",
@@ -24,6 +28,8 @@
     "allow_auto_merge": true,
     "allow_update_branch": true,
     "web_commit_signoff_required": true,
+    "has_issues": true,
+    "has_discussions": true,
     "has_wiki": false,
     "has_projects": false
   },
@@ -38,8 +44,20 @@
     "allow_auto_merge": "REQUIRED, not cosmetic. dependabot-automerge.yml and open-pr.sh both call `gh pr merge --auto`, which fails without it.",
     "allow_update_branch": "Lets a pull request take the base branch without a merge commit, so strict required checks can be satisfied.",
     "web_commit_signoff_required": "The DCO check requires a Signed-off-by trailer on every human commit; this makes edits made in the browser comply instead of failing.",
+    "has_issues": "The issue forms, the label taxonomy, and the intake chooser are all fronted by Issues. It is on by default everywhere; this puts it back if it was ever turned off.",
+    "has_discussions": "SUPPORT.md and the issue chooser route questions to Discussions, and the chooser's link 404s until this is on. The public template ships the discussion forms it expects.",
     "has_wiki": "Documentation is versioned in the tree and reviewed. A wiki is neither.",
     "has_projects": "Off by default rather than opinionated: turn it on deliberately if you use it."
+  },
+
+  "actions": {
+    "default_workflow_permissions": "write",
+    "can_approve_pull_request_reviews": true
+  },
+
+  "_why_actions": {
+    "default_workflow_permissions": "Branch-Protection says to leave Workflow permissions on Read and write, and means it: every stub declares its own permissions ceiling and this setting caps them all. On read-only, a called workflow asking for issues: write fails before any job starts, with no log to read.",
+    "can_approve_pull_request_reviews": "open-pr.sh opens pull requests as github-actions and dependabot-automerge.yml approves them; both are refused without this and can only tell you to come flip it by hand."
   },
 
   "security": {

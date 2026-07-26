@@ -62,7 +62,8 @@ on:
         description: >-
           Write the repository settings: squash-only merges, the pull
           request title and body as the commit, head branches deleted on
-          merge, auto-merge available, and the security features. Off by
+          merge, auto-merge available, the workflow-token policy, and the
+          security features. Off by
           default because it needs the same admin token the rulesets do.
         required: false
         type: boolean

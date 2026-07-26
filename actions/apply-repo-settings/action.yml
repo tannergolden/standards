@@ -5,7 +5,8 @@
 # Purpose: brings a repository's SETTINGS in line with the published set:
 # squash-only merges, the pull request title and body as the commit, head
 # branches deleted on merge, auto-merge available, sign-off required on web
-# edits, and the security features the standards assume are on.
+# edits, Issues and Discussions on, the Actions workflow-token policy, and
+# the security features the standards assume are on.
 #
 # ⚠️ SETTINGS ONLY, NEVER RULESETS. Branch and tag protection is a separate
 # action for a separate reason: a wrong ruleset blocks every merge in the
