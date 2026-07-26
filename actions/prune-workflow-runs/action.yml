@@ -6,11 +6,12 @@
 # most recent runs and deletes the rest, which removes their logs and
 # artifacts too.
 #
-# Two protections stop this from eating history that still matters. Runs
-# tied to any of the last N default-branch commits are always kept, so
-# recent history survives regardless of the per-workflow count. And
-# in-flight runs are never deleted, which includes the run executing this
-# action, so it cannot delete the job it is running in.
+# Three protections stop this from eating history that still matters. A
+# COMMIT-TRIGGERED run inside `keep-recent-days` is kept, so recent work
+# stays explicable. Runs tied to any of the last N default-branch commits
+# are kept, for repositories that go quiet. And in-flight runs are never
+# deleted, which includes the run executing this action, so it cannot
+# delete the job it is running in.
 #
 # Used as:
 #
@@ -36,6 +37,13 @@ inputs:
     description: 'How many recent runs to keep per workflow.'
     required: false
     default: '1'
+  keep-recent-days:
+    description: >-
+      Never delete a COMMIT-TRIGGERED run started within this many days.
+      Time alone is not enough: a schedule or a dispatch fires without
+      anyone committing, and that is the history this clears. 0 disables.
+    required: false
+    default: '0'
   keep-recent-commits:
     description: >-
       Never delete runs from this many latest default-branch commits.
@@ -56,6 +64,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.token }}
         GITHUB_REPOSITORY: ${{ inputs.repository }}
         KEEP_PER_WORKFLOW: ${{ inputs.keep }}
+        KEEP_RECENT_DAYS: ${{ inputs.keep-recent-days }}
         KEEP_RECENT_COMMITS: ${{ inputs.keep-recent-commits }}
         DRY_RUN: ${{ inputs.dry-run }}
       run: python3 "${GITHUB_ACTION_PATH}/../../scripts/prune-workflow-runs.py"

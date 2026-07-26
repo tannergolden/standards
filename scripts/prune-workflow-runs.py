@@ -6,10 +6,21 @@ workflow.
 
 For every workflow (grouped by its stable workflow id), the newest
 KEEP_PER_WORKFLOW completed runs are kept and every older completed run is
-deleted - deleting a run removes its logs and artifacts too. A run is also
-kept, regardless of its workflow, when it belongs to one of the last
-KEEP_RECENT_COMMITS commits on the default branch, so recent history is
-preserved. Runs that are not yet completed (queued / in_progress / waiting
+deleted - deleting a run removes its logs and artifacts too.
+
+Two protections keep a run regardless of its workflow's quota:
+
+  * KEEP_RECENT_DAYS - a run started within the window AND triggered by a
+    commit event (push, pull request, merge group). Time alone is not
+    enough: a schedule or a dispatch fires without anyone committing, and
+    that history is what this exists to clear. Every kept run therefore
+    answers "what happened to this commit?".
+  * KEEP_RECENT_COMMITS - a run belonging to one of the last N commits on
+    the default branch. A count rather than a window, for repositories
+    that go quiet for weeks and still want their last commits explicable.
+
+Either may be 0 to disable it; both may be on at once. Runs that are not
+yet completed (queued / in_progress / waiting
 / requested / pending) are never deleted: the API refuses to delete an
 in-flight run, and this run itself is one of them, so it can never delete
 the job it is executing in. Idempotent and 404-tolerant.
@@ -21,9 +32,14 @@ Required env:
 Optional env:
   GITHUB_API_URL       API base (default https://api.github.com)
   KEEP_PER_WORKFLOW    how many recent runs to keep per workflow (default 1)
+  KEEP_RECENT_DAYS     never delete a COMMIT-TRIGGERED run started within
+                       this many days (default 0 - disabled)
   KEEP_RECENT_COMMITS  never delete runs tied to this many latest default-
                        branch commits (default 35 - one page of the repo's
                        commit-history view; set 0 to disable)
+  COMMIT_EVENTS        comma-separated events that count as commit-triggered
+                       (default push,pull_request,pull_request_target,
+                       merge_group)
   DELETE_DELAY         seconds to pause between deletes (default 0.3) to stay
                        under the secondary rate limit
   DRY_RUN              "1"/"true"/"yes" to log the plan without deleting
@@ -33,6 +49,7 @@ Run locally:
     DRY_RUN=1 python3 scripts/prune-workflow-runs.py
 """
 
+import datetime
 import json
 import os
 import sys
@@ -65,21 +82,60 @@ KEEP_PER_WORKFLOW = max(1, _int("KEEP_PER_WORKFLOW", 1))
 # Default 35 == one page of the repo's commit-history view on GitHub, so the
 # runs for every commit still visible on that first page are always kept.
 KEEP_RECENT_COMMITS = _int("KEEP_RECENT_COMMITS", 35)
+# 0 == disabled, so a caller that never heard of this keeps its old behaviour.
+KEEP_RECENT_DAYS = _int("KEEP_RECENT_DAYS", 0)
 DELETE_DELAY = _float("DELETE_DELAY", 0.3)
+
+# What "connected to a commit" means. A push, a pull request, and a merge
+# group all carry work someone wrote; a schedule or a dispatch does not.
+COMMIT_EVENTS = frozenset(
+    e.strip()
+    for e in os.environ.get(
+        "COMMIT_EVENTS", "push,pull_request,pull_request_target,merge_group"
+    ).split(",")
+    if e.strip()
+)
+
+
+def cutoff(days):
+    """The instant a run must start after to be inside the window, or None
+    when the window is disabled."""
+    if days <= 0:
+        return None
+    return datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
+
+
+def started_at(run):
+    """A run's creation time as an aware datetime, or None if unparseable -
+    an unreadable timestamp must never look recent."""
+    raw = (run.get("created_at") or "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 # Only a completed run can be deleted; every other status is in-flight and
 # must be left alone.
 COMPLETED = "completed"
 
 
-def plan(runs, keep_per=KEEP_PER_WORKFLOW, recent_shas=frozenset()):
+def plan(runs, keep_per=KEEP_PER_WORKFLOW, recent_shas=frozenset(),
+         since=None, commit_events=COMMIT_EVENTS):
     """Pure decision function (no I/O), so it is unit-testable.
 
     `runs` must be sorted newest-first. Returns (keep, delete, skip):
       keep   - the newest `keep_per` COMPLETED runs of each workflow, PLUS
-               every completed run whose head_sha is in `recent_shas`
+               every completed run whose head_sha is in `recent_shas`, PLUS
+               every completed COMMIT-TRIGGERED run started at or after
+               `since` (None disables the window)
       delete - every other completed run
       skip   - runs that are not completed (never deletable)
+
+    The per-workflow quota is spent by protected runs too, so a workflow
+    whose recent runs are all protected does not also retain an ancient
+    one: "one run each" is a floor for quiet workflows, not an extra.
     """
     keep, delete, skip = [], [], []
     kept = {}
@@ -89,6 +145,9 @@ def plan(runs, keep_per=KEEP_PER_WORKFLOW, recent_shas=frozenset()):
             continue
         wid = run.get("workflow_id")
         protected = run.get("head_sha") in recent_shas
+        if not protected and since is not None and run.get("event") in commit_events:
+            when = started_at(run)
+            protected = when is not None and when >= since
         if protected or kept.get(wid, 0) < keep_per:
             kept[wid] = kept.get(wid, 0) + 1
             keep.append(run)
@@ -187,13 +246,21 @@ def main():
               "retrying next run", file=sys.stderr)
         return 1
     runs.sort(key=lambda r: r.get("created_at", ""), reverse=True)
-    keep, delete, skip = plan(runs, recent_shas=recent)
+    since = cutoff(KEEP_RECENT_DAYS)
+    keep, delete, skip = plan(runs, recent_shas=recent, since=since)
 
     kept_workflows = {r.get("workflow_id") for r in keep}
+    protections = [f"keeping {KEEP_PER_WORKFLOW} per workflow"]
+    if since is not None:
+        protections.append(
+            f"every commit-triggered run since {since:%Y-%m-%d %H:%M} UTC "
+            f"({KEEP_RECENT_DAYS}d)"
+        )
+    if recent:
+        protections.append(f"any run from the last {len(recent)} commit(s)")
     print(
         f"{len(runs)} run(s) across {len(kept_workflows)} workflow(s); "
-        f"keeping {KEEP_PER_WORKFLOW} per workflow, plus any run from the "
-        f"last {len(recent)} commit(s)."
+        + ", plus ".join(protections) + "."
     )
     for run in skip:
         print(f"SKIP   [{run.get('name')}] #{run.get('run_number')} {run.get('status')} (in-flight)")

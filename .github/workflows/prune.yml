@@ -85,6 +85,13 @@ on:
         required: false
         type: number
         default: 1
+      keep-recent-days:
+        description: >-
+          Never delete a commit-triggered run started within this many
+          days. 0 disables the window.
+        required: false
+        type: number
+        default: 0
       keep-recent-commits:
         description: >-
           Never delete runs from this many latest default-branch commits.
@@ -163,5 +170,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           keep: ${{ inputs.keep }}
+          keep-recent-days: ${{ inputs.keep-recent-days }}
           keep-recent-commits: ${{ inputs.keep-recent-commits }}
           dry-run: ${{ inputs.dry-run }}

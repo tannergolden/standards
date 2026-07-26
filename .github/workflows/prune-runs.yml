@@ -1,0 +1,108 @@
+# --- Reusable Workflow ---
+#
+# 🧹 Prune Run History
+#
+# Purpose: keeps the Actions tab readable. Deletes workflow runs, with
+# their logs and artifacts, except:
+#
+#   * every COMMIT-TRIGGERED run inside `keep-recent-days` - a push, a
+#     pull request, or a merge group. Those answer "what happened to this
+#     commit?", which is the only question old run history ever gets.
+#   * the newest `keep` run(s) of every workflow, so each one keeps a
+#     worked example even when nobody has touched it for months.
+#
+# ⚠️ SCHEDULES AND DISPATCHES ARE NOT COMMIT-TRIGGERED, deliberately. A
+# nightly job that ran three hundred times says nothing that one kept run
+# does not, and keeping it by age alone is how an Actions tab becomes
+# unreadable.
+#
+# ⚠️ RUNS ONLY, NOT DEPLOYMENTS. `prune.yml` does both and is the right
+# call for a scheduled tidy-up of a deployed project. This one exists so a
+# caller that wants only the run history does not have to declare
+# `deployments: write` for jobs it has switched off - a ceiling is a
+# promise about what a workflow may do, and it should be honest.
+#
+# In-flight runs are never deleted, which includes the run executing this,
+# so it can never delete the job it is running in.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🧹 Prune Run History'
+#   on:
+#     schedule:
+#       - cron: '30 6 * * 1'
+#     workflow_dispatch:
+#       inputs:
+#         dry-run:
+#           type: boolean
+#           default: false
+#   concurrency:
+#     group: ${{ github.workflow }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     prune-runs:
+#       permissions:
+#         actions: write # delete workflow runs, with their logs and artifacts
+#         contents: read # read the default branch to resolve the window
+#       uses: tannergolden/standards/.github/workflows/prune-runs.yml@v1
+#       with:
+#         dry-run: ${{ inputs.dry-run || false }}
+#
+# ---
+
+name: '🧹 Prune Run History'
+
+on:
+  workflow_call:
+    inputs:
+      dry-run:
+        description: 'Log what would be deleted and delete nothing.'
+        required: false
+        type: boolean
+        default: false
+      keep:
+        description: 'How many recent runs to keep per workflow.'
+        required: false
+        type: number
+        default: 1
+      keep-recent-days:
+        description: >-
+          Never delete a commit-triggered run started within this many
+          days. 0 disables the window, leaving only the per-workflow keep.
+        required: false
+        type: number
+        default: 7
+      keep-recent-commits:
+        description: >-
+          Also keep every run tied to this many latest default-branch
+          commits. 0 by default: the day window is the protection here.
+        required: false
+        type: number
+        default: 0
+
+permissions: {}
+
+jobs:
+  runs:
+    name: '🧹 Prune Run History'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      actions: write # delete workflow runs, with their logs and artifacts
+      contents: read # read the default branch to resolve the commit window
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🧹 Prune: deletes run history, keeping recent commit-triggered runs.'
+
+      - name: '🧹 Prune runs'
+        uses: tannergolden/standards/actions/prune-workflow-runs@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          keep: ${{ inputs.keep }}
+          keep-recent-days: ${{ inputs.keep-recent-days }}
+          keep-recent-commits: ${{ inputs.keep-recent-commits }}
+          dry-run: ${{ inputs.dry-run }}
