@@ -69,13 +69,15 @@ We prioritize security from the very first commit. Our objective is to minimize 
 | Tool                       | Focus                                                                      | Cycle                             |
 | :------------------------- | :------------------------------------------------------------------------- | :-------------------------------- |
 | **Gitleaks**               | Secret & Pattern Detection (CI layer).                                     | Every Commit / PR.                |
-| **GitHub Secret Scanning** | Platform-native detection + **push protection** (enabled in code at init). | Continuous, at the boundary.      |
+| **GitHub Secret Scanning** | Platform-native detection + **push protection** (applied by Apply Standards). | Continuous, at the boundary.      |
 | **Dependabot**             | Vulnerable Dependencies (SCA).                                             | Continuous.                       |
 | **CodeQL**                 | Semantic Security Flaws (SAST).                                            | Every PR / Weekly (public repos). |
 | **Harden-Runner**          | Runner Egress Audit.                                                       | Every job run.                    |
 
 > [!NOTE]
-> **Disclosure is wired too**: init enables **private vulnerability reporting** in code, so coordinated disclosure (Security tab → Report a vulnerability) works from day zero - see [`SECURITY.md`](https://github.com/tannergolden/.github/blob/Development/SECURITY.md).
+> **Disclosure is wired too**: **🎯 Apply Standards** enables **private vulnerability reporting** with `apply-settings`, so coordinated disclosure (Security tab → Report a vulnerability) works once you have run it - see [`SECURITY.md`](https://github.com/tannergolden/.github/blob/Development/SECURITY.md). It is a public-repository feature, and the run says so and skips rather than failing on a private one.
+>
+> **Initialisation does not do this.** It rewrites identity and nothing else. Until Apply Standards has run with `apply-settings: true`, these are off.
 
 ---
 

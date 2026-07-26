@@ -56,7 +56,7 @@ private one. Twelve stubs, grouped and pinned to `@v1`.
 | Path                                                | Purpose                                                                  |
 | :-------------------------------------------------- | :----------------------------------------------------------------------- |
 | [`.github/workflows/`](.github/workflows/README.md) | 21 reusable workflows, called with `uses:` at the job level              |
-| [`actions/`](actions/README.md)                     | 14 composite actions, called with `uses:` at the step level              |
+| [`actions/`](actions/README.md)                     | 15 composite actions, called with `uses:` at the step level              |
 | [`data/`](data/README.md)                           | Rulesets and the label taxonomy, written **to** a repository             |
 | `config/`                                           | Linter and tooling configuration, read **by** a tool during a run        |
 | `docs/`                                             | The standards themselves, followed by link. Start at the standards index |

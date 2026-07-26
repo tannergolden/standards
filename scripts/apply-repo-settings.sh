@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Tanner Golden
+# SPDX-License-Identifier: MIT
+# =============================================================================
+# Apply Repository Settings - the settings half of "set up to standard"
+# =============================================================================
+# Reads data/repository-settings.json and brings a repository's settings in
+# line with it. Rulesets are NOT touched here: they live in data/rulesets/ and
+# are applied by apply-rulesets.sh, because branch protection is the change
+# that can lock a repository's own automation out of it.
+#
+# READ BEFORE WRITE. Every setting is compared against its current value and
+# only the differences are sent, so a no-op run makes one API call and reports
+# "0 changed". Anything else in the summary is a real difference.
+#
+# DRY RUN BY DEFAULT, like apply-rulesets.sh. A caller that forgets the flag
+# gets a plan rather than a change.
+#
+# ⚠️ VISIBILITY AND PLAN GATE SOME OF THIS. Secret scanning is free on public
+# repositories and needs Advanced Security on private ones; private
+# vulnerability reporting is public-only. Both are detected and SKIPPED with a
+# notice rather than failing the run, because a private repository that cannot
+# have a feature has not misconfigured anything.
+#
+# Usage:
+#     bash scripts/apply-repo-settings.sh                  # preview
+#     DRY_RUN=false bash scripts/apply-repo-settings.sh    # apply
+#     TARGET_REPO=owner/name DRY_RUN=false bash scripts/apply-repo-settings.sh
+#
+# Requires: gh, authenticated with a token holding administration write.
+# Optional: TARGET_REPO   defaults to the repository gh is pointed at
+#           SETTINGS_FILE defaults to ../data/repository-settings.json
+#           DRY_RUN       defaults to TRUE; set false to actually apply
+# =============================================================================
+set -euo pipefail
+
+HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SETTINGS_FILE="${SETTINGS_FILE:-${HERE}/../data/repository-settings.json}"
+
+if [ ! -f "$SETTINGS_FILE" ]; then
+  echo "::error::No settings file at ${SETTINGS_FILE}."
+  exit 1
+fi
+
+if [ -z "${TARGET_REPO:-}" ]; then
+  TARGET_REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
+fi
+if [ -z "$TARGET_REPO" ]; then
+  echo "::error::TARGET_REPO is required, and no repository could be inferred from the current directory."
+  exit 1
+fi
+
+DRY_RUN="$(printf '%s' "${DRY_RUN:-true}" | tr '[:upper:]' '[:lower:]')"
+
+# One read of the repository, reused for every comparison below.
+CURRENT="$(gh api "repos/${TARGET_REPO}" 2>/dev/null || true)"
+if [ -z "$CURRENT" ]; then
+  echo "::error::Could not read '${TARGET_REPO}'. Check that it exists, that you are authenticated, and that the token can administer it."
+  exit 1
+fi
+
+VISIBILITY="$(printf '%s' "$CURRENT" | jq -r '.visibility // "unknown"')"
+IS_PUBLIC=false
+[ "$VISIBILITY" = "public" ] && IS_PUBLIC=true
+
+echo "Target:     ${TARGET_REPO} (${VISIBILITY})"
+echo "Settings:   ${SETTINGS_FILE}"
+[ "$DRY_RUN" = "true" ] && echo "Mode:       DRY RUN - nothing will be changed."
+echo
+
+# ── Plain repository settings ────────────────────────────────────────────────
+# Compared one at a time so the plan names the setting rather than a blob.
+PATCH='{}'
+CHANGED=0
+UNCHANGED=0
+
+while IFS=$'\t' read -r key want; do
+  # `// null` would be wrong here: jq treats FALSE as empty, so every setting
+  # whose correct value is false would read as null and be re-sent forever.
+  have="$(printf '%s' "$CURRENT" | jq -c --arg k "$key" 'if has($k) then .[$k] else null end')"
+  if [ "$have" = "$want" ]; then
+    UNCHANGED=$((UNCHANGED + 1))
+    continue
+  fi
+  printf '  CHANGE  %-32s %s -> %s\n' "$key" "$have" "$want"
+  PATCH="$(printf '%s' "$PATCH" | jq -c --arg k "$key" --argjson v "$want" '.[$k] = $v')"
+  CHANGED=$((CHANGED + 1))
+done < <(jq -r '.repository | to_entries[] | [.key, (.value | tojson)] | @tsv' "$SETTINGS_FILE")
+
+# ── Security settings, each gated on what this repository can actually have ──
+# Reported separately because they use their own endpoints, and because a skip
+# here is a fact about the repository rather than a failure.
+SEC_ENABLE=()
+want_bool() { jq -r --arg k "$1" '.security[$k] // false' "$SETTINGS_FILE"; }
+
+if [ "$(want_bool secret_scanning)" = "true" ]; then
+  have="$(printf '%s' "$CURRENT" | jq -r '.security_and_analysis.secret_scanning.status // "unavailable"')"
+  if [ "$have" = "enabled" ]; then
+    UNCHANGED=$((UNCHANGED + 1))
+  elif [ "$IS_PUBLIC" = "true" ] || [ "$have" != "unavailable" ]; then
+    echo "  CHANGE  secret_scanning                  ${have} -> enabled"
+    SEC_ENABLE+=("secret_scanning")
+    CHANGED=$((CHANGED + 1))
+  else
+    echo "  SKIP    secret_scanning                  needs Advanced Security on a private repository"
+  fi
+fi
+
+if [ "$(want_bool secret_scanning_push_protection)" = "true" ]; then
+  have="$(printf '%s' "$CURRENT" | jq -r '.security_and_analysis.secret_scanning_push_protection.status // "unavailable"')"
+  if [ "$have" = "enabled" ]; then
+    UNCHANGED=$((UNCHANGED + 1))
+  elif [ "$IS_PUBLIC" = "true" ] || [ "$have" != "unavailable" ]; then
+    echo "  CHANGE  secret_scanning_push_protection  ${have} -> enabled"
+    SEC_ENABLE+=("secret_scanning_push_protection")
+    CHANGED=$((CHANGED + 1))
+  else
+    echo "  SKIP    secret_scanning_push_protection  needs Advanced Security on a private repository"
+  fi
+fi
+
+# These three are separate endpoints with no readable field on the repository
+# object, so they are applied idempotently rather than compared. PUT on an
+# already-enabled feature is a no-op that returns 204.
+declare -a TOGGLES=()
+[ "$(want_bool vulnerability_alerts)" = "true" ] && TOGGLES+=("vulnerability-alerts")
+[ "$(want_bool automated_security_fixes)" = "true" ] && TOGGLES+=("automated-security-fixes")
+if [ "$(want_bool private_vulnerability_reporting)" = "true" ]; then
+  if [ "$IS_PUBLIC" = "true" ]; then
+    TOGGLES+=("private-vulnerability-reporting")
+  else
+    echo "  SKIP    private_vulnerability_reporting  public repositories only"
+  fi
+fi
+for t in "${TOGGLES[@]}"; do
+  echo "  ENSURE  ${t}"
+done
+
+echo
+echo "Plan: ${CHANGED} change(s), ${UNCHANGED} already correct, ${#TOGGLES[@]} ensured."
+
+if [ "$CHANGED" -eq 0 ] && [ "${#TOGGLES[@]}" -eq 0 ]; then
+  echo "Nothing to do."
+  exit 0
+fi
+
+if [ "$DRY_RUN" = "true" ]; then
+  echo "Dry run: nothing was changed. Set DRY_RUN=false to apply this plan."
+  exit 0
+fi
+
+echo
+if [ "$PATCH" != '{}' ]; then
+  printf '%s' "$PATCH" | gh api --method PATCH "repos/${TARGET_REPO}" --input - >/dev/null
+  echo "Applied repository settings."
+fi
+
+for name in "${SEC_ENABLE[@]}"; do
+  gh api --method PATCH "repos/${TARGET_REPO}" \
+    -f "security_and_analysis[${name}][status]=enabled" >/dev/null
+  echo "Enabled ${name}."
+done
+
+for t in "${TOGGLES[@]}"; do
+  if gh api --method PUT "repos/${TARGET_REPO}/${t}" --silent 2>/dev/null; then
+    echo "Ensured ${t}."
+  else
+    echo "::warning::Could not enable ${t}. It may be unavailable on this repository's plan or visibility."
+  fi
+done
+
+echo
+echo "Done. Rulesets are a separate act: see scripts/apply-rulesets.sh."

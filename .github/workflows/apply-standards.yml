@@ -58,6 +58,15 @@ on:
         required: false
         type: boolean
         default: true
+      apply-settings:
+        description: >-
+          Write the repository settings: squash-only merges, the pull
+          request title and body as the commit, head branches deleted on
+          merge, auto-merge available, and the security features. Off by
+          default because it needs the same admin token the rulesets do.
+        required: false
+        type: boolean
+        default: false
       apply-rulesets:
         description: >-
           Write the branch and tag rulesets. Off by default because a
@@ -67,7 +76,7 @@ on:
         type: boolean
         default: false
       dry-run:
-        description: 'For rulesets: print what would be applied and change nothing.'
+        description: 'For settings and rulesets: print what would be applied and change nothing.'
         required: false
         type: boolean
         default: true
@@ -81,11 +90,17 @@ on:
         required: false
         type: string
         default: ''
+      settings-file:
+        description: 'Path to a settings JSON in the CALLING repository. Empty uses the shared one.'
+        required: false
+        type: string
+        default: ''
     secrets:
       ADMIN_TOKEN:
         description: >-
           Token with administration write on this repository. Required for
-          rulesets; the default GITHUB_TOKEN cannot write them.
+          settings and for rulesets; the default GITHUB_TOKEN can write
+          neither, whatever permissions the job requests.
         required: false
 
 permissions: {}
@@ -119,6 +134,42 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           labels-file: ${{ inputs.labels-file }}
+          dry-run: ${{ inputs.dry-run }}
+
+  settings:
+    name: '⚙️ Apply Repository Settings'
+    if: ${{ inputs.apply-settings }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+
+      # Same failure mode as the rulesets job, same early exit. A 403 from
+      # the settings endpoint reads like a bug rather than a missing token.
+      - name: '🔑 Verify Admin Token'
+        env:
+          HAVE_ADMIN: ${{ secrets.ADMIN_TOKEN != '' }}
+        run: |
+          if [ "$HAVE_ADMIN" != "true" ]; then
+            echo "::error title=Admin token required::Repository settings need a token with administration write. The default GITHUB_TOKEN cannot change them regardless of the permissions this job requests. Add a PAT or GitHub App token as the ADMIN_TOKEN secret, or set apply-settings to false."
+            exit 1
+          fi
+
+      - name: '📂 Checkout Calling Repository'
+        if: ${{ inputs.settings-file != '' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '⚙️ Apply Repository Settings'
+        uses: tannergolden/standards/actions/apply-repo-settings@v1
+        with:
+          token: ${{ secrets.ADMIN_TOKEN }}
+          settings-file: ${{ inputs.settings-file }}
           dry-run: ${{ inputs.dry-run }}
 
   rulesets:

@@ -126,7 +126,7 @@ We believe that clear, unambiguous language is the foundation of effective engin
 - **Parity**: Similarity between different environments (e.g., Local matching CI).
 - **Promotion**: Moving validated code up the long-lived lines (`Experimental` → `Development` → `Preview` → `Release`), each hop a deliberate pull request.
 - **Property-Based Testing**: Testing with generated adversarial inputs instead of hand-picked examples (Hypothesis, `fast-check`, `proptest`). Nothing here ships such a suite; wire yours in through `ci.yml`'s `test-command`.
-- **Push Protection**: GitHub's platform-level secret blocking at push time - a leaked credential is stopped at the boundary, before it ever lands in history; enabled in code at init.
+- **Push Protection**: GitHub's platform-level secret blocking at push time - a leaked credential is stopped at the boundary, before it ever lands in history; applied by **🎯 Apply Standards** with `apply-settings`.
 
 ## R
 

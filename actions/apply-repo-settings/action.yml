@@ -1,0 +1,82 @@
+# --- Composite Action ---
+#
+# ⚙️ Apply Repository Settings
+#
+# Purpose: brings a repository's SETTINGS in line with the published set:
+# squash-only merges, the pull request title and body as the commit, head
+# branches deleted on merge, auto-merge available, sign-off required on web
+# edits, and the security features the standards assume are on.
+#
+# ⚠️ SETTINGS ONLY, NEVER RULESETS. Branch and tag protection is a separate
+# action for a separate reason: a wrong ruleset blocks every merge in the
+# repository, while a wrong setting is a checkbox. Keeping them apart means
+# turning on secret scanning cannot cost you the merge button.
+#
+# READ BEFORE WRITE. Each setting is compared against its current value and
+# only differences are sent, so a second run reports `0 change(s)` and makes
+# one API call. That is what makes this safe to run on a schedule.
+#
+# ⚠️ SOME FEATURES ARE GATED, AND A SKIP IS NOT A FAILURE. Secret scanning is
+# free on public repositories and needs Advanced Security on private ones;
+# private vulnerability reporting is public-only. Both are detected and
+# skipped with a notice, because a repository that cannot have a feature has
+# not misconfigured anything.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/apply-repo-settings@v1
+#     with:
+#       token: ${{ secrets.ADMIN_TOKEN }}
+#       repository: owner/repo
+#       dry-run: true
+#
+# ---
+
+name: '⚙️ Apply Repository Settings'
+description: "Brings a repository's settings in line with the published set, comparing before it writes."
+
+inputs:
+  token:
+    description: >-
+      Token that can administer the target repository. The default
+      GITHUB_TOKEN cannot change repository settings, so this needs a PAT or
+      app token with administration write, the same one the rulesets use.
+    required: true
+  repository:
+    description: 'Repository to configure, as owner/repo.'
+    required: false
+    default: ${{ github.repository }}
+  settings-file:
+    description: >-
+      Path to a settings JSON in the CALLING repository. Empty uses the
+      published set. Name a file to depart from the standard deliberately
+      rather than by drift.
+    required: false
+    default: ''
+  dry-run:
+    description: >-
+      Print the plan and change nothing. This action defaults it to false
+      because a caller passing nothing has asked for the thing to happen; the
+      script defaults it to TRUE for a hand-run, where nobody has declared an
+      intent yet.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: '⚙️ Apply repository settings'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        TARGET_REPO: ${{ inputs.repository }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        OVERRIDE_FILE: ${{ inputs.settings-file }}
+      run: |
+        set -euo pipefail
+        if [ -n "$OVERRIDE_FILE" ]; then
+          export SETTINGS_FILE="$OVERRIDE_FILE"
+        else
+          export SETTINGS_FILE="${GITHUB_ACTION_PATH}/../../data/repository-settings.json"
+        fi
+        bash "${GITHUB_ACTION_PATH}/../../scripts/apply-repo-settings.sh"

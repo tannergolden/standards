@@ -1,0 +1,60 @@
+{
+  "_comment": [
+    "The repository settings a repository on these standards is expected to have.",
+    "Applied by scripts/apply-repo-settings.sh, which reads before it writes and",
+    "previews by default. Every value here is required by something documented:",
+    "the reason is on the line beside it, and a setting nothing needs is not here.",
+    "",
+    "SETTINGS ONLY. Branch and tag protection live in data/rulesets/ and are",
+    "applied separately, because they are the change that can lock you out.",
+    "",
+    "Some settings are gated on repository visibility or plan. Secret scanning is",
+    "free on public repositories and needs Advanced Security on private ones, and",
+    "private vulnerability reporting is a public-repository feature. The script",
+    "detects both and skips with a notice rather than failing the run."
+  ],
+
+  "repository": {
+    "allow_squash_merge": true,
+    "allow_merge_commit": false,
+    "allow_rebase_merge": false,
+    "squash_merge_commit_title": "PR_TITLE",
+    "squash_merge_commit_message": "PR_BODY",
+    "delete_branch_on_merge": true,
+    "allow_auto_merge": true,
+    "allow_update_branch": true,
+    "web_commit_signoff_required": true,
+    "has_wiki": false,
+    "has_projects": false
+  },
+
+  "_why": {
+    "allow_squash_merge": "Squash is the only door. The rulesets set allowed_merge_methods to squash on every protected branch; this makes the button agree.",
+    "allow_merge_commit": "A merge commit has no Conventional Commit subject, so the changelog generator cannot see it.",
+    "allow_rebase_merge": "Rebase replays commits individually, which puts unsquashed work-in-progress subjects on a protected branch.",
+    "squash_merge_commit_title": "The pull request title becomes the commit that lands, which is exactly what semantic-pr.yml validates.",
+    "squash_merge_commit_message": "The pull request body becomes the commit body, which is how the required commit body arrives without retyping it.",
+    "delete_branch_on_merge": "Documented in Repository-Hygiene as the on-merge cadence. Nothing else prunes merged heads.",
+    "allow_auto_merge": "REQUIRED, not cosmetic. dependabot-automerge.yml and open-pr.sh both call `gh pr merge --auto`, which fails without it.",
+    "allow_update_branch": "Lets a pull request take the base branch without a merge commit, so strict required checks can be satisfied.",
+    "web_commit_signoff_required": "The DCO check requires a Signed-off-by trailer on every human commit; this makes edits made in the browser comply instead of failing.",
+    "has_wiki": "Documentation is versioned in the tree and reviewed. A wiki is neither.",
+    "has_projects": "Off by default rather than opinionated: turn it on deliberately if you use it."
+  },
+
+  "security": {
+    "secret_scanning": true,
+    "secret_scanning_push_protection": true,
+    "vulnerability_alerts": true,
+    "automated_security_fixes": true,
+    "private_vulnerability_reporting": true
+  },
+
+  "_why_security": {
+    "secret_scanning": "Security-&-Secrets names it as the platform-native layer beside Gitleaks.",
+    "secret_scanning_push_protection": "Stops a credential at the boundary rather than reporting it afterwards.",
+    "vulnerability_alerts": "Dependabot alerts. The dependency-management standard assumes they are on.",
+    "automated_security_fixes": "Dependabot security updates, which is what opens the pull requests that dependabot-automerge.yml then handles.",
+    "private_vulnerability_reporting": "Gives the Security tab a Report a vulnerability entry, which is the intake SECURITY.md points at."
+  }
+}

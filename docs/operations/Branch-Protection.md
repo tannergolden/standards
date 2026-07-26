@@ -71,7 +71,9 @@ Reviews column = the **recommended team posture** once you have reviewers; the s
 > [!IMPORTANT]
 > **Always Squash & Merge.** The rulesets enforce it: `allowed_merge_methods` is `["squash"]` on both branch rulesets, so a linear history is policy rather than etiquette.
 >
-> Repository *settings* are a separate matter and are **not** applied for you - `init-template.yml` rewrites identity, nothing more. Set these by hand once: squash-only merges with the commit title taken from the pull request title, Discussions if you want them, private vulnerability reporting, Dependabot alerts and fixes, and secret scanning with push protection.
+> Repository *settings* are a separate matter, and initialisation does not touch them: `init-template.yml` rewrites identity, nothing more. Dispatch **🎯 Apply Standards** with `apply-settings: true` to write them, or set them by hand. Either way they are squash-only merges with the pull request title and body as the commit, head branches deleted on merge, auto-merge available, sign-off required on web edits, and the security features on. The full list, with the reason each one is required, is [`data/repository-settings.json`](../../data/repository-settings.json).
+>
+> **Settings and rulesets are separate jobs on purpose.** A wrong setting is a checkbox; a wrong ruleset blocks every merge in the repository. Keeping them apart means turning on secret scanning cannot cost you the merge button.
 >
 > **Leave *Workflow permissions* on "Read and write".** Every stub declares its own ceiling, and that ceiling is capped by this setting: on "read-only" a called workflow asking for `issues: write` fails the run before any job starts, with no log to read.
 
@@ -144,7 +146,7 @@ exactly like this, substituting your own repository:
 | **Token name**             | `apply-standards-rulesets-<repo>`                                     |
 | **Description**            | see below                                                             |
 | **Expiration**             | **30 days**                                                           |
-| **Repository access**      | *Only select repositories* → the one repository                       |
+| **Repository access**      | *Only select repositories* → the generated repositories only          |
 | **Repository permissions** | **Administration** → **Read and write**, and nothing else             |
 
 Description, which you can paste as-is after substituting the repository:
@@ -155,6 +157,17 @@ workflow. Administration: Read and write, this repository only. Read from the
 ADMIN_TOKEN secret in that repository. Safe to revoke: rulesets already applied
 are unaffected, and re-applying only needs a new token.
 ```
+
+**Select repositories, and select the right ones.** *All repositories* hands a token
+that can rewrite branch protection to everything you own, including the templates and
+the standards repository itself. Choose *Only select repositories* and pick the ones
+**generated from the templates**, which are the only repositories this is ever applied
+to. The templates and `standards` are never targets: a template has nothing to protect,
+and the standards repository is a publisher whose settings you manage directly.
+
+One token covering the generated repositories you actually run this against is fine,
+and easier to revoke than several. Adding a repository to an existing token is a
+two-click edit, so start narrow.
 
 **Why the name matters.** GitHub lists your tokens by name on one page across every
 repository you own. `admin` or `token` tells you nothing six months later, when the
