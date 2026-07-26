@@ -157,7 +157,7 @@ the full set, already pinned to `@v1`. No token needed.
 
 ### Either way, do two things before merging
 
-1. **Tell `ci.yml` how your project builds** via `lint-command`, `test-command`, `build-command`, or
+1. **Tell `checks.yml` how your project builds** via `lint-command`, `test-command`, `build-command`, or
    a Makefile with those targets. With neither, the job fails on purpose.
 2. **Do not rename the job ids.** `ci`, `secrets`, and `pr` are what the rulesets expect.
 

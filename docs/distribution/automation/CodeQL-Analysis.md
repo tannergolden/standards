@@ -40,7 +40,7 @@ The security pipeline operates as a non-blocking but high-signal guardian for ou
 | **Push to Dev**        | Baselining the integration line. | Audit the latest consolidated state.               |
 | **Scheduled (Weekly)** | Deep historical audit.           | Catch new CVEs and vulnerability patterns.         |
 
-The analysis runs the **`security-extended`** query pack - a broader vulnerability surface than the default suite (at the cost of an occasional extra advisory finding to triage); fold in `security-and-quality` in `codeql.yml` if you want code-quality queries too.
+The analysis runs the **`security-extended`** query pack - a broader vulnerability surface than the default suite (at the cost of an occasional extra advisory finding to triage); pass `security-and-quality` as the `queries` input on the `codeql` job in your `checks.yml` if you want code-quality queries too.
 
 > [!NOTE]
 > **Public repositories only.** The analyze job runs only when the repository is public: CodeQL on private repositories requires a GitHub Advanced Security license, so without one the job skips cleanly - no red check, no escalation issue. Take a private repository public (or license GHAS) and the scans start on the next trigger.

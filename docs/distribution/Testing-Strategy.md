@@ -218,11 +218,11 @@ npx playwright test
 
 <strong>🧭 CI Layout (including Experimental)</strong>
 
-- `ci.yml` (shipped): the **🧪 Lint, Test & Build** required check - `npm test` runs on pushes and PRs to all four long-lived branches.
+- `checks.yml` (shipped): its `ci` job is the **🧪 Lint, Test & Build** required check - your `test-command` runs on pushes and PRs to all four long-lived branches.
 - `preview-deploy.yml` (shipped): build → deploy **Preview** via its placeholder step. Append your Playwright **smoke** suite after the deploy step so bad candidates never reach `Release`.
-- `release-notes.yml` + `release-publish.yml` (shipped): draft → publish → package. Add an optional Playwright **regression** job before your production deploy hook.
+- `release.yml` (shipped): draft → publish → package, as three jobs calling the release chain. Add an optional Playwright **regression** job before your production deploy hook.
 
-**The shipped trigger in `ci.yml`:**
+**The shipped trigger in `checks.yml`:**
 
 ```yaml
 on:
