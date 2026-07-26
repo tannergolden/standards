@@ -46,12 +46,45 @@ The commit and pull request title should follow this format:
 
 ```text
 <type>(<scope>): <subject>
+
+<body>
+
+<footers>
 ```
 
 - **Type**: One of the following: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`, `security`.
 - **Scope**: A short identifier for the area of the codebase being changed (e.g., `auth`, `api`, `ui`).
 - **Subject**: A brief, descriptive summary of the change, written in lowercase (recommended). The subject may optionally begin with an emoji.
+- **Body**: **REQUIRED, on every commit, without exception.** Separated from the subject by one blank line and wrapped at 72 characters. Write full sentences explaining **why** the change was made and why this way rather than the obvious alternative.
 - **Punctuation**: Never use an em dash (U+2014) anywhere in a commit message, subject or body. Use a comma, a colon, parentheses, or a spaced hyphen instead. commitlint rejects the character mechanically (the commitlint rule set in `config/commitlint.config.js` encodes it).
+
+#### The Body Is Not Optional
+
+A subject-only commit is not a smaller commit. It is an undocumented one.
+
+The diff already records **what** changed, in more detail and more reliably
+than any prose could. Nothing except the body records **why**, and the
+reasoning is the only part that cannot be recovered later by reading the
+code. A commit that omits it has thrown away the one thing it was uniquely
+able to preserve.
+
+This binds every commit that lands in a repository on these standards:
+
+| Commit | Body required |
+| :--- | :--- |
+| Ordinary human-authored work | Yes |
+| The initial commit written at repository generation | Yes, and `scripts/init-template.py` writes one |
+| Automated maintenance commits (formatting, licence year, dependency bumps) | Yes, from the workflow that opens them |
+| A squash merge | Yes. The pull request body becomes it, so write that body |
+| A revert | Yes. State what broke, not only what is being undone |
+
+The only commits exempt are ones no person authored and no person can edit:
+merge commits GitHub generates for a merge-queue entry or a web-UI merge.
+
+Where a change is genuinely self-evident, the body still has work to do:
+say what you considered and rejected, or what it deliberately does **not**
+do. "Obvious" is a property of the author on the day they wrote it, never of
+the reader six months later.
 
 #### Emoji Guidelines
 
@@ -158,6 +191,30 @@ The sign-in feature includes:
 - Integration tests for happy and failure paths.
 ```
 
+#### Bad Example
+
+```text
+fix(auth): 🐛 fix login bug
+```
+
+Two failures, and the missing body is the worse one. "fix login bug" restates
+the type and the scope without adding anything, and the reader is left with a
+diff and no account of which bug, how it presented, or why this fix rather
+than another. Nothing here survives the moment its author forgets it.
+
+```text
+fix(auth): 🐛 accept sign-in tokens issued seconds before a clock skew
+
+Tokens carry an issued-at stamp checked against the server clock. A user
+whose device ran marginally ahead produced a token dated in the future,
+which the validator rejected as not yet valid, so sign-in failed on
+correct credentials and reported nothing useful.
+
+Allows sixty seconds of forward skew rather than syncing clocks, because
+the client's clock is not ours to fix and the exposure is bounded by the
+same expiry that already applies.
+```
+
 ---
 
 ### 🔗 Commitlint & CI Integration
@@ -214,13 +271,14 @@ Add to `package.json` (example):
 #### DO
 
 - Keep the **summary** imperative/present: “add”, “fix”, “remove” / “Adds…”.
-- Write the **why** in the body; link issues/PRs when allowed.
+- Write the **why** in the body. It is required, not encouraged; see above.
 - Mark **BREAKING CHANGE** explicitly in footers.
 
 #### DON’T
 
 - Don’t paste raw diff lines or secrets into prompts or bodies.
 - Don’t combine unrelated changes into one commit.
+- Don’t ship a subject-only commit, however small the change looks.
 - Don’t rely on AI output without reading it.
 - Don’t use em dashes anywhere in the message: commitlint rejects them.
 
