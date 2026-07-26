@@ -95,40 +95,20 @@ jobs:
           [ "$missing" -eq 0 ] || exit 1
           echo "Every referenced action exists at this commit."
 
-      # OPTIONAL, AND IT FAILS SOFT. Without the secret the tags are still
-      # cut, just unsigned, which is what the runner produced before this
-      # existed. A release must not be blocked by a missing signature.
+      # ⚠️ THE TAGS HERE ARE LIGHTWEIGHT, DELIBERATELY. A lightweight tag is a
+      # ref and nothing else: no tag object, so no tagger, no message, and
+      # nothing that can carry a signature or lack one. What GitHub displays
+      # for it is the COMMIT, which is signed and verified.
       #
-      # ⚠️ THE KEY MUST HAVE NO PASSPHRASE. Nothing here can answer a prompt,
-      # and an encrypted key would hang rather than fail, which is why the
-      # public half is derived with an explicit empty passphrase: a
-      # passphrased key then fails here, in one step, with a clear message.
+      # An annotated tag is a second object needing a second signature, which
+      # meant a private key in repository secrets. That key is readable by
+      # anything that can run here, and it would have been a key whose leak
+      # forges commits as its owner everywhere, not only in this repository.
+      # The metadata bought by that risk was a tagger and a one-line message
+      # nobody reads, on a pointer that gets force-moved every release.
       #
-      # ⚠️ GitHub marks a tag Verified only when the signing key is registered
-      # on the account whose address is the TAGGER, so the identity set below
-      # and the key's account have to be the same person.
-      - name: '🔑 Prepare Tag Signing'
-        id: signing
-        env:
-          SIGNING_KEY: ${{ secrets.TAG_SIGNING_KEY }}
-        run: |
-          set -euo pipefail
-          if [ -z "${SIGNING_KEY:-}" ]; then
-            echo '::warning title=Tags will be unsigned::TAG_SIGNING_KEY is not set, so the tags this run cuts carry no signature.'
-            echo 'enabled=false' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          install -m 700 -d "$HOME/.ssh"
-          printf '%s\n' "$SIGNING_KEY" > "$HOME/.ssh/tag_signing"
-          chmod 600 "$HOME/.ssh/tag_signing"
-          # Derived, never carried as a second secret, so the two halves of
-          # the key can never disagree with each other.
-          if ! ssh-keygen -y -P '' -f "$HOME/.ssh/tag_signing" > "$HOME/.ssh/tag_signing.pub" 2>/dev/null; then
-            echo '::error::TAG_SIGNING_KEY is not a usable private key, or it carries a passphrase. Store an unencrypted OpenSSH private key.'
-            exit 1
-          fi
-          echo 'enabled=true' >> "$GITHUB_OUTPUT"
-
+      # The release page already records who published, when, and what
+      # changed. Nothing is actually lost.
       - name: '🏷️ Tag and Publish'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -137,29 +117,20 @@ jobs:
           MOVE_MAJOR: ${{ inputs.move-major }}
           ACTOR: ${{ github.actor }}
           ACTOR_ID: ${{ github.actor_id }}
-          SIGNING: ${{ steps.signing.outputs.enabled }}
         run: |
           set -euo pipefail
           git config user.name "$ACTOR"
           git config user.email "${ACTOR_ID}+${ACTOR}@users.noreply.github.com"
           REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
-          # `-s` implies annotated, so it replaces `-a` rather than joining it.
-          TAGFLAG=(-a)
-          if [ "$SIGNING" = "true" ]; then
-            git config gpg.format ssh
-            git config user.signingkey "$HOME/.ssh/tag_signing.pub"
-            TAGFLAG=(-s)
-          fi
-
-          git tag "${TAGFLAG[@]}" "$VERSION" -m "Release $VERSION"
+          git tag "$VERSION"
           git push "$REMOTE" "$VERSION"
           echo "Published immutable tag $VERSION."
 
           if [ "$MOVE_MAJOR" = "true" ]; then
             # Force-moved by design: this IS the moving major tag, and
             # moving it is what makes a fix reach everyone pinned to it.
-            git tag -f "${TAGFLAG[@]}" "$MAJOR" -m "Moving major tag: $MAJOR -> $VERSION"
+            git tag -f "$MAJOR"
             git push --force "$REMOTE" "$MAJOR"
             echo "::warning title=Major tag moved::${MAJOR} now points at ${VERSION}. Every repository pinned to @${MAJOR} runs this code on its next workflow run."
           fi
