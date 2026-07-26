@@ -1,6 +1,6 @@
 <!--
 title: '📐 ENGINEERING STANDARDS'
-description: 'Reusable GitHub Actions workflows and composite actions for any language or toolchain. Called, never copied, so a fix lands once and reaches every repository pinned to it.'
+description: 'Documented engineering standards, plus the reusable workflows and composite actions that enforce them for any toolchain. Called, never copied, so a fix lands once and reaches every repository pinned to it.'
 tags: [github-actions, reusable-workflows, ci-cd, engineering-standards]
 category: docs
 -->
@@ -38,8 +38,10 @@ jobs:
 ```
 
 That stub has to live in your repository, because **GitHub only runs a workflow that is in the
-repository being pushed to**. It is the one file ever copied, and `apply-standards.yml` writes it for
-you, pinned and pointed at your own default branch.
+repository being pushed to**. It is the one file ever copied, and it arrives already written when
+you generate from a template: [`tannergolden/path`](https://github.com/tannergolden/path) for the
+public scaffold, [`tannergolden/repository`](https://github.com/tannergolden/repository) for the
+private one. Twelve stubs, grouped and pinned to `@v1`.
 
 > [!IMPORTANT]
 > **Logic is never delivered by copying.** A trigger is not logic: it names events and nothing else,
