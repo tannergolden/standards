@@ -102,12 +102,13 @@ jobs:
       - name: '📝 Report Failure'
         if: ${{ failure() }}
         run: |
-          echo "::error::Initialisation could not complete. The most common cause is branch protection already active on the default branch, which blocks the push."
+          echo "::error::Initialisation could not complete. Read the push error logged above; it names the actual cause."
           {
             echo "### 🎉 Template Init Failed"
             echo ""
-            echo "The substitution ran but the result could not be pushed."
+            echo "The substitution ran but the result could not be pushed. The push error above is the authority; these are the usual causes."
             echo ""
-            echo "1. **Branch protection:** a ruleset on the default branch blocks this. Re-run it before applying protection, or apply the changes by hand."
-            echo "2. **Re-runnable:** the sentinel is only removed on success, so running this again is safe."
+            echo "1. **Branch protection:** a ruleset on the default branch blocks the push. Re-run before applying protection, or apply the changes by hand."
+            echo "2. **Someone pushed first:** the push is leased against the commit this run started from, so a commit that landed meanwhile aborts it. Re-run and it will lease against the new tip."
+            echo "3. **Re-runnable either way:** the sentinel is only removed on success, so running this again is safe."
           } >> "$GITHUB_STEP_SUMMARY"

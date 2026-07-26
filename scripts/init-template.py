@@ -204,6 +204,7 @@ def main() -> int:
         return 0
 
     commit_count = int(run("git", "rev-list", "--count", "HEAD") or "0")
+    before_amend = run("git", "rev-parse", "HEAD")
     message = (
         f"feat: 🎉 initialise {name} from the repository template\n"
         "\n"
@@ -236,7 +237,15 @@ def main() -> int:
         # --reset-author, because --amend keeps the ORIGINAL author and the
         # whole point is that this commit becomes the new owner's.
         run("git", "commit", "--amend", "--reset-author", "-m", message, "--signoff")
-        push = ["git", "push", "--force-with-lease",
+        # ⚠️ THE LEASE NEEDS AN EXPLICIT VALUE HERE. A bare --force-with-lease
+        # compares against the remote-tracking ref for the destination, and
+        # there is none: the push targets a credentialed URL rather than a
+        # named remote, so git has no refs/remotes/*/<branch> to read and
+        # rejects the push as "stale info" every single time. Naming the
+        # commit we started from keeps the protection (a push that raced us
+        # still aborts) without depending on a ref that cannot exist.
+        push = ["git", "push",
+                f"--force-with-lease=refs/heads/{branch}:{before_amend}",
                 f"https://x-access-token:{token}@github.com/{repo}.git", f"HEAD:{branch}"]
         mode = "amended the initial commit"
     else:
