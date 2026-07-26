@@ -83,7 +83,7 @@ fetch_commits_tsv() {
 }
 
 commits_tsv="$(fetch_commits_tsv)" || {
-  echo "::error::Unable to list the PR's commits (GitHub API failure via gh AND direct HTTPS) - failing closed."
+  echo "::error title=DCO sign-off::Unable to list the PR's commits (GitHub API failure via gh AND direct HTTPS) - failing closed."
   exit 1
 }
 
@@ -109,7 +109,7 @@ if [ "${#offenders[@]}" -eq 0 ]; then
   exit 0
 fi
 
-echo "::error::${#offenders[@]} of ${total} commit(s) are missing the DCO Signed-off-by trailer."
+echo "::error title=DCO sign-off::${#offenders[@]} of ${total} commit(s) are missing the DCO Signed-off-by trailer."
 {
   echo "### ✍️ DCO Sign-Off Check Failed"
   echo ""

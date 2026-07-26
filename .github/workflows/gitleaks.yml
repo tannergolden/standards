@@ -127,7 +127,7 @@ jobs:
       - name: '📝 Report Failure'
         if: ${{ failure() }}
         run: |
-          echo "::error::Gitleaks step failed. If it exited on findings, secrets were detected - review the log and ROTATE any exposed credentials immediately. If it failed to run (org license, network, checkout), fix the action error; this is a required merge check."
+          echo "::error title=Secret scan::Gitleaks step failed. If it exited on findings, secrets were detected - review the log and ROTATE any exposed credentials immediately. If it failed to run (org license, network, checkout), fix the action error; this is a required merge check."
           {
             echo "### 🚨 Scan for Secrets failed"
             echo ""

@@ -136,7 +136,7 @@ def main() -> int:
         print(f"{DOC.relative_to(ROOT)} is up to date")
         return 0
     if args.check:
-        print(f"::error::{DOC.relative_to(ROOT)} is out of date; "
+        print(f"::error title=Label documentation::{DOC.relative_to(ROOT)} is out of date; "
               f"run python3 scripts/update-label-docs.py")
         return 1
     DOC.write_text(updated, encoding="utf-8")

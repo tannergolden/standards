@@ -189,7 +189,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$JOB_STATUS" = failure ]; then
-            echo "::error::CodeQL analysis failed for ${LANGUAGE}."
+            echo "::error title=CodeQL::CodeQL analysis failed for ${LANGUAGE}."
             {
               echo "#### 📝 Troubleshooting"
               echo "- Ensure the build succeeds locally (\`make build\`): autobuild fails where a real build would."

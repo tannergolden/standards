@@ -94,7 +94,7 @@ jobs:
       - name: '📝 Report Escalator Failure'
         if: ${{ failure() }}
         run: |
-          echo "::error::The escalator itself failed, so no issue was opened or closed for this run. Check that the token has issues: write and that the API is reachable."
+          echo "::error title=CI failure alert::The escalator itself failed, so no issue was opened or closed for this run. Check that the token has issues: write and that the API is reachable."
           {
             echo "### 🚨 CI failure escalation failed"
             echo ""

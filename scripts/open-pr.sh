@@ -167,7 +167,7 @@ else
   PUSH_ARGS=(-u origin "$BRANCH")
 fi
 if ! git push --force "${PUSH_ARGS[@]}"; then
-  echo "::error::Failed to push branch '$BRANCH'. If this change includes .github/workflows/ files, the default GITHUB_TOKEN cannot push them - configure a BOT_ACCESS_TOKEN secret (repo + workflow scopes). Otherwise verify branch-protection rules and the token's contents:write permission. No pull request was opened."
+  echo "::error title=Pull request::Failed to push branch '$BRANCH'. If this change includes .github/workflows/ files, the default GITHUB_TOKEN cannot push them - configure a BOT_ACCESS_TOKEN secret (repo + workflow scopes). Otherwise verify branch-protection rules and the token's contents:write permission. No pull request was opened."
   exit 1
 fi
 
@@ -184,7 +184,7 @@ if [ -n "$EXISTING" ]; then
 else
   if ! PR_URL=$(gh pr create --base "$BASE" --head "$BRANCH" \
     --title "$PR_TITLE" --body "$PR_BODY"); then
-    echo "::error::Could not open the pull request. If this repository blocks Actions-created PRs, enable 'Allow GitHub Actions to create and approve pull requests' (Settings → Actions → General), or configure a BOT_ACCESS_TOKEN secret. The branch '$BRANCH' was pushed - you can open the PR manually."
+    echo "::error title=Pull request::Could not open the pull request. If this repository blocks Actions-created PRs, enable 'Allow GitHub Actions to create and approve pull requests' (Settings → Actions → General), or configure a BOT_ACCESS_TOKEN secret. The branch '$BRANCH' was pushed - you can open the PR manually."
     exit 1
   fi
   PR_REF="$PR_URL"

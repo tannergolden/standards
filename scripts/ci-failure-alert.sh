@@ -56,7 +56,7 @@ This issue was opened automatically because a core workflow failed on a long-liv
       --description '🛑 Blocking. Blocks a release or significant functionality. Needs attention very soon.' \
       --force >/dev/null 2>&1 || true
     if ! gh issue create --title "$TITLE" --label "$LABEL" --label 'priority: high' --body "$BODY"; then
-      echo "::error::Failed to open the CI-failure escalation issue for '${WORKFLOW_NAME}' on '${BRANCH}' - verify GH_TOKEN has issues: write. The failure is NOT being tracked."
+      echo "::error title=CI failure alert::Failed to open the CI-failure escalation issue for '${WORKFLOW_NAME}' on '${BRANCH}' - verify GH_TOKEN has issues: write. The failure is NOT being tracked."
       exit 1
     fi
     echo "Opened new failure issue"

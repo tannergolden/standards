@@ -20,6 +20,35 @@ _Diagnostic precision. Deterministic parity. Fast recovery._
 
 ---
 
+## 📣 How A Failure Announces Itself
+
+Every failure raised by these workflows is a GitHub **annotation**: a titled,
+one-line summary that appears at the top of the run, in the job's step list, and
+on the pull request - without opening a log.
+
+| Part | What it carries | Example |
+| :--- | :--- | :--- |
+| **Title** | Which subsystem failed. Always present, so the Actions UI never shows a bare "Error" | `Rulesets`, `DCO sign-off`, `Release publish` |
+| **Message** | What happened *and* the move that fixes it, in one sentence | "Repository settings need a token with administration write... Add a PAT or GitHub App token as the `ADMIN_TOKEN` secret" |
+
+Two rules make them worth reading, and they apply to any script you add:
+
+1. **State the fix, not only the fault.** "Failed to push" is a symptom. "The
+   default `GITHUB_TOKEN` cannot push `.github/workflows/` files - configure a
+   `BOT_ACCESS_TOKEN` secret" is a next step.
+2. **Say what did NOT happen.** A partial failure is the dangerous one, so the
+   message names the consequence: "The failure is NOT being tracked", "The
+   branch was pushed - you can open the PR manually", "no protected run was
+   deleted".
+
+> [!TIP]
+> A **warning** means the run continued and something was skipped - a
+> plan-gated security feature, an optional token. An **error** means the job
+> failed and a person has to act. If you are reading a warning and nothing is
+> broken, that is the annotation working.
+
+---
+
 ## 🚦 Phase 1: The 90-Second Triage
 
 Before escalating, perform these atomic checks to eliminate 95% of common configuration drift.

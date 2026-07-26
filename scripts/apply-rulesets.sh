@@ -50,7 +50,7 @@ set -euo pipefail
 
 for tool in gh jq; do
   if ! command -v "$tool" >/dev/null 2>&1; then
-    echo "::error::'${tool}' is required and is not installed."
+    echo "::error title=Rulesets::'${tool}' is required and is not installed."
     exit 1
   fi
 done
@@ -64,7 +64,7 @@ if [ -z "${TARGET_REPO:-}" ]; then
   TARGET_REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
 fi
 if [ -z "$TARGET_REPO" ]; then
-  echo "::error::TARGET_REPO is required, and no repository could be inferred from the current directory."
+  echo "::error title=Rulesets::TARGET_REPO is required, and no repository could be inferred from the current directory."
   exit 1
 fi
 
@@ -75,7 +75,7 @@ DRY_RUN="$(printf '%s' "${DRY_RUN:-true}" | tr '[:upper:]' '[:lower:]')"
 REQUIRE_CHECKS="$(printf '%s' "${REQUIRE_CHECKS:-true}" | tr '[:upper:]' '[:lower:]')"
 
 if [ ! -d "$RULESETS_DIR" ]; then
-  echo "::error::Rulesets directory '$RULESETS_DIR' does not exist."
+  echo "::error title=Rulesets::Rulesets directory '$RULESETS_DIR' does not exist."
   exit 1
 fi
 
@@ -83,13 +83,13 @@ shopt -s nullglob
 FILES=("$RULESETS_DIR"/*.json)
 shopt -u nullglob
 if [ ${#FILES[@]} -eq 0 ]; then
-  echo "::error::No ruleset JSON found in '${RULESETS_DIR}'."
+  echo "::error title=Rulesets::No ruleset JSON found in '${RULESETS_DIR}'."
   exit 1
 fi
 
 DEFAULT_BRANCH="$(gh api "repos/${TARGET_REPO}" --jq '.default_branch' 2>/dev/null || true)"
 if [ -z "$DEFAULT_BRANCH" ]; then
-  echo "::error::Could not read '${TARGET_REPO}'. Check that it exists, that you are authenticated, and that the token can administer it."
+  echo "::error title=Rulesets::Could not read '${TARGET_REPO}'. Check that it exists, that you are authenticated, and that the token can administer it."
   exit 1
 fi
 echo "Target:   ${TARGET_REPO} (default branch: ${DEFAULT_BRANCH})"
@@ -175,7 +175,7 @@ for file in "${FILES[@]}"; do
   base="$(basename "$file")"
 
   if ! BODY="$(render "$file" 2>/dev/null)"; then
-    echo "::error::${base} is not valid JSON."
+    echo "::error title=Rulesets::${base} is not valid JSON."
     failed=$((failed + 1))
     continue
   fi
@@ -183,17 +183,17 @@ for file in "${FILES[@]}"; do
   # Shape is checked here rather than left to the API, which answers a bad
   # body with a 422 that names a field but never the file it came from.
   if ! NAME="$(printf '%s' "$BODY" | jq -er '.name | select(type == "string" and length > 0)')"; then
-    echo "::error::${base} has no top-level \"name\", so it cannot be matched or applied."
+    echo "::error title=Rulesets::${base} has no top-level \"name\", so it cannot be matched or applied."
     failed=$((failed + 1))
     continue
   fi
   if ! printf '%s' "$BODY" | jq -e '.target | . == "branch" or . == "tag" or . == "push"' >/dev/null 2>&1; then
-    echo "::error::${base} has no valid \"target\" (expected branch, tag, or push)."
+    echo "::error title=Rulesets::${base} has no valid \"target\" (expected branch, tag, or push)."
     failed=$((failed + 1))
     continue
   fi
   if ! printf '%s' "$BODY" | jq -e '.enforcement | . == "active" or . == "evaluate" or . == "disabled"' >/dev/null 2>&1; then
-    echo "::error::${base} has no valid \"enforcement\" (expected active, evaluate, or disabled)."
+    echo "::error title=Rulesets::${base} has no valid \"enforcement\" (expected active, evaluate, or disabled)."
     failed=$((failed + 1))
     continue
   fi
@@ -215,7 +215,7 @@ for file in "${FILES[@]}"; do
       echo "✅ Updated '${NAME}' (id ${ID})"
       applied=$((applied + 1))
     else
-      echo "::error::Failed to update '${NAME}' (id ${ID})."
+      echo "::error title=Rulesets::Failed to update '${NAME}' (id ${ID})."
       failed=$((failed + 1))
     fi
   else
@@ -223,7 +223,7 @@ for file in "${FILES[@]}"; do
       echo "✅ Created '${NAME}'"
       applied=$((applied + 1))
     else
-      echo "::error::Failed to create '${NAME}'."
+      echo "::error title=Rulesets::Failed to create '${NAME}'."
       failed=$((failed + 1))
     fi
   fi
@@ -248,7 +248,7 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
 fi
 
 if [ "$failed" -gt 0 ]; then
-  echo "::error::${failed} ruleset(s) could not be applied."
+  echo "::error title=Rulesets::${failed} ruleset(s) could not be applied."
   exit 1
 fi
 

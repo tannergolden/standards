@@ -68,11 +68,11 @@ jobs:
         run: |
           set -euo pipefail
           if ! printf '%s' "$VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::'$VERSION' is not a vX.Y.Z version."
+            echo "::error title=Release::'$VERSION' is not a vX.Y.Z version."
             exit 1
           fi
           if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
-            echo "::error::Tag '$VERSION' already exists. A published version is immutable; cut a new patch instead."
+            echo "::error title=Release::Tag '$VERSION' already exists. A published version is immutable; cut a new patch instead."
             exit 1
           fi
           echo "major=${VERSION%%.*}" >> "$GITHUB_OUTPUT"
@@ -87,7 +87,7 @@ jobs:
           while read -r ref; do
             [ -n "$ref" ] || continue
             if [ ! -f "${ref}/action.yml" ]; then
-              echo "::error::A workflow references ${ref}, which does not exist at this commit."
+              echo "::error title=Release::A workflow references ${ref}, which does not exist at this commit."
               missing=1
             fi
           done < <(grep -rhoE 'tannergolden/standards/(actions/[A-Za-z0-9._-]+)@' .github/workflows/ \

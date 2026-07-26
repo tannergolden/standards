@@ -440,7 +440,7 @@ jobs:
         env:
           SEVERITY: ${{ inputs.dependency-review-severity }}
         run: |
-          echo "::error::A dependency change introduces a vulnerability at or above '${SEVERITY}' severity, or uses a denied license."
+          echo "::error title=CI::A dependency change introduces a vulnerability at or above '${SEVERITY}' severity, or uses a denied license."
           {
             echo "### 🛡️ Dependency Review Failed"
             echo ""

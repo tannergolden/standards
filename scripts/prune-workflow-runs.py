@@ -304,7 +304,7 @@ def main():
     verb = "would delete" if DRY_RUN else "deleted"
     print(f"\nKept {len(keep)}, {verb} {done}, skipped {len(skip)} (in-flight).")
     if failed:
-        print(f"::error::{failed} workflow run(s) failed to delete (see the log "
+        print(f"::error title=Prune run history::{failed} workflow run(s) failed to delete (see the log "
               "above); verify the token has actions:write. Marking the job failed.")
         return 1
     return 0

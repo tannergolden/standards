@@ -47,7 +47,7 @@ HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SETTINGS_FILE="${SETTINGS_FILE:-${HERE}/../data/repository-settings.json}"
 
 if [ ! -f "$SETTINGS_FILE" ]; then
-  echo "::error::No settings file at ${SETTINGS_FILE}."
+  echo "::error title=Repository settings::No settings file at ${SETTINGS_FILE}."
   exit 1
 fi
 
@@ -55,7 +55,7 @@ if [ -z "${TARGET_REPO:-}" ]; then
   TARGET_REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
 fi
 if [ -z "$TARGET_REPO" ]; then
-  echo "::error::TARGET_REPO is required, and no repository could be inferred from the current directory."
+  echo "::error title=Repository settings::TARGET_REPO is required, and no repository could be inferred from the current directory."
   exit 1
 fi
 
@@ -82,7 +82,7 @@ write_summary() {
 # One read of the repository, reused for every comparison below.
 CURRENT="$(gh api "repos/${TARGET_REPO}" 2>/dev/null || true)"
 if [ -z "$CURRENT" ]; then
-  echo "::error::Could not read '${TARGET_REPO}'. Check that it exists, that you are authenticated, and that the token can administer it."
+  echo "::error title=Repository settings::Could not read '${TARGET_REPO}'. Check that it exists, that you are authenticated, and that the token can administer it."
   exit 1
 fi
 

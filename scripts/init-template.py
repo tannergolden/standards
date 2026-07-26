@@ -56,7 +56,7 @@ TEXT_SUFFIXES = {
 def run(*args: str, check: bool = True) -> str:
     result = subprocess.run(args, capture_output=True, text=True, check=False)
     if check and result.returncode != 0:
-        raise SystemExit(f"::error::`{' '.join(args[:3])}` failed: {result.stderr.strip()}")
+        raise SystemExit(f"::error title=Initialisation::`{' '.join(args[:3])}` failed: {result.stderr.strip()}")
     return result.stdout.strip()
 
 

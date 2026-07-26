@@ -219,7 +219,7 @@ jobs:
       - name: '📝 Report Failure (Triage)'
         if: ${{ failure() }}
         run: |
-          echo "::error::Triage and labeling failed. Check the labeler configuration or the token's permissions."
+          echo "::error title=Governance::Triage and labeling failed. Check the labeler configuration or the token's permissions."
           {
             echo "### 📥 Triage & Labeling Failed"
             echo ""
@@ -313,7 +313,7 @@ jobs:
       - name: '📝 Report Failure (Label Sync)'
         if: ${{ failure() }}
         run: |
-          echo "::error::Label sync failed. The per-label output in the step above names the exact cause."
+          echo "::error title=Governance::Label sync failed. The per-label output in the step above names the exact cause."
           {
             echo "### 🏷️ Label sync failed"
             echo ""

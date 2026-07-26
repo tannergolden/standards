@@ -85,12 +85,12 @@ jobs:
             '/assign'*)
               echo "Assigning @$COMMENTER to issue #$ISSUE_NUMBER"
               gh issue edit "$ISSUE_NUMBER" --add-assignee "$COMMENTER" \
-                || { echo "::error::Could not assign @$COMMENTER to #$ISSUE_NUMBER. Check the issues: write permission, and that they are an assignable collaborator."; exit 1; }
+                || { echo "::error title=Issue operations::Could not assign @$COMMENTER to #$ISSUE_NUMBER. Check the issues: write permission, and that they are an assignable collaborator."; exit 1; }
               ;;
             '/unassign'*)
               echo "Unassigning @$COMMENTER from issue #$ISSUE_NUMBER"
               gh issue edit "$ISSUE_NUMBER" --remove-assignee "$COMMENTER" \
-                || { echo "::error::Could not unassign @$COMMENTER from #$ISSUE_NUMBER. Check the issues: write permission."; exit 1; }
+                || { echo "::error title=Issue operations::Could not unassign @$COMMENTER from #$ISSUE_NUMBER. Check the issues: write permission."; exit 1; }
               ;;
             '/label'*)
               # Trimmed without xargs, which interprets quotes and would
@@ -103,14 +103,14 @@ jobs:
               # failure inside the `if` would fall to the else branch and be
               # reported as "label does not exist", hiding the real cause.
               if ! LABELS="$(gh label list --limit 200 --json name --jq '.[].name')"; then
-                echo "::error::Could not list repository labels, so '/label $REQUESTED' cannot be validated."
+                echo "::error title=Issue operations::Could not list repository labels, so '/label $REQUESTED' cannot be validated."
                 exit 1
               fi
               # Existing labels only: a commenter cannot mint new ones here.
               if printf '%s\n' "$LABELS" | grep -Fxq "$REQUESTED"; then
                 echo "Adding label '$REQUESTED' to issue #$ISSUE_NUMBER"
                 gh issue edit "$ISSUE_NUMBER" --add-label "$REQUESTED" \
-                  || { echo "::error::Could not add label '$REQUESTED' to #$ISSUE_NUMBER. Check the issues: write permission."; exit 1; }
+                  || { echo "::error title=Issue operations::Could not add label '$REQUESTED' to #$ISSUE_NUMBER. Check the issues: write permission."; exit 1; }
               else
                 echo "::warning::Label '$REQUESTED' does not exist in this repository, so it was ignored."
               fi

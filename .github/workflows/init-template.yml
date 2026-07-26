@@ -102,7 +102,7 @@ jobs:
       - name: '📝 Report Failure'
         if: ${{ failure() }}
         run: |
-          echo "::error::Initialisation could not complete. Read the push error logged above; it names the actual cause."
+          echo "::error title=Initialisation::Initialisation could not complete. Read the push error logged above; it names the actual cause."
           {
             echo "### 🎉 Template Init Failed"
             echo ""

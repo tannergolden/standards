@@ -121,7 +121,7 @@ for i, label in enumerate(labels):
         problems.append(f"{name!r}: renamed_from names the label itself")
 
 if problems:
-    print(f"::error::{PATH} is invalid; nothing was written")
+    print(f"::error title=Label taxonomy::{PATH} is invalid; nothing was written")
     for p in problems:
         print(f"  {p}")
     sys.exit(1)

@@ -120,7 +120,7 @@ jobs:
           # Keeping zero releases would empty the page in one run, and no
           # caller means that. Refuse rather than interpret it.
           if [ "$KEEP" -lt 1 ]; then
-            echo "::error::keep must be at least 1; got ${KEEP}. Refusing to delete every release."
+            echo "::error title=Prune releases::keep must be at least 1; got ${KEEP}. Refusing to delete every release."
             exit 1
           fi
 

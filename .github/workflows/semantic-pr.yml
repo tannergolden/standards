@@ -131,7 +131,7 @@ jobs:
       - name: '📝 Report Failure (Semantic PR)'
         if: ${{ failure() && steps.semantic-pr.conclusion == 'failure' }}
         run: |
-          echo "::error::PR title does not follow Conventional Commits specification."
+          echo "::error title=Pull request title::PR title does not follow Conventional Commits specification."
           {
             echo "### ❌ Semantic PR Check Failed"
             echo "The pull request title must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification."
@@ -170,7 +170,7 @@ jobs:
           if printf '%s' "$HEAD_REF" | grep -qE "^(${PREFIXES})/.+"; then
             echo "✅ Branch name follows convention: $HEAD_REF"
           else
-            echo "::error::Branch '$HEAD_REF' does not follow the '<type>/<topic>' naming convention (e.g. feat/login-form, bugfix/issue-42)."
+            echo "::error title=Pull request title::Branch '$HEAD_REF' does not follow the '<type>/<topic>' naming convention (e.g. feat/login-form, bugfix/issue-42)."
             {
               echo "### 🌿 Branch Naming Check Failed"
               echo "Rename your branch to match '<type>/<topic>', e.g. git branch -m feat/my-topic."

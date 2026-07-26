@@ -153,7 +153,7 @@ jobs:
       - name: '📝 Report Failure'
         if: ${{ failure() }}
         run: |
-          echo "::error::Dependabot automation failed before it could approve or queue the merge. The update itself is unaffected and can still be reviewed and merged by hand."
+          echo "::error title=Dependabot auto-merge::Dependabot automation failed before it could approve or queue the merge. The update itself is unaffected and can still be reviewed and merged by hand."
           {
             echo "### 🤖 Dependabot automation failed"
             echo ""

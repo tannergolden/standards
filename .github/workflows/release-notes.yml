@@ -150,7 +150,7 @@ jobs:
           set -euo pipefail
           BASE_VER=$(printf '%s' "$NEXT_VER" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
           if [ -z "$BASE_VER" ]; then
-            echo "::error::Could not determine a base version from the git-cliff output."
+            echo "::error title=Release notes::Could not determine a base version from the git-cliff output."
             exit 1
           fi
           BRANCH_NAME=$(printf '%s' "$REF_NAME" | tr '[:upper:]' '[:lower:]')
@@ -234,7 +234,7 @@ jobs:
           CLIFF_CONCLUSION: ${{ steps.cliff.conclusion }}
         run: |
           if [ "$CLIFF_CONCLUSION" = "failure" ]; then
-            echo "::error::git-cliff could not generate the changelog. Check the configuration and that the history contains Conventional Commits."
+            echo "::error title=Release notes::git-cliff could not generate the changelog. Check the configuration and that the history contains Conventional Commits."
           else
-            echo "::error::The release draft could not be refreshed. The job needs contents: write."
+            echo "::error title=Release notes::The release draft could not be refreshed. The job needs contents: write."
           fi

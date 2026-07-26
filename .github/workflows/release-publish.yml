@@ -232,12 +232,12 @@ jobs:
           if [ -n "$MANUAL_TAG" ]; then
             echo "Manual tag provided: $MANUAL_TAG"
             if ! printf '%s' "$MANUAL_TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+-.+$'; then
-              echo "::error::Invalid tag format. It must look like v{major}.{minor}.{patch}-{branch}."
+              echo "::error title=Release publish::Invalid tag format. It must look like v{major}.{minor}.{patch}-{branch}."
               exit 1
             fi
             BRANCH_NAME=$(printf '%s' "$MANUAL_TAG" | sed -E 's/^v[0-9]+\.[0-9]+\.[0-9]+-//')
             if ! git rev-parse --verify --quiet "origin/$BRANCH_NAME" >/dev/null; then
-              echo "::error::Branch 'origin/$BRANCH_NAME' does not exist, so this tag would name a branch that is not there."
+              echo "::error title=Release publish::Branch 'origin/$BRANCH_NAME' does not exist, so this tag would name a branch that is not there."
               exit 1
             fi
             TAG_PREFIX="$MANUAL_TAG"
@@ -246,7 +246,7 @@ jobs:
           else
             BASE_VER=$(printf '%s' "$NEXT_VER" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)
             if [ -z "$BASE_VER" ]; then
-              echo "::error::Could not determine a base version from the changelog engine output ('$NEXT_VER'). Aborting rather than publishing a malformed tag."
+              echo "::error title=Release publish::Could not determine a base version from the changelog engine output ('$NEXT_VER'). Aborting rather than publishing a malformed tag."
               exit 1
             fi
             # Maturity is read from the version itself rather than from the
@@ -395,7 +395,7 @@ jobs:
           PACKAGE_CONCLUSION: ${{ steps.package.conclusion }}
         run: |
           if [ "$PACKAGE_CONCLUSION" = "failure" ]; then
-            echo "::error::Packaging failed. Check that the build produced output and that the release/ directory can be written."
+            echo "::error title=Release publish::Packaging failed. Check that the build produced output and that the release/ directory can be written."
           else
-            echo "::error::The release could not be published. The job needs contents: write, and the tag must not already exist."
+            echo "::error title=Release publish::The release could not be published. The job needs contents: write, and the tag must not already exist."
           fi

@@ -145,9 +145,9 @@ jobs:
           BUILD_CONCLUSION: ${{ steps.build.conclusion }}
         run: |
           if [ "$SETUP_CONCLUSION" = "failure" ]; then
-            echo "::error::Dependency setup failed, so nothing was built or deployed. Reproduce with 'make setup'."
+            echo "::error title=Preview deploy::Dependency setup failed, so nothing was built or deployed. Reproduce with 'make setup'."
           elif [ "$BUILD_CONCLUSION" = "failure" ]; then
-            echo "::error::The build failed, so nothing was deployed. Reproduce with 'make build'."
+            echo "::error title=Preview deploy::The build failed, so nothing was deployed. Reproduce with 'make build'."
           else
-            echo "::error::The deploy command failed. The build was fine; check the deploy target's credentials and the command itself."
+            echo "::error title=Preview deploy::The deploy command failed. The build was fine; check the deploy target's credentials and the command itself."
           fi

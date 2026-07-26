@@ -233,9 +233,9 @@ jobs:
           PRETTIER_CONCLUSION: ${{ steps.prettier.conclusion }}
         run: |
           if [ "$PRETTIER_CONCLUSION" = "failure" ]; then
-            echo "::error::Prettier failed. Reproduce locally with 'npx prettier --write .' using this repository's config."
+            echo "::error title=Code style::Prettier failed. Reproduce locally with 'npx prettier --write .' using this repository's config."
           else
-            echo "::error::Auto-format failed before formatting: dependency install, the workflow-file policy step, or pull request delivery. See the failing step above."
+            echo "::error title=Code style::Auto-format failed before formatting: dependency install, the workflow-file policy step, or pull request delivery. See the failing step above."
           fi
           {
             echo "### 🎨 Auto-format failed"

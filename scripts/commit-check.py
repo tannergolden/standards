@@ -188,7 +188,7 @@ def main() -> int:
         print(f"✅ Commit messages: all {checked} human commit(s) follow Conventional Commits.")
         return 0
 
-    print(f"::error::{len(offenders)} of {checked} commit(s) have a non-conforming message.")
+    print(f"::error title=Commit messages::{len(offenders)} of {checked} commit(s) have a non-conforming message.")
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as handle:
