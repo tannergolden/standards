@@ -147,14 +147,15 @@ exactly like this:
 | **Description**            | see below                                                             |
 | **Expiration**             | **30 days**                                                           |
 | **Repository access**      | *Only select repositories* → the generated repositories only          |
-| **Repository permissions** | **Administration** → **Read and write**, and nothing else             |
+| **Repository permissions** | **Administration** → **Read and write**; on a PRIVATE repository also **Contents** → **Read** |
 
 Description, which you can paste as-is:
 
 ```text
 Writes repository settings and branch and tag rulesets through the Apply
 Standards workflow, on repositories generated from the templates only.
-Administration: Read and write, nothing else. Read from the ADMIN_TOKEN secret
+Administration: Read and write, plus Contents: Read on private repositories.
+Read from the ADMIN_TOKEN secret
 in each repository it is applied to. Safe to revoke: settings and rulesets
 already applied are unaffected, and re-applying only needs a new token.
 ```
@@ -169,6 +170,14 @@ and the standards repository is a publisher whose settings you manage directly.
 One token covering the generated repositories you actually run this against is fine,
 and easier to revoke than several. Adding a repository to an existing token is a
 two-click edit, so start narrow.
+
+**Why Contents: Read, and only on a private repository.** Before writing a
+ruleset the run checks that every status check it will require is actually
+declared by a workflow here - a required check nothing can report leaves every
+pull request pending forever. Reading those workflow files needs no permission
+on a public repository and needs `Contents: Read` on a private one. Without it
+the preflight sees no workflows at all and refuses to apply, which is the safe
+answer to the wrong question; the run says so and names this fix.
 
 **Why the name matters.** GitHub lists your tokens by name on one page across every
 repository you own. `admin` or `token` tells you nothing six months later, when the

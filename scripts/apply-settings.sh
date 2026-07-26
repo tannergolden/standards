@@ -156,6 +156,14 @@ fi
 # workflows execute. Readable, so it diffs like everything else.
 FORK_WANT="$(jq -r '(.actions // {}).fork_pr_approval_policy // ""' "$SETTINGS_FILE")"
 FORK_APPLY=''
+# A private repository cannot be forked by an outside contributor, so GitHub
+# refuses this endpoint outright ("Fork PR approval is not allowed for private
+# repositories"). Gate it on visibility like the other public-only features:
+# a repository that cannot have a feature has not misconfigured anything.
+if [ -n "$FORK_WANT" ] && [ "$IS_PUBLIC" != "true" ]; then
+  plan "  SKIP    fork_pr_approval_policy          public repositories only"
+  FORK_WANT=''
+fi
 if [ -n "$FORK_WANT" ]; then
   FORK_CURRENT="$(gh api "repos/${TARGET_REPO}/actions/permissions/fork-pr-contributor-approval" 2>/dev/null || true)"
   if [ -z "$FORK_CURRENT" ]; then
@@ -265,9 +273,15 @@ if [ "$ACT_PATCH" != '{}' ]; then
 fi
 
 if [ -n "$FORK_APPLY" ]; then
-  gh api --method PUT "repos/${TARGET_REPO}/actions/permissions/fork-pr-contributor-approval" \
-    -f "approval_policy=${FORK_APPLY}" >/dev/null
-  plan "Applied the fork pull request approval policy."
+  # Tolerated rather than fatal, like the security toggles below: this
+  # endpoint is gated by things the plan cannot always see, and one refused
+  # setting must not abandon every setting that comes after it.
+  if gh api --method PUT "repos/${TARGET_REPO}/actions/permissions/fork-pr-contributor-approval" \
+       -f "approval_policy=${FORK_APPLY}" >/dev/null 2>&1; then
+    plan "Applied the fork pull request approval policy."
+  else
+    echo "::warning title=Repository settings::Could not set the fork pull request approval policy on ${TARGET_REPO}; it is unavailable on this repository's visibility or plan. Everything else was applied."
+  fi
 fi
 
 for name in "${SEC_ENABLE[@]}"; do

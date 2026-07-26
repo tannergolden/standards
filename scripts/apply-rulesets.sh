@@ -122,11 +122,19 @@ required_job_ids() {
   done | sed 's| /.*||' | sed '/^$/d' | sort -u
 }
 
+# Sets WORKFLOWS_READABLE=false when the workflow directory cannot be listed.
+# That is NOT the same as "no workflow declares these checks", and conflating
+# the two makes this refuse every private repository whose token holds
+# administration write but not contents read.
+WORKFLOWS_READABLE=true
 declared_job_ids() {
   local names name
   names="$(gh api "repos/${TARGET_REPO}/contents/.github/workflows" \
     --jq '.[] | select(.type == "file") | .name' 2>/dev/null || true)"
-  [ -z "$names" ] && return 0
+  if [ -z "$names" ]; then
+    WORKFLOWS_READABLE=false
+    return 0
+  fi
   while IFS= read -r name; do
     case "$name" in
       *.yml | *.yaml) ;;
@@ -151,6 +159,13 @@ if [ "$REQUIRE_CHECKS" = "true" ]; then
     DECLARED="$(declared_job_ids | sort -u)"
     MISSING="$(comm -23 <(printf '%s\n' "$WANTED") <(printf '%s\n' "$DECLARED") || true)"
   fi
+fi
+
+# An unreadable workflow directory is a token problem, not a repository
+# problem, and it gets its own message naming the fix.
+if [ -n "$MISSING" ] && [ "$WORKFLOWS_READABLE" != "true" ]; then
+  echo "::error title=Rulesets::Could not read the workflows in ${TARGET_REPO}, so the required status checks could not be verified. On a PRIVATE repository the token needs Contents: Read as well as Administration: Read and write - add it to the ADMIN_TOKEN, or set REQUIRE_CHECKS=false to apply without the preflight."
+  exit 1
 fi
 
 if [ -n "$MISSING" ]; then
