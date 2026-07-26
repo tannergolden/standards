@@ -27,7 +27,7 @@
 #   on:
 #     workflow_run:
 #       workflows:
-#         - '✅ Checks'
+#         - '🚦 Checks'
 #         - '⚖️ Governance'
 #         - '📦 Release'
 #         - '🧹 Maintenance'
