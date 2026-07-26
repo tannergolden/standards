@@ -37,7 +37,7 @@
 #
 # ---
 
-name: '🙋 Reusable: Issue Operations'
+name: '🙋 Issue Operations'
 
 on:
   workflow_call:

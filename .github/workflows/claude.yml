@@ -58,7 +58,7 @@
 #
 # ---
 
-name: '🤖 Reusable: Claude Agent'
+name: '🤖 Claude Agent'
 
 on:
   workflow_call:

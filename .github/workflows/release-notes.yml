@@ -40,7 +40,7 @@
 #
 # ---
 
-name: '📋 Reusable: Draft Release Notes'
+name: '📋 Draft Release Notes'
 
 on:
   workflow_call:

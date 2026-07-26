@@ -66,11 +66,10 @@ tree but cannot see its own. A **composite action** is fetched with its whole re
 ship code and configuration beside it. Anything that carries a script or a config file is therefore
 an action; anything that describes jobs is a workflow.
 
-This repository holds itself to the same standards, in two layers. Its `self-*` stubs call these
-workflows exactly the way yours will, which proves the published path works end to end. A separate
-`self-checks` reads the working tree with no tag involved, which is the only thing that can check a
-change **to** an action, since every other path resolves a pin and would test the released copy
-rather than the diff.
+This repository publishes these standards and runs none of them on itself. Consuming repositories
+are where the workflows execute; here they are source. Validate a change by running the checks
+against the working tree directly, which is the only thing that can test a change **to** an action,
+since every published path resolves a pin and would exercise the released copy rather than the diff.
 
 ---
 

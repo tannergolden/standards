@@ -56,7 +56,7 @@
 #
 # ---
 
-name: '🎯 Reusable: Apply Standards'
+name: '🎯 Apply Standards'
 
 on:
   workflow_call:

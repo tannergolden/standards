@@ -107,7 +107,7 @@ We believe that clear, unambiguous language is the foundation of effective engin
 
 ## M
 
-- **Machined Index**: A document list generated between `AUTO-INDEX` markers by `scripts/update-doc-indexes.py --write` and verified by the same script with `--check` in `self-checks` - never hand-edited, so it can never disagree with the tree.
+- **Machined Index**: A document list generated between `AUTO-INDEX` markers by `scripts/update-doc-indexes.py --write` and verified by the same script with `--check` - never hand-edited, so it can never disagree with the tree.
 - **Merge**: Combining changes from one branch into another.
 - **MTTR (Mean Time to Recovery)**: A DORA metric measuring how quickly a team recovers from failures.
 

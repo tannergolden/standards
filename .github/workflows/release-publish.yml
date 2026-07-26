@@ -52,7 +52,7 @@
 #
 # ---
 
-name: '🚀 Reusable: Publish New Release'
+name: '🚀 Publish New Release'
 
 on:
   workflow_call:

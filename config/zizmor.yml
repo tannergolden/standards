@@ -29,15 +29,11 @@ rules:
   # requests to receive labels and status checks at all.
   dangerous-triggers:
     ignore:
-      # Consumer stub names (and this repository's own `self-` stubs, which
-      # are the same stubs under a prefix, since the unprefixed names are
-      # taken here by the reusable definitions themselves).
+      # Consumer stub names. This repository publishes these workflows and
+      # calls none of them on itself, so only consumer-side names appear.
       - governance.yml
       - semantic-pr.yml
       - ci-failure-alert.yml
-      - self-governance.yml
-      - self-semantic-pr.yml
-      - self-ci-failure-alert.yml
 
   # `ci.yml` caches npm and pip deliberately: it validates branches and pull
   # requests and publishes no artifacts, so a poisoned cache has nothing

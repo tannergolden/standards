@@ -29,7 +29,7 @@
 #
 # ---
 
-name: '🧰 Reusable: Lint Workflows'
+name: '🧰 Lint Workflows'
 
 on:
   workflow_call:

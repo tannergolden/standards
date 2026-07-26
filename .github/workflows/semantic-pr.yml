@@ -41,7 +41,7 @@
 #
 # ---
 
-name: '✨ Reusable: Semantic Pull Request'
+name: '✨ Semantic Pull Request'
 
 on:
   workflow_call:

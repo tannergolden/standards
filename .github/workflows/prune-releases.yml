@@ -56,7 +56,7 @@
 #
 # ---
 
-name: '🧹 Reusable: Prune Releases'
+name: '🧹 Prune Releases'
 
 on:
   workflow_call:

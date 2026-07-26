@@ -48,7 +48,7 @@
 #
 # ---
 
-name: '🧹 Reusable: Prune'
+name: '🧹 Prune'
 
 on:
   workflow_call:

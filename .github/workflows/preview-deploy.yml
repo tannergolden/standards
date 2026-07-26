@@ -38,7 +38,7 @@
 #
 # ---
 
-name: '🚀 Reusable: Preview Deploy'
+name: '🚀 Preview Deploy'
 
 on:
   workflow_call:

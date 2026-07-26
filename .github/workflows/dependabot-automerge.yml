@@ -33,7 +33,7 @@
 #
 # ---
 
-name: '🦾 Reusable: Automate Dependabot'
+name: '🦾 Automate Dependabot'
 
 on:
   workflow_call:

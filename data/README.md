@@ -103,8 +103,8 @@ exactness pins instead.
   difference between the registry and the repository. Run it with `DRY_RUN=true` to see the plan
   first.
 - **The label reference is generated.** `docs/references/Repository-Labels.md` builds its tables from
-  this file via [`scripts/update-label-docs.py`](../scripts/update-label-docs.py), and `self-checks`
-  fails on drift. Edit the registry and re-run the script; never edit the tables.
+  this file via [`scripts/update-label-docs.py`](../scripts/update-label-docs.py), which reports
+  drift when run with `--check`. Edit the registry and re-run the script; never edit the tables.
 - **The nine GitHub stock labels are byte-identical to a new repository's.** `bug`, `documentation`,
   `duplicate`, `enhancement`, `good first issue`, `help wanted`, `invalid`, `question` and `wontfix`
   carry GitHub's own colours and descriptions, emoji-free. Restyling them would make every repository

@@ -47,7 +47,7 @@
 #
 # ---
 
-name: '🖌️ Reusable: Code Style Formatter'
+name: '🖌️ Code Style Formatter'
 
 on:
   workflow_call:

@@ -36,7 +36,7 @@
 #
 # ---
 
-name: '🕒 Reusable: License Year Update'
+name: '🕒 License Year Update'
 
 on:
   workflow_call:

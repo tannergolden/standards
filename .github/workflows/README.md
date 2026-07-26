@@ -163,18 +163,15 @@ the full set, already pinned to `@v1`. No token needed.
 
 ---
 
-## 🔬 How This Repository Checks Itself
+## 🔬 Validating A Change Here
 
-Two layers, because they prove different things.
+This repository publishes these workflows and calls none of them on itself, so nothing here
+resolves `@v1` against its own tree.
 
-**The `verify` job in `self-checks.yml`** reads the working tree directly and depends on no
-published tag: actionlint, shellcheck, ruff, structural integrity, reference integrity, SHA
-pinning, and the label taxonomy parsed exactly as the sync parses it. This is the check that gates a commit here, and it is the only
-one that can validate a change to an action, since every other path resolves `@v1` and would test the
-published copy rather than the diff.
-
-**The `self-*` stubs** call the workflows the way you will, which proves the published path works
-end to end. They resolve `@v1` internally, so they need that tag to exist.
+Check a change against the working tree before it ships: `actionlint` over `.github/workflows/`,
+`shellcheck` over `scripts/`, `ruff` over the Python, and the generators under `scripts/` run with
+`--check`. Reading the tree directly is the only way to validate a change **to** an action, since
+every published path resolves a pin and would exercise the released copy rather than the diff.
 
 ---
 

@@ -51,7 +51,7 @@
 #
 # ---
 
-name: '✨ Reusable: CI Validation'
+name: '✨ CI Validation'
 
 on:
   workflow_call:

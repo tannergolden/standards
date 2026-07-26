@@ -43,7 +43,7 @@
 #
 # ---
 
-name: '⚖️ Reusable: Governance & Automation'
+name: '⚖️ Governance & Automation'
 
 on:
   workflow_call:

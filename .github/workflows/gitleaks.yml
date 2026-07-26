@@ -37,7 +37,7 @@
 #
 # ---
 
-name: '🔐 Reusable: Scan for Secrets'
+name: '🔐 Scan for Secrets'
 
 on:
   workflow_call:

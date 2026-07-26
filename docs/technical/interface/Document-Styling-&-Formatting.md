@@ -34,17 +34,19 @@ Our documentation is more than just text; it is a **visual engine** designed for
 ### What Is Enforced Mechanically, And What Is Not
 
 This repository has no configurable style profile and no `docs-style` checker.
-What it has is a smaller set of rules that a machine can check without
-argument, run by `self-checks` on every change:
+It also publishes its workflows rather than running them on itself, so the
+column below says where each rule is actually checked, and admits where the
+answer is nowhere:
 
-| Rule                            | Enforced by                                                     |
-| :------------------------------ | :--------------------------------------------------------------- |
-| Hidden frontmatter, comment form | `self-checks` - every document, `pull_request_template.md` aside |
-| Exactly four `tags`             | `self-checks`                                                    |
-| Machined indexes match the tree | `scripts/update-doc-indexes.py --check`, run by `self-checks`     |
-| No `_` as a space in a filename | `self-checks`                                                    |
-| Spelling                        | `typos`, in `ci.yml`                                             |
-| Links resolve                   | `lychee`, in `ci.yml`                                            |
+| Rule                            | Checked by                                                        |
+| :------------------------------ | :---------------------------------------------------------------- |
+| Machined indexes match the tree | `scripts/update-doc-indexes.py --check`, run here on demand       |
+| Label reference matches registry | `scripts/update-label-docs.py --check`, run here on demand        |
+| Spelling                        | `typos`, in `ci.yml`, in consuming repositories                    |
+| Links resolve                   | `lychee`, in `ci.yml`, in consuming repositories                   |
+| Hidden frontmatter, comment form | Convention. Upheld by review                                      |
+| Exactly four `tags`             | Convention. Upheld by review                                      |
+| No `_` as a space in a filename | Convention. Upheld by review                                      |
 
 Everything else in this specification - the badges, the centered headers, the
 taglines, the fully-capped titles - is **convention, followed by hand**. It is
@@ -56,13 +58,13 @@ is in the table above.
 
 - **Visual Impact**: Use centered headers and high-contrast badges to create a high-fidelity feel.
 - **Artificial Intelligence Optimization**: Keep structures machine-readable while maintaining aesthetic appeal.
-- **Standards Enforcement**: Adhere strictly to the defined "these standards" for document composition. The subset a machine can verify is listed above and runs in `self-checks`; the rest is upheld by writing it down and following it.
+- **Standards Enforcement**: Adhere strictly to the defined "these standards" for document composition. The subset a machine can verify is listed above, with the script that verifies it; the rest is upheld by writing it down and following it.
 
 ---
 
 ## 📁 File Naming & Title Case
 
-Documentation names are **Capitalized-Kebab, always** - these are substance rules, enforced by `self-checks`, so they can never regress:
+Documentation names are **Capitalized-Kebab, always** - these are substance rules, upheld by review:
 
 - **Filenames** under `docs/` capitalize every hyphen-separated word - `Branching-Strategy-&-Workflow.md`, like `Example.md` - never `EXAMPLE.md`, never `example.md`, never spaces, never underscores (`RESEARCH_LOG.md` ❌). The conjunction is always the ampersand: write the word `And` as `&` (`Pull-Requests-&-Code-Reviews.md`, never `Pull-Requests-And-Code-Reviews.md`); drop parentheses. Established acronyms keep their casing: `AI-Driven-Commit-Process.md`, `ADR.md`, `CI-CD-Pipelines.md`, `GitHub-Concepts-Recap.md`.
 - **Fully upper or fully lower only where the platform requires it**: `README.md` as a directory index, GitHub's community-health and template names (`CONTRIBUTING.md`, `pull_request_template.md`, `ISSUE_TEMPLATE/config.yml`), discussion forms that must match their category slugs, and tool-required names (`_config.yml`). Everything with a free choice of name is Capitalized-Kebab.
@@ -82,7 +84,7 @@ Document lists that carry the `AUTO-INDEX` markers (the docs-home index and the 
 <!-- AUTO-INDEX:END -->
 ```
 
-`scripts/update-doc-indexes.py` regenerates every block from the tree plus each document's own frontmatter (title emoji as hex entities, description as the table blurb). Run `python3 scripts/update-doc-indexes.py --write` after adding, renaming, or removing a doc; `self-checks` runs it with `--check` and fails when any index is stale, so an index can never silently disagree with the tree. Never edit between the markers by hand - edit the surrounding prose freely.
+`scripts/update-doc-indexes.py` regenerates every block from the tree plus each document's own frontmatter (title emoji as hex entities, description as the table blurb). Run `python3 scripts/update-doc-indexes.py --write` after adding, renaming, or removing a doc, and `--check` to fail on a stale index, so an index need never silently disagree with the tree. Never edit between the markers by hand - edit the surrounding prose freely.
 
 ---
 
@@ -290,8 +292,8 @@ To ensure 100% portability across diverse editors, terminal environments, and CI
 2. **Emoji Portability**:
    - **In Body Text**: Standard UTF-8 emojis are permitted for readability.
    - **In Templates & Critical Headers**: You **MUST** use HTML Hexadecimal Entities (e.g., `&#x1F680;` for 🚀, `&#x1F4DD;` for 📝). This prevents character corruption (mojibake) when documents are processed by scripts or viewed in legacy environments.
-   - **Zero-Tolerance for Mojibake**: Corrupted sequences (the `Ã`-prefixed artifacts you get when UTF-8 is read as Latin-1) are prohibited and must be repaired immediately. `self-checks` scans every document for them.
-3. **No Em Dashes**: The em dash character (U+2014) is prohibited in every file the repository writes: prose, comments, configuration, and commit messages alike. Use a comma, a colon, parentheses, or a spaced hyphen (" - ") instead. Both halves are enforced: `self-checks` fails any document containing one, and `commit-check` rejects it in a commit message through the `no-em-dash` rule in `config/commitlint.config.js`.
+   - **Zero-Tolerance for Mojibake**: Corrupted sequences (the `Ã`-prefixed artifacts you get when UTF-8 is read as Latin-1) are prohibited and must be repaired on sight.
+3. **No Em Dashes**: The em dash character (U+2014) is prohibited in every file the repository writes: prose, comments, configuration, and commit messages alike. Use a comma, a colon, parentheses, or a spaced hyphen (" - ") instead. In prose it is a convention upheld by review; in a commit message `commit-check` rejects it through the `no-em-dash` rule in `config/commitlint.config.js`, wherever that action runs.
 
 ---
 

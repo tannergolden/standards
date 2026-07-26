@@ -39,7 +39,7 @@
 #
 # ---
 
-name: '🎉 Reusable: Initialise From Template'
+name: '🎉 Initialise From Template'
 
 on:
   workflow_call:

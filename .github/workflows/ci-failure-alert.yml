@@ -49,7 +49,7 @@
 #
 # ---
 
-name: '🚨 Reusable: CI Failure Alerts'
+name: '🚨 CI Failure Alerts'
 
 on:
   workflow_call:

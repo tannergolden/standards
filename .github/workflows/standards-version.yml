@@ -39,7 +39,7 @@
 #
 # ---
 
-name: '⬆️ Reusable: Standards Version'
+name: '⬆️ Standards Version'
 
 on:
   workflow_call:

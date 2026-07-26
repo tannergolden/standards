@@ -30,7 +30,7 @@
 #
 # ---
 
-name: '🧹 Reusable: Prune Draft Releases'
+name: '🧹 Prune Draft Releases'
 
 on:
   workflow_call:
