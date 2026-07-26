@@ -69,11 +69,13 @@ plan() { printf '%s\n' "$1"; PLAN="${PLAN}${1}"$'\n'; }
 write_summary() {
   [ -z "${GITHUB_STEP_SUMMARY:-}" ] && return 0
   {
-    echo "### ⚙️ Repository settings plan: \`${TARGET_REPO}\`"
+    echo "### ⚙️ Repository settings: \`${TARGET_REPO}\`"
     echo
     echo '```text'
     printf '%s' "$PLAN"
     echo '```'
+    echo
+    echo "$1"
   } >> "$GITHUB_STEP_SUMMARY"
 }
 
@@ -238,48 +240,51 @@ done
 
 echo
 plan "Plan: ${CHANGED} change(s), ${UNCHANGED} already correct, ${#TOGGLES[@]} ensured."
-write_summary
 
 if [ "$CHANGED" -eq 0 ] && [ "${#TOGGLES[@]}" -eq 0 ]; then
   echo "Nothing to do."
+  write_summary "Nothing to change: \`${TARGET_REPO}\` already matches the published set."
   exit 0
 fi
 
 if [ "$DRY_RUN" = "true" ]; then
   echo "Dry run: nothing was changed. Set DRY_RUN=false to apply this plan."
+  write_summary "Dry run: **${CHANGED}** change(s) would be applied to \`${TARGET_REPO}\`. Nothing was changed."
   exit 0
 fi
 
-echo
+plan ""
 if [ "$PATCH" != '{}' ]; then
   printf '%s' "$PATCH" | gh api --method PATCH "repos/${TARGET_REPO}" --input - >/dev/null
-  echo "Applied repository settings."
+  plan "Applied repository settings."
 fi
 
 if [ "$ACT_PATCH" != '{}' ]; then
   printf '%s' "$ACT_PATCH" | gh api --method PUT "repos/${TARGET_REPO}/actions/permissions/workflow" --input - >/dev/null
-  echo "Applied the Actions workflow-token policy."
+  plan "Applied the Actions workflow-token policy."
 fi
 
 if [ -n "$FORK_APPLY" ]; then
   gh api --method PUT "repos/${TARGET_REPO}/actions/permissions/fork-pr-contributor-approval" \
     -f "approval_policy=${FORK_APPLY}" >/dev/null
-  echo "Applied the fork pull request approval policy."
+  plan "Applied the fork pull request approval policy."
 fi
 
 for name in "${SEC_ENABLE[@]}"; do
   gh api --method PATCH "repos/${TARGET_REPO}" \
     -f "security_and_analysis[${name}][status]=enabled" >/dev/null
-  echo "Enabled ${name}."
+  plan "Enabled ${name}."
 done
 
 for t in "${TOGGLES[@]}"; do
   if gh api --method PUT "repos/${TARGET_REPO}/${t}" --silent 2>/dev/null; then
-    echo "Ensured ${t}."
+    plan "Ensured ${t}."
   else
     echo "::warning::Could not enable ${t}. It may be unavailable on this repository's plan or visibility."
   fi
 done
+
+write_summary "Applied to \`${TARGET_REPO}\`. A re-run now plans \`0 change(s)\`."
 
 echo
 echo "Done. Rulesets are a separate act: see scripts/apply-rulesets.sh."
