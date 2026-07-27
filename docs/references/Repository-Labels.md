@@ -42,7 +42,7 @@ Most labels arrive mechanically - know which ones are yours to set and which the
 
 | Applier                          | Labels it owns                                                                                                                            |
 | :------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
-| **Issue forms** (at creation)    | `type: *` and `status: needs triage` - each form declares its own labels.                                                                 |
+| **Issue forms** (at creation)    | `type: *` and `status: needs triage`; two also declare a fixed `area: *`.                                                                    |
 | **Path labeler** (every PR push) | `area: *` from the file paths touched, per [`config/labeler.yml`](../../config/labeler.yml).                                                 |
 | **Size labeler** (every PR push) | `size: *` from the changed-lines count.                                                                                                   |
 | **Conflict / stale sweeps**      | `status: conflict` on merge-conflict PRs; `status: stale` on long-inactive items.                                                         |
