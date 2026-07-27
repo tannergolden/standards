@@ -142,9 +142,21 @@ def problems_for(message: str, types: list[str], max_header: int) -> list[str]:
     if len(header) > max_header:
         found.append(f"the subject line is {len(header)} characters (limit {max_header})")
 
-    match = re.match(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?: (?P<subject>.+)$", header)
+    # THE SCOPE IS REQUIRED, not optional as Conventional Commits allows. A
+    # subject without one reads `docs: add the seed` across a hundred commits
+    # and answers "where?" nowhere; with one it is `docs(templates): ...` and
+    # the log is navigable. Making it optional here is what let a whole
+    # rebuilt history land unscoped and pass.
+    match = re.match(r"^(?P<type>[a-z]+)\((?P<scope>[a-z0-9][a-z0-9-]*)\)(?P<breaking>!)?: (?P<subject>.+)$", header)
     if not match:
-        found.append("it does not match `<type>(<scope>): <subject>`")
+        loose = re.match(r"^(?P<type>[a-z]+)(?P<breaking>!)?: ", header)
+        if loose:
+            found.append(
+                f"`{loose.group('type')}:` has no scope - write "
+                f"`{loose.group('type')}(<scope>):`, where the scope names the area "
+                "changed (workflows, scripts, docs, deps, readme, config)")
+        else:
+            found.append("it does not match `<type>(<scope>): <subject>`")
     elif match.group("type") not in types:
         found.append(f"`{match.group('type')}` is not an allowed type ({', '.join(types)})")
     else:

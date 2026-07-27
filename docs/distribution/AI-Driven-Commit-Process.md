@@ -53,7 +53,7 @@ The commit and pull request title should follow this format:
 ```
 
 - **Type**: One of the following: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`, `security`.
-- **Scope**: A short identifier for the area of the codebase being changed (e.g., `auth`, `api`, `ui`).
+- **Scope**: A short identifier for the area of the codebase being changed (e.g., `auth`, `api`, `ui`). **REQUIRED, and enforced** - `scripts/commit-check.py` rejects a subject without one. Conventional Commits treats the scope as optional; this standard does not, because `docs: add the seed` repeated across a hundred commits answers "where?" nowhere, while `docs(templates): add the seed` makes the log navigable. Use the area actually touched: `workflows`, `scripts`, `docs`, `deps`, `readme`, `config`, `operations`.
 - **Subject**: A brief, descriptive summary of the change, written in lowercase (recommended). The subject may optionally begin with an emoji.
 - **Body**: **REQUIRED, on every commit, without exception.** Separated from the subject by one blank line and wrapped at 72 characters. Write full sentences explaining **why** the change was made and why this way rather than the obvious alternative.
 - **Punctuation**: Never use an em dash (U+2014) anywhere in a commit message, subject or body. Use a comma, a colon, parentheses, or a spaced hyphen instead. commitlint rejects the character mechanically (the commitlint rule set in `config/commitlint.config.js` encodes it).
