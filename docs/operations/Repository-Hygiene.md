@@ -92,13 +92,14 @@ Every fork or new project seeded from this standards-based repository must maint
 | Asset Category      | Naming Convention              | Example                          |
 | :------------------ | :----------------------------- | :------------------------------- |
 | **Source & Config** | Kebab-case (all lowercase)     | `user-profile.ts`, `data-layer/` |
+| **YAML Files**      | `.yaml`, per the YAML spec     | `Bug-Report.yaml`                |
 | **Test Files**      | Mirror source + `.test` suffix | `user-profile.test.ts`           |
 | **Docs (`docs/`)**  | Capitalized-Kebab              | `Repository-Hygiene.md`          |
 | **Env Templates**   | Suffix with `.example`         | `.env.example`                   |
 | **Branches**        | `type/short-descriptive-slug`  | `feat/auth-magic-links`          |
 
 > [!NOTE]
-> Documentation uses Capitalized-Kebab names (every hyphen-separated word capitalized, never spaces or underscores) - the binding spec is [Document Styling & Formatting](../technical/interface/Document-Styling-&-Formatting.md). Everything executable or importable stays kebab-case, with one interpreter exception: a Python file that must be importable uses snake_case, the language's own convention, because a module name cannot contain a hyphen.
+> Documentation uses Capitalized-Kebab names (every hyphen-separated word capitalized, never spaces or underscores) - the binding spec is [Document Styling & Formatting](../technical/interface/Document-Styling-&-Formatting.md). Everything executable or importable stays kebab-case, with one interpreter exception: a Python file that must be importable uses snake_case, the language's own convention, because a module name cannot contain a hyphen. YAML files take `.yaml`, the extension the specification itself recommends, `.yml` being a leftover from the three-character limit on DOS; the exception is again a fixed name, since `FUNDING.yml`, `dependabot.yml`, and `ISSUE_TEMPLATE/config.yml` are read under that spelling and no other. Workflows are not an exception: GitHub Actions reads both.
 
 ---
 
