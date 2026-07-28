@@ -26,7 +26,7 @@ _The diff already records what changed. Only the author can record why._
 - Keep commits **small and single-purpose**, with a clear `type(scope): subject`.
 - Encode **what, why, testing and impact**, so release notes and audits are effortless.
 
-Two rules below are **stricter than the Conventional Commits specification**, deliberately, and both are enforced mechanically. The scope is required, and the body is required. Everything else follows the specification as written.
+Two rules below are **stricter than the Conventional Commits specification**, deliberately, and both are enforced mechanically: the scope is required, and the body is required. A third sits outside that specification altogether, because it governs **who** a commit is by rather than what it says, and it is a convention rather than a gate. Everything else follows the specification as written.
 
 ---
 
@@ -44,6 +44,7 @@ Two rules below are **stricter than the Conventional Commits specification**, de
 - **Scope**: a short identifier for the area changed (`auth`, `api`, `ui`). **REQUIRED, and enforced** by `scripts/commit-check.py`. The specification treats the scope as optional; this standard does not, because `docs: add the seed` repeated across a hundred commits answers "where?" nowhere, while `docs(templates): add the seed` makes the log navigable. Use the area actually touched: `workflows`, `scripts`, `docs`, `deps`, `readme`, `config`, `operations`.
 - **Subject**: a brief summary in lowercase, imperative mood. It may begin with an emoji.
 - **Body**: **REQUIRED, on every commit, without exception.** One blank line after the subject, wrapped at 72 characters. Full sentences explaining **why** this change, and why this way rather than the obvious alternative.
+- **Author**: the repository owner, always. An AI agent that contributed is recorded as a co-author and never as the author. See [Who The Commit Is By](#-who-the-commit-is-by).
 - **Punctuation**: never an em dash (U+2014), in a subject or a body. Use a comma, a colon, parentheses, or a spaced hyphen. The rule is mechanical, encoded in `config/commitlint.config.js`.
 
 ---
@@ -78,6 +79,53 @@ the reader six months later.
 
 ---
 
+### ✍️ Who The Commit Is By
+
+**The author is the repository owner. An AI agent that contributed is a co-author, never the author.**
+
+| Field              | Who                                                    | Set by                                            |
+| :----------------- | :----------------------------------------------------- | :------------------------------------------------ |
+| Author             | The person the change belongs to                       | `user.name` and `user.email`, or `--author`       |
+| `Co-Authored-By:`  | Every additional contributor, an AI agent included     | A trailer in the body, one line per contributor   |
+| `Signed-off-by:`   | The person certifying the DCO                          | `git commit -s`                                   |
+
+The trailer appears only when an agent actually contributed. A commit written by hand carries none, and adding one to look thorough is a false record in the one place a false record is permanent.
+
+**Why the author field rather than only the trailer.** `git blame`, `git shortlog` and the contributor graph all read the author. An agent in that field puts a tool where a person should be, so the history reports that nobody owns the change and offers nobody to ask about it six months later. The sign-off says the same thing from the other direction: the DCO is a certification a person makes about work they are accountable for, and a process cannot make it. Nothing about the agent's part is lost by moving it, because GitHub reads `Co-Authored-By:` and renders that contributor on the commit and in the contribution graph.
+
+> [!IMPORTANT]
+> **This repository got it wrong before the rule was written down, which is why the rule exists.** Five commits on `Development` carry `Co-Authored-By:` for an agent while being **authored** by that same agent. Each one claims the agent as an additional contributor and simultaneously records it as the only one. The trailer was right and the field was wrong, and nothing reported the contradiction because nothing reads the author field.
+
+An agent sets the identity once, before its first commit in a repository:
+
+```bash
+git config user.name 'Tanner Golden'
+git config user.email '24684994+tannergolden@users.noreply.github.com'
+```
+
+Every commit then carries the trailer in its body, above the sign-off:
+
+```text
+docs(distribution): 📝 record who a commit is by
+
+The body, wrapped at 72 characters, saying why this change and why this
+way rather than the obvious alternative.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Signed-off-by: Tanner Golden <24684994+tannergolden@users.noreply.github.com>
+```
+
+Where the identity cannot be configured, set it per commit instead:
+
+```bash
+git commit -s --author='Tanner Golden <24684994+tannergolden@users.noreply.github.com>'
+```
+
+> [!NOTE]
+> **Use the account's GitHub noreply address, not a personal one.** It is the address the contribution graph resolves, and it keeps a private inbox out of a history that is public and permanent. A commit is not redactable: a rewrite replaces the object and leaves the original reachable by SHA for anyone who already has it.
+
+---
+
 ### 🎭 Emoji Mapping
 
 Not enforced, and encouraged. One emoji after the colon reads well in a long log:
@@ -105,9 +153,10 @@ Not enforced, and encouraged. One emoji after the colon reads well in a long log
 
 1. **Stage** what belongs in this commit, not everything you touched today.
 2. **Write the message**: `type(scope): subject`, a blank line, then the body.
-3. **Sign off**: `git commit -s` adds the `Signed-off-by` trailer. The required **✍️ DCO Sign-Off** check blocks the merge without it. Forgot? `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` for a whole branch.
-4. **Push**: `git push -u origin HEAD`.
-5. **Open a pull request** into `Development`.
+3. **Credit whoever contributed**: a `Co-Authored-By:` trailer per additional contributor, an AI agent included. The author field stays the repository owner.
+4. **Sign off**: `git commit -s` adds the `Signed-off-by` trailer. The required **✍️ DCO Sign-Off** check blocks the merge without it. Forgot? `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` for a whole branch.
+5. **Push**: `git push -u origin HEAD`.
+6. **Open a pull request** into `Development`.
 
 > [!NOTE]
 > **The rulesets have your back, not a local hook.** Nothing here installs a git hook, so this protocol is enforced where it cannot be bypassed: the branch rulesets refuse a direct push to a protected branch, and `semantic-pr.yml` re-checks every commit message and sign-off on the pull request itself. A local hook you can disable with `--no-verify` is a convenience, not a control.
@@ -181,6 +230,7 @@ same expiry that already applies.
 - **CI, per commit**: the same workflow's `✍️ Commit Messages` job validates **every human-authored commit** in the pull request. This covers a repository that merges or rebases instead of squashing, where each message lands on the default branch in its own right. Bot-authored and merge commits are exempt, matching the DCO check exactly.
 - **Local, optional**: `config/commitlint.config.js` encodes the same rules for anyone running commitlint in a Node toolchain. It is not required, and nothing in CI depends on it. The CI gate reads commits through the GitHub API instead, because the workflow runs on `pull_request_target` and installing packages from the pull request's own manifest would hand an elevated token to whoever opened it.
 - **Changelogs**: `release-notes.yml` parses the resulting history with git-cliff to draft notes automatically.
+- **Authorship: nowhere.** `scripts/commit-check.py` reads the message and never the author field, so the rule above is a convention rather than a gate. It is stated here because the failure it prevents is invisible: a commit authored by an agent looks correct in every log that shows only the subject, and the contradiction is visible only to somebody who thinks to run `git log --format='%an'`.
 
 > [!IMPORTANT]
 > **One rule set, three encodings.** The type list is written out in `scripts/commit-check.py`, in `config/commitlint.config.js`, and as the `commit-types` default in `semantic-pr.yml`. Changing one without the others produces a rule nobody enforces, or a message that passes one gate and fails another. This repository publishes its workflows rather than running them on itself, so nothing catches that automatically: run `python3 scripts/check-type-parity.py` before touching any of the three.
@@ -193,12 +243,15 @@ same expiry that already applies.
 
 - Keep the subject imperative and present tense: "add", "fix", "remove".
 - Write the **why** in the body. It is required, not encouraged.
+- Credit an AI agent that contributed with a `Co-Authored-By:` trailer.
 - Mark **BREAKING CHANGE** explicitly in a footer.
 
 **Do not**
 
 - Combine unrelated changes into one commit.
 - Ship a subject-only commit, however small the change looks.
+- Let an AI agent author a commit. It is a co-author; the owner is the author.
+- Add a `Co-Authored-By:` trailer for an agent that did not contribute.
 - Use an em dash anywhere in the message. The gate rejects it.
 - Paste secrets, tokens or personal data into a message. History is forever, and a rewrite is not a redaction.
 
@@ -213,6 +266,7 @@ same expiry that already applies.
 | Subject too long or noisy             | Detail in the wrong place | Keep the subject under 72 characters and move the detail into the body   |
 | Missing breaking-change notice        | Impact not stated         | Add a `BREAKING CHANGE:` footer with details                             |
 | DCO check fails                       | No sign-off trailer       | `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` |
+| The log shows an agent as the author  | Agent identity configured | Set `user.name` and `user.email` to the owner, then `git commit --amend --reset-author`. Already pushed? Leave it and fix the identity, or rewrite deliberately |
 | Em dash rejected                      | Character in the message  | Replace with a comma, a colon, parentheses, or a spaced hyphen           |
 
 ---
