@@ -108,7 +108,7 @@ Every fork or new project seeded from this standards-based repository must maint
 We utilize **Husky** to ensure that code hygiene is enforced before it ever reaches the remote repository.
 
 - **Pre-commit**: Auto-formats **fully staged** files with Prettier (via `config/prettierrc.json`) and restages them - partially staged files are deliberately skipped so the hook never commits changes you did not stage.
-- **Commit-msg**: Enforces the [&#x1F916; AI-Driven Commit Process](../distribution/AI-Driven-Commit-Process.md).
+- **Commit-msg**: Enforces the [&#x1F33F; Conventional Commits](../distribution/Conventional-Commits.md).
 - **CI Required Checks**: Blocks merges if the branch deviates from formatting or testing standards.
 
 ---

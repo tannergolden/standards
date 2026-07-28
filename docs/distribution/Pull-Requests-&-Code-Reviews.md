@@ -112,12 +112,12 @@ Proposes Prettier fixes as a pull request rather than force-pushing to your bran
 
 ---
 
-## 🤝 AI-Driven Synergy
+## 🌿 The Pull Request Becomes The Commit
 
-The squash commit is assembled for you: init configures the repository so the commit **title is the PR title** and the **body is the PR body**. Perfect those two fields instead of hand-editing at merge time - the Semantic PR gate already validates the title as a **Conventional Commit**, and your **AI Assistant** can draft both. This drives the automated **Release Notes** and ensures a high-quality development history.
+The squash commit is assembled for you: init configures the repository so the commit **title is the pull request title** and the **body is the pull request body**. Perfect those two fields rather than hand-editing at merge time, because the Semantic PR gate already validates the title as a **Conventional Commit** and the body is the only place the reasoning survives. This is also what drives the automated **Release Notes**, so a vague pull request body becomes a vague changelog entry.
 
 > [!TIP]
-> **Self-Correction**: If the AI does not write the PR title or commit name correctly, simply ask your AI assistant to fix the naming and to strictly follow the [&#x1F916; AI-Driven Commit Process guidelines](AI-Driven-Commit-Process.md).
+> **Naming**: a rejected title or commit message is a formatting failure, not a review failure. The format, the required scope and the required body are specified in [&#x1F33F; Conventional Commits](Conventional-Commits.md).
 
 ---
 

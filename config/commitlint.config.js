@@ -6,7 +6,7 @@
 // inference possible at all.
 //
 // The rules encoded here are the executable form of the commit standard in
-// `docs/distribution/AI-Driven-Commit-Process.md`. The two change together:
+// `docs/distribution/Conventional-Commits.md`. The two change together:
 // editing one without the other produces a rule nobody enforces, or a gate
 // nothing documents.
 //

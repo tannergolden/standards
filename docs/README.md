@@ -40,7 +40,7 @@ How work moves from a branch to a release.
 | :------------------------------------------------------------------------------------- | :-------------------------------------------------------- |
 | [Distribution & Workflow](distribution/Distribution-&-Workflow.md)                     | Section overview                                          |
 | [Branching Strategy & Workflow](distribution/Branching-Strategy-&-Workflow.md)         | The branch model every trigger keys on                    |
-| [AI-Driven Commit Process](distribution/AI-Driven-Commit-Process.md)                   | Conventional Commits, and generating them with assistance |
+| [Conventional Commits](distribution/Conventional-Commits.md)                           | The commit message standard, and where it is enforced     |
 | [Pull Requests & Code Reviews](distribution/Pull-Requests-&-Code-Reviews.md)           | Review rubric and etiquette                               |
 | [Continuous Integration & Delivery](distribution/Continuous-Integration-&-Delivery.md) | How the pipelines are wired                               |
 | [Testing Strategy](distribution/Testing-Strategy.md)                                   | The layered testing contract                              |

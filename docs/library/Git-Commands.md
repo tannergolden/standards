@@ -25,7 +25,7 @@ _Linear history. Conventional commits. Automated validation._
 We utilize an **Experimental → Development → Preview → Release** promotion path. All contributions flow through Pull Requests (PRs) and are validated by Continuous Integration (CI) before merging.
 
 - **Squash & Merge**: We keep the timeline clean by squashing feature commits into a single, high-signal entry.
-- **Convention First**: Every commit must follow the [&#x1F916; AI-Driven Commit Process](../distribution/AI-Driven-Commit-Process.md).
+- **Convention First**: Every commit must follow the [&#x1F33F; Conventional Commits](../distribution/Conventional-Commits.md).
 - **Signed Off, Always**: Every human commit carries the DCO trailer (`git commit -s`) - the required `✍️ DCO Sign-Off` check blocks merges without it.
 - **Protected Pipelines**: Direct pushes to our primary branches are prohibited.
 

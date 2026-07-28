@@ -39,7 +39,7 @@ Use the links below to navigate our delivery and distribution protocols.
 
 | Index  | Strategic Artifact                                                                    | Critical Intent                                                               |
 | :----- | :------------------------------------------------------------------------------------ | :---------------------------------------------------------------------------- |
-| **01** | [&#x1F916; AI Driven Commit Process](./AI-Driven-Commit-Process.md)                   | The protocol for generating Conventional Commits with AI assistance.          |
+| **01** | [&#x1F33F; Conventional Commits](./Conventional-Commits.md)                           | The commit message standard, and the two places it is deliberately stricter.  |
 | **02** | [&#x1F33F; Branching Strategy & Workflow](./Branching-Strategy-&-Workflow.md)         | The quad-tier branching model and the workflow for moving code to production. |
 | **03** | [&#x1F4DD; Continuous Integration & Delivery](./Continuous-Integration-&-Delivery.md) | How CI and delivery are wired, from pull-request checks to release workflows. |
 | **04** | [&#x1F91D; Pull Requests & Code Reviews](./Pull-Requests-&-Code-Reviews.md)           | Pull-request etiquette and the code review rubric.                            |

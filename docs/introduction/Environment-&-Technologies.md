@@ -36,7 +36,7 @@ We prioritize **Process over Products**. Whether you use Node, Python, Rust, or 
 We embrace AI assistants as core team members. You may use any AI app builder or IDE (e.g., Google Antigravity, Cursor, Lovable) provided they adhere to the project's governing principles.
 
 - **Human Oversight**: Humans remain the final architects, reviewers, and approvers.
-- **Workflow Integrity**: AI tools must follow the established [&#x1F916; AI-Driven Commit Process](../distribution/AI-Driven-Commit-Process.md).
+- **Workflow Integrity**: every commit follows [&#x1F33F; Conventional Commits](../distribution/Conventional-Commits.md), whoever or whatever drafted it.
 
 ### 🌐 Modern Web Standards
 
