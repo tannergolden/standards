@@ -309,9 +309,8 @@ Root Artificial Intelligence router files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`
 ### Core Specifications
 
 1.  **Uniform Header Alignment**: Every documentation file MUST follow the standard header structure to ensure titles are centered.
-2.  **Lint Suppression**: Line 1 MUST contain `<!-- markdownlint-disable MD041 -->`.
+2.  **Lint Suppression**: The first line after the frontmatter comment MUST be `<!-- markdownlint-disable MD041 -->`.
 3.  **Centered Title**: Heading 1 MUST be positioned inside the `<div align="center">` block.
-4.  **Metadata Location**: Machine-readable metadata remains in the footer metadata block.
 
 ### Visual Blueprint
 
@@ -322,14 +321,14 @@ Root Artificial Intelligence router files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`
 
 <div align="center">
 
-[Metadata (key: value)]
-
 **Engineered for precision. Governed by logic.**
 
 [↑ Back to Top](#top)
 
 </div>
 ```
+
+The footer carries the document's closing phrase and nothing else. Machine-readable metadata belongs in the hidden frontmatter comment at the top, where it is already parsed; repeating it in the footer restates the title to a reader who has just finished the document.
 
 ---
 
