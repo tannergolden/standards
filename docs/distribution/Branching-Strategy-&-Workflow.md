@@ -133,7 +133,7 @@ flowchart LR
 > **Why 0 reviews ship**: solo maintainers and automation PRs (dependency bumps, the licence-year roll) must never deadlock - CI still gates every merge. **Recommended hardening as the team grows**: raise required reviews to ≥1 (code owners for risky changes on `Preview`, release-manager approval on `Release`), require branches to be up to date with the base, and enable signed commits.
 
 > [!TIP]
-> Keep local commands and CI identical to avoid "works on my machine": `npm ci` → `npm run lint` → `npm test -- --ci` → `npm run build`.
+> Keep local commands and CI identical to avoid "works on my machine". Whatever your project runs for lint, test and build, CI should invoke exactly that, which is why `ci.yml` takes the commands rather than assuming them.
 
 ---
 

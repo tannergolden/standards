@@ -47,7 +47,7 @@ The shipped rulesets require these three status checks - the job names below are
 
 | Required check            | Source workflow   | Why it exists                                                       |
 | ------------------------- | ----------------- | ------------------------------------------------------------------- |
-| **🧪 Lint, Test & Build** | `ci.yml`          | One deterministic job: `npm ci` → lint → docs checks → test → build |
+| **🧪 Lint, Test & Build** | `ci.yml`          | One deterministic job: lint, then test, then build, using the commands you give it |
 | **🔍 Scan for Secrets**   | `gitleaks.yml`    | Blocks any PR that introduces a credential or token                 |
 | **✍️ DCO Sign-Off**       | `semantic-pr.yml` | Blocks any PR whose human-authored commits lack `Signed-off-by:`    |
 
@@ -116,7 +116,7 @@ Every action in these workflows is pinned to a full commit SHA, and **the two re
 <strong>🧰 Quality Gates & Speed Tips</strong>
 
 - **Keep CI deterministic**: `.nvmrc`, lockfiles, pinned tool versions.
-- **Cache wisely**: `actions/setup-node` npm cache + avoid caching `node_modules`.
+- **Cache wisely**: cache the package manager's own store rather than the installed dependency tree, and key it on the lockfile. Most `setup-*` actions do this for you when pointed at one.
 - **Fail fast**: run lint/tests before build if build is expensive.
 - **Matrix** (optional): test multiple Node.js Long-Term Support (LTS) versions only if you support them.
 - **Short logs**: redact secrets; avoid verbose debug unless failing.

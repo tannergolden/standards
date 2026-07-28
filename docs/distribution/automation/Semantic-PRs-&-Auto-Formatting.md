@@ -51,7 +51,7 @@ Monitors the codebase for style drift and proposes corrections - without ever wr
 - **Workflow**: `.github/workflows/auto-format.yml` (Standalone for on-demand execution)
 - **Execution**: Runs on each push to `Development` (drift can only appear when the branch changes - zero idle runs), or on demand via `workflow_dispatch`.
 - **Remediation**: Runs Prettier repository-wide and, when drift exists, **opens a pull request** targeting `Development` (via `.github/scripts/open-fix-pr.sh`). Long-lived branches are PR-only for automation exactly as they are for humans.
-- **Layered defense**: drift is rare by design - agent edits are formatted by the Claude Code hook, local commits by the husky pre-commit hook, and CI rejects unformatted changes via `make lint`. This workflow is the safety net for edits that bypass all three (e.g. the GitHub web editor).
+- **Layered defense**: CI rejects unformatted changes via `make lint`, so drift only reaches the default branch when something bypassed a local check, or when there was no local check to bypass. A repository that wires a pre-commit hook of its own catches it a step earlier; this workflow is the safety net either way, and the only one that covers an edit made in the GitHub web editor.
 
 ---
 
