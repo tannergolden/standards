@@ -35,12 +35,12 @@ These principles guide every decision we make - from architectural spikes to dai
 2. **Ship small, reviewable changes**
    Thin vertical slices get faster feedback and safer deploys.
    - ✅ **Do:** keep Pull Requests (PRs) focused on a single intent; favor < 300 net Lines of Code (LOC) across ≤ 10 files; write clear titles/descriptions.
-   - 🚫 **Avoid:** “kitchen-sink” Pull Requests (PRs), drive-by refactors, and mixing formatting with logic changes.
+   - 🚫 **Avoid:** "kitchen-sink" Pull Requests (PRs), drive-by refactors, and mixing formatting with logic changes.
 
 3. **Automate the boring & error-prone**
    Make the happy path one command locally and in Continuous Integration (CI).
    - ✅ **Do:** enforce formatters/linters/tests as required checks; align local environments with Continuous Integration (CI) via `Makefile` and scripts.
-   - 🚫 **Avoid:** manual release steps, snowflake environments, and “works on my machine” setups.
+   - 🚫 **Avoid:** manual release steps, snowflake environments, and "works on my machine" setups.
 
 4. **Readable over clever**
    Optimize for the next reader (including future you).
@@ -48,7 +48,7 @@ These principles guide every decision we make - from architectural spikes to dai
    - 🚫 **Avoid:** cryptic abstractions, premature optimization, and hidden side effects.
 
 5. **Security from the start**
-   Bake security into everyday work - don’t bolt it on later.
+   Bake security into everyday work - don't bolt it on later.
    - ✅ **Do:** keep secrets out of Git; use secret managers; least-privilege tokens; enable secret scanning and Software Composition Analysis (SCA); review dependencies regularly.
    - 🚫 **Avoid:** personal tokens in Continuous Integration (CI), sharing credentials, or postponing rotations and dependency fixes.
 
@@ -65,17 +65,17 @@ These principles guide every decision we make - from architectural spikes to dai
 8. **Design for rollback and recovery**
    Every change should be easy to turn off, back out, or repair.
    - ✅ **Do:** gate changes with feature flags; use canary/percentage rollouts; make database migrations reversible; keep prior artifacts ready to redeploy.
-   - 🚫 **Avoid:** irreversible schema changes, destructive data operations without backups, and “all-or-nothing” releases.
+   - 🚫 **Avoid:** irreversible schema changes, destructive data operations without backups, and "all-or-nothing" releases.
 
 9. **Observability first**
-   If you can’t see it, you can’t fix it.
+   If you can't see it, you can't fix it.
    - ✅ **Do:** ship structured logs, metrics, and traces; define alerts tied to Service Level Objectives (SLOs).
    - 🚫 **Avoid:** debug-only logging, noisy non-actionable alerts, and silent failures.
 
 10. **Documentation is a deliverable**
     Docs reduce rework and speed onboarding.
     - ✅ **Do:** maintain README files, task-focused docs, and ADRs close to code; update docs in the same PR.
-    - 🚫 **Avoid:** stale pages, doc drift, and “will document later.”
+    - 🚫 **Avoid:** stale pages, doc drift, and "will document later."
 
 11. **Clear ownership and accountability**
     Unowned code becomes broken code.

@@ -31,7 +31,7 @@ We use a quad-tier long-lived branch architecture to isolate work-in-progress fr
 
 ## 🏗️ Branch Architecture
 
-<strong>🧱 Branch Types (what they’re for)</strong>
+<strong>🧱 Branch Types (what they're for)</strong>
 
 | Branch                      | Purpose                                 | Who writes                    | How it changes                                                       | Deploy target       |
 | --------------------------- | --------------------------------------- | ----------------------------- | -------------------------------------------------------------------- | ------------------- |
@@ -133,7 +133,7 @@ flowchart LR
 > **Why 0 reviews ship**: solo maintainers and automation PRs (dependency bumps, the licence-year roll) must never deadlock - CI still gates every merge. **Recommended hardening as the team grows**: raise required reviews to ≥1 (code owners for risky changes on `Preview`, release-manager approval on `Release`), require branches to be up to date with the base, and enable signed commits.
 
 > [!TIP]
-> Keep local commands and CI identical to avoid “works on my machine”: `npm ci` → `npm run lint` → `npm test -- --ci` → `npm run build`.
+> Keep local commands and CI identical to avoid "works on my machine": `npm ci` → `npm run lint` → `npm test -- --ci` → `npm run build`.
 
 ---
 
@@ -181,7 +181,7 @@ git push --force-with-lease
 4. Consider a follow-up `bugfix/` to refactor if the change was rushed.
 
 > [!CAUTION]
-> Don’t batch unrelated fixes in a hotfix PR. Keep scope tiny to minimize blast radius and simplify rollback.
+> Don't batch unrelated fixes in a hotfix PR. Keep scope tiny to minimize blast radius and simplify rollback.
 
 ---
 

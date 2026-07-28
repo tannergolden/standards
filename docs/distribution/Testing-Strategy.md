@@ -42,7 +42,7 @@ We treat tests as a first-class deliverable. Our goal is to catch defects at the
 | **Performance/Accessibility (Optional)** | Performance budgets / a11y checks                    | Lab checks on **Preview**                    | Lighthouse/axe                 | ⚠️ Medium    |
 
 > [!TIP]
-> Favor **Unit → Integration → targeted E2E**. Keep the “Test Pyramid” steep to preserve speed.
+> Favor **Unit → Integration → targeted E2E**. Keep the "Test Pyramid" steep to preserve speed.
 
 ---
 
@@ -154,8 +154,8 @@ npm run test:int
 
 <strong>🧪 Writing Good Tests</strong>
 
-- **Arrange–Act–Assert**: clear structure and naming.
-- **One behavior per test**; prefer multiple small tests to “kitchen-sink”.
+- **Arrange-Act-Assert**: clear structure and naming.
+- **One behavior per test**; prefer multiple small tests to "kitchen-sink".
 - **Avoid time/nondeterminism**: fake timers, mock network clock.
 - **Assertions**: meaningful messages; snapshot only for stable, reviewed output.
 - **Mocks/Stubs**: use **MSW** or lightweight fakes; avoid over-mocking core logic.
@@ -182,7 +182,7 @@ test('returns 201 on valid payload', async () => {
 | Lines     |                   80% | Project-wide; do not chase vanity numbers |
 | Branches  |                   75% | Focus on risky logic/edges                |
 | Functions |                   80% | Critical modules may set higher           |
-| E2E Smoke | 100% of top 3–5 flows | Login, happy purchase, critical write     |
+| E2E Smoke | 100% of top 3 to 5 flows | Login, happy purchase, critical write     |
 
 > [!TIP]
 > Enforce thresholds in `vitest.config.ts` and fail CI when regressions occur.

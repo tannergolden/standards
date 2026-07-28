@@ -111,7 +111,7 @@ git push
 > **In this template, squash is the only door.** The rulesets allow nothing but squash merges on the four protected branches, and init disables merge commits and rebase-merges repository-wide - the squash commit inherits the PR title and body, which is why the Semantic PR gate validates them.
 
 > [!TIP]
-> Use `--force-with-lease` (not `--force`) after a rebase to protect teammates’ work.
+> Use `--force-with-lease` (not `--force`) after a rebase to protect teammates' work.
 
 ---
 
@@ -154,7 +154,7 @@ git push
 | Undo local edits       | `git restore <file>`          | Working tree only                                           |
 | Unstage but keep edits | `git restore --staged <file>` | Moves back to working tree                                  |
 | Revert a public commit | `git revert <sha>`            | Creates a new commit that undoes changes                    |
-| Hard Reset (local)     | `git reset --hard <sha>`      | **Destructive**; use with care; don’t do on shared branches |
+| Hard Reset (local)     | `git reset --hard <sha>`      | **Destructive**; use with care; don't do on shared branches |
 
 ---
 

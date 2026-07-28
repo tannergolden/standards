@@ -12,7 +12,7 @@ category: docs
 
 <a name="top"></a>
 
-**The A–Z repository of terms, acronyms, and concepts used across our codebases, documentation, and workflows.**
+**The A to Z repository of terms, acronyms, and concepts used across our codebases, documentation, and workflows.**
 
 _Common vocabulary. Defined intent. Consistent communication._
 
