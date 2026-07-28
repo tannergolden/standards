@@ -144,7 +144,7 @@ Every primary documentation file (README, major guides) MUST use the following c
 
 <a name="top"></a>
 
-**[Descriptive paragraph in bold.]**
+**[One-line description in bold.]**
 
 _[Tagline in italics.]_
 
@@ -157,12 +157,17 @@ _[Tagline in italics.]_
 | **Div Open**          | `<div align="center">`                | Centers all contained elements.                                                                        |
 | **Emoji + Heading 1** | `# 🚀 Feature Name`                   | The primary document title.                                                                            |
 | **Top Anchor**        | `<a name="top"></a>`                  | Enables the "Back to Top" footer links.                                                                |
-| **Description**       | `**Bold Text**`                       | A 1-2 sentence overview of the document's purpose.                                                     |
+| **Description**       | `**Bold Text**`                       | **One sentence, on one rendered line.** Aim for 90 characters or fewer, and keep it longer than the tagline beneath it. |
 | **Tagline**           | `_Italicized Text_`                   | **Unique Requirement:** A high-level principle specific to _this_ file. Do not reuse generic taglines. |
 | **Badges**            | Shields.io Images                     | **Optional.** If a document carries them, the palette and placement rules below apply.                 |
 | **Div Close**         | `</div>`                              | Closes the centered block, after the badges where there are any.                                       |
 
 > [!NOTE]
+> **The description is one line because it is read as a masthead, not as prose.** A
+> description that wraps pushes the tagline down, turns the centered block into an
+> uneven stack, and reads as a paragraph the eye skips on its way to the content.
+> Say what the document is in a single line; the document itself says the rest.
+
 ---
 
 ## 🎨 Badge Visual Standards
