@@ -44,7 +44,7 @@ Two rules below are **stricter than the Conventional Commits specification**, de
 - **Scope**: a short identifier for the area changed (`auth`, `api`, `ui`). **REQUIRED, and enforced** by `scripts/commit-check.py`. The specification treats the scope as optional; this standard does not, because `docs: add the seed` repeated across a hundred commits answers "where?" nowhere, while `docs(templates): add the seed` makes the log navigable. Use the area actually touched: `workflows`, `scripts`, `docs`, `deps`, `readme`, `config`, `operations`.
 - **Subject**: a brief summary in lowercase, imperative mood. It may begin with an emoji.
 - **Body**: **REQUIRED, on every commit, without exception.** One blank line after the subject, wrapped at 72 characters. Full sentences explaining **why** this change, and why this way rather than the obvious alternative.
-- **Author**: the repository owner, always. An AI agent that contributed is recorded as a co-author and never as the author. See [Who The Commit Is By](#-who-the-commit-is-by).
+- **Author**: the repository owner, always. An AI agent that contributed is recorded as a co-author and never as the author, under **Who The Commit Is By** below.
 - **Punctuation**: never an em dash (U+2014), in a subject or a body. Use a comma, a colon, parentheses, or a spaced hyphen. The rule is mechanical, encoded in `config/commitlint.config.js`.
 
 ---
