@@ -89,7 +89,7 @@ The first half is barely a rule. Git already records the person making the commi
 
 | Field              | Who                                                       | Set by                                          |
 | :----------------- | :-------------------------------------------------------- | :---------------------------------------------- |
-| Author             | Whoever is contributing the commit. Never an AI           | `user.name` and `user.email`, or `--author`     |
+| Author             | Whoever is contributing the commit. Never an AI           | Read from `user.name` and `user.email`          |
 | `Co-Authored-By:`  | Everyone else who contributed, an AI always among them    | A trailer in the body, one line per contributor |
 | `Signed-off-by:`   | The person certifying the DCO, normally the author        | `git commit -s`                                 |
 
@@ -100,12 +100,26 @@ The first half is barely a rule. Git already records the person making the commi
 > [!IMPORTANT]
 > **This repository got it wrong before the rule was written down, which is why the rule exists.** Five commits on `Development` carry `Co-Authored-By:` for an agent while being **authored** by that same agent. Each one claims the agent as an additional contributor and simultaneously records it as the only one. The trailer was right and the field was wrong, and nothing reported the contradiction because nothing reads the author field.
 
-An agent sets the identity to **the contributor it is working with**, before its first commit in a repository, and never to a name taken from the repository's own history:
+**An agent reads the configured identity. It does not choose one.** `user.name` and `user.email` already resolve to the contributor, per repository or globally, and that resolved value is the author. Read it every time, in every repository:
 
 ```bash
-git config user.name 'Ada Lovelace'
-git config user.email '00000000+ada@users.noreply.github.com'
+git config user.name
+git config user.email
 ```
+
+Never hardcode a name, and never infer one from the repository's history, which answers "who committed most recently" rather than "who is here now". Those are the two ways an agent ends up confidently attributing a commit to the wrong person.
+
+Two answers mean the identity is not usable as an author, and both are a question rather than a guess:
+
+| What comes back    | What it means                                                                                                     |
+| :----------------- | :----------------------------------------------------------------------------------------------------------------- |
+| Nothing            | Nobody configured an identity. Ask whose it should be, then set it                                                 |
+| The agent's own    | The environment commits as the tool by default. Ask before committing: this is the defect the rule exists to prevent, arriving pre-installed |
+
+> [!WARNING]
+> **The second is the common one, not the edge case.** An agent harness routinely ships a global `user.name` and `user.email` of its own, so a repository with no local override commits as the tool without anyone choosing that. Nothing announces it, `git commit` succeeds, and the wrong name is visible only to somebody who thinks to run `git log --format='%an'` afterwards. Check at the start of the first commit in a repository, not after the branch is pushed.
+
+Once the resolved identity is a person, `git commit -s` needs nothing further: the author and the sign-off both come from it. The only thing left to add is the trailer.
 
 Every commit then carries the trailer in its body, above the sign-off:
 
@@ -119,7 +133,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Signed-off-by: Ada Lovelace <00000000+ada@users.noreply.github.com>
 ```
 
-Where the identity cannot be configured, set it per commit instead:
+Where the configured identity cannot be changed, override it per commit, using the contributor's own name and address and not one invented for the purpose:
 
 ```bash
 git commit -s --author='Ada Lovelace <00000000+ada@users.noreply.github.com>'
@@ -157,7 +171,7 @@ Not enforced, and encouraged. One emoji after the colon reads well in a long log
 
 1. **Stage** what belongs in this commit, not everything you touched today.
 2. **Write the message**: `type(scope): subject`, a blank line, then the body.
-3. **Credit whoever contributed**: a `Co-Authored-By:` trailer per additional contributor, an AI included, and only where they contributed to this commit. An AI never takes the author field.
+3. **Credit whoever contributed**: a `Co-Authored-By:` trailer per additional contributor, an AI included, and only where they contributed to this commit. An AI never takes the author field, and checks what `user.name` resolves to before its first commit.
 4. **Sign off**: `git commit -s` adds the `Signed-off-by` trailer. The required **✍️ DCO Sign-Off** check blocks the merge without it. Forgot? `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` for a whole branch.
 5. **Push**: `git push -u origin HEAD`.
 6. **Open a pull request** into `Development`.
@@ -270,7 +284,7 @@ same expiry that already applies.
 | Subject too long or noisy             | Detail in the wrong place | Keep the subject under 72 characters and move the detail into the body   |
 | Missing breaking-change notice        | Impact not stated         | Add a `BREAKING CHANGE:` footer with details                             |
 | DCO check fails                       | No sign-off trailer       | `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` |
-| The log shows an agent as the author  | Agent identity configured | Set `user.name` and `user.email` to the contributor it is working with, then `git commit --amend --reset-author`. Already pushed? Leave it and fix the identity, or rewrite deliberately |
+| The log shows an agent as the author  | The resolved identity is the tool, usually from a global config the harness set | Set `user.name` and `user.email` to the contributor, then `git commit --amend --reset-author`. Already pushed? Leave it and fix the identity, or rewrite deliberately |
 | Em dash rejected                      | Character in the message  | Replace with a comma, a colon, parentheses, or a spaced hyphen           |
 
 ---
