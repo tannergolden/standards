@@ -44,7 +44,7 @@ Two rules below are **stricter than the Conventional Commits specification**, de
 - **Scope**: a short identifier for the area changed (`auth`, `api`, `ui`). **REQUIRED, and enforced** by `scripts/commit-check.py`. The specification treats the scope as optional; this standard does not, because `docs: add the seed` repeated across a hundred commits answers "where?" nowhere, while `docs(templates): add the seed` makes the log navigable. Use the area actually touched: `workflows`, `scripts`, `docs`, `deps`, `readme`, `config`, `operations`.
 - **Subject**: a brief summary in lowercase, imperative mood. It may begin with an emoji.
 - **Body**: **REQUIRED, on every commit, without exception.** One blank line after the subject, wrapped at 72 characters. Full sentences explaining **why** this change, and why this way rather than the obvious alternative.
-- **Author**: the human contributor who did the work. An AI agent that helped is recorded as a co-author and never as the author, under **Who The Commit Is By** below.
+- **Author**: whoever is writing the commit. An AI is the one exception, recorded as a co-author and never as the author, under **Who The Commit Is By** below.
 - **Punctuation**: never an em dash (U+2014), in a subject or a body. Use a comma, a colon, parentheses, or a spaced hyphen. The rule is mechanical, encoded in `config/commitlint.config.js`.
 
 ---
@@ -81,19 +81,21 @@ the reader six months later.
 
 ### ✍️ Who The Commit Is By
 
-**The author is the human contributor who did the work. An AI agent that helped is a co-author, never the author.**
+**Whoever writes the commit is its author. An AI is the one exception: always a co-author, never the author.**
 
-Not "the repository owner". The author is **whoever was actually working on the change**, which is the owner in a repository with one contributor and is somebody else the moment there are two. Naming the owner on a commit a colleague wrote is the same false attribution as naming the agent, and it is the harder one to spot because it looks plausible.
+The first half is barely a rule. Git already records the person making the commit, and that is the right answer: the author is the contributor, whoever that happens to be that day. Not the repository owner by default, not the reviewer, not whoever wrote the surrounding code. Nothing here needs doing to get it right.
+
+**The exception is the part worth writing down**, because it is the one case where the obvious behavior is wrong. An AI agent making the commit must not take the author field. The author is the human contributor it is working with, and the agent is recorded beneath, in the trailer.
 
 | Field              | Who                                                       | Set by                                          |
 | :----------------- | :-------------------------------------------------------- | :---------------------------------------------- |
-| Author             | The human contributor who did the work                    | `user.name` and `user.email`, or `--author`     |
-| `Co-Authored-By:`  | Everyone else who contributed, an AI agent included       | A trailer in the body, one line per contributor |
+| Author             | Whoever is contributing the commit. Never an AI           | `user.name` and `user.email`, or `--author`     |
+| `Co-Authored-By:`  | Everyone else who contributed, an AI always among them    | A trailer in the body, one line per contributor |
 | `Signed-off-by:`   | The person certifying the DCO, normally the author        | `git commit -s`                                 |
 
-**The trailer is conditional on both halves being true.** It appears when an agent contributed to **that commit**, and not otherwise. A commit the contributor wrote by hand carries none, even in a session where an agent helped with something else, and adding one to look thorough is a false record in the one place a false record is permanent.
+**"Always a co-author" is about the slot, not the frequency.** An AI is always credited in the trailer rather than the author field, and the trailer appears only on the commits it actually contributed to. A commit the contributor wrote by hand carries none, even in a session where an agent helped with something else an hour earlier. The trailer records who worked on these changes, not who was in the room.
 
-**Why the author field rather than only the trailer.** `git blame`, `git shortlog` and the contributor graph all read the author. An agent in that field puts a tool where a person should be, so the history reports that nobody owns the change and offers nobody to ask about it six months later. The sign-off says the same thing from the other direction: the DCO is a certification a person makes about work they are accountable for, and a process cannot make it. Nothing about the agent's part is lost by moving it, because GitHub reads `Co-Authored-By:` and renders that contributor on the commit and in the contribution graph.
+**Why the author field and not only the trailer.** `git blame`, `git shortlog` and the contributor graph all read the author. An AI in that field puts a tool where a person should be, so the history reports that nobody owns the change and offers nobody to ask about it six months later. The sign-off says the same thing from the other direction: the DCO is a certification a person makes about work they are accountable for, and a process cannot make it. Nothing about the agent's part is lost by moving it, because GitHub reads `Co-Authored-By:` and renders that contributor on the commit and in the contribution graph.
 
 > [!IMPORTANT]
 > **This repository got it wrong before the rule was written down, which is why the rule exists.** Five commits on `Development` carry `Co-Authored-By:` for an agent while being **authored** by that same agent. Each one claims the agent as an additional contributor and simultaneously records it as the only one. The trailer was right and the field was wrong, and nothing reported the contradiction because nothing reads the author field.
@@ -155,7 +157,7 @@ Not enforced, and encouraged. One emoji after the colon reads well in a long log
 
 1. **Stage** what belongs in this commit, not everything you touched today.
 2. **Write the message**: `type(scope): subject`, a blank line, then the body.
-3. **Credit whoever contributed**: a `Co-Authored-By:` trailer per additional contributor, an AI agent included, and only where they contributed to this commit. The author field stays the human who did the work.
+3. **Credit whoever contributed**: a `Co-Authored-By:` trailer per additional contributor, an AI included, and only where they contributed to this commit. An AI never takes the author field.
 4. **Sign off**: `git commit -s` adds the `Signed-off-by` trailer. The required **✍️ DCO Sign-Off** check blocks the merge without it. Forgot? `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` for a whole branch.
 5. **Push**: `git push -u origin HEAD`.
 6. **Open a pull request** into `Development`.
@@ -245,15 +247,15 @@ same expiry that already applies.
 
 - Keep the subject imperative and present tense: "add", "fix", "remove".
 - Write the **why** in the body. It is required, not encouraged.
-- Credit an AI agent that contributed with a `Co-Authored-By:` trailer.
+- Credit an AI that contributed with a `Co-Authored-By:` trailer.
 - Mark **BREAKING CHANGE** explicitly in a footer.
 
 **Do not**
 
 - Combine unrelated changes into one commit.
 - Ship a subject-only commit, however small the change looks.
-- Let an AI agent author a commit. It is a co-author; the human who did the work is the author.
-- Add a `Co-Authored-By:` trailer for an agent that did not contribute.
+- Let an AI author a commit. It is always a co-author, never the author.
+- Add a `Co-Authored-By:` trailer for an AI that did not contribute to this commit.
 - Use an em dash anywhere in the message. The gate rejects it.
 - Paste secrets, tokens or personal data into a message. History is forever, and a rewrite is not a redaction.
 

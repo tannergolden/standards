@@ -27,7 +27,7 @@ We utilize an **Experimental → Development → Preview → Release** promotion
 - **Squash & Merge**: We keep the timeline clean by squashing feature commits into a single, high-signal entry.
 - **Convention First**: Every commit must follow the [&#x1F33F; Conventional Commits](../distribution/Conventional-Commits.md).
 - **Signed Off, Always**: Every human commit carries the DCO trailer (`git commit -s`) - the required `✍️ DCO Sign-Off` check blocks merges without it.
-- **Authored By A Person**: the human contributor who did the work is the author of every commit. An AI agent that helped is credited with a `Co-Authored-By:` trailer, never by taking the author field.
+- **Authored By A Person**: whoever writes the commit is its author. An AI is the one exception: always credited with a `Co-Authored-By:` trailer, never by taking the author field.
 - **Protected Pipelines**: Direct pushes to our primary branches are prohibited.
 
 ---
