@@ -50,6 +50,14 @@ We use a quad-tier long-lived branch architecture to isolate work-in-progress fr
 
 - Branch names:
   `feat/<topic>`, `bugfix/<ticket>`, `hotfix/<ticket>`, `experiment/<idea>`, `chore/<task>`.
+  A prefix states what the work **is**, which is why no tool or vendor name
+  belongs in the list.
+- One exception, and it is compatibility rather than convention: an automated
+  coding tool that opens a pull request names the branch after itself, does not
+  read this standard, and offers no setting to change it. Those prefixes are
+  accepted through a separate `agent-prefixes` input so the convention above
+  stays about intent. Failing such a branch would punish the author for their
+  tool's naming, and renaming it by hand breaks the tool's own tracking.
 - Conventional Commits (for readable history & automated notes):
   `feat(auth): add passwordless sign-in`, `fix(payments): handle webhook retries`, `chore(deps): bump firebase`.
 

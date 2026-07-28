@@ -49,10 +49,23 @@ on:
       branch-prefixes:
         description: >-
           Pipe-separated topic-branch prefixes accepted by the branch-name
-          check, as a regular expression alternation.
+          check, as a regular expression alternation. These describe INTENT,
+          which is why no tool or vendor name belongs here.
         required: false
         type: string
         default: 'feat|fix|bugfix|hotfix|docs|style|refactor|perf|test|build|ci|chore|security|revert|experiment|release|deps|agent'
+      agent-prefixes:
+        description: >-
+          Pipe-separated branch prefixes that automated coding tools create
+          for themselves, accepted in addition to branch-prefixes above.
+          This is a COMPATIBILITY list, not part of the convention: these
+          names are emitted by other people's software, which does not read
+          this standard and cannot be configured to. Extend it when you adopt
+          a tool that is not listed, or set it to a name that never matches
+          to require every branch to state an intent.
+        required: false
+        type: string
+        default: 'claude|codex|copilot|cursor|devin|jules|aider'
       commit-types:
         description: >-
           Comma-separated Conventional Commit types accepted in individual
@@ -164,16 +177,31 @@ jobs:
         env:
           HEAD_REF: ${{ github.head_ref }}
           PREFIXES: ${{ inputs.branch-prefixes }}
+          AGENT_PREFIXES: ${{ inputs.agent-prefixes }}
         run: |
           # Mechanical enforcement of the branch naming convention in
           # docs/distribution/Branching-Strategy-&-Workflow.md
+          #
+          # Two alternations, deliberately kept apart. The first is the
+          # convention: a prefix states what the work IS. The second is
+          # everything else's software: a coding tool that opens a pull
+          # request names the branch after itself, does not read this
+          # standard, and offers no setting to change it. Failing that
+          # branch punishes the human for their tool's naming, so the
+          # names are accepted and kept in a list that says plainly it is
+          # compatibility rather than vocabulary.
           if printf '%s' "$HEAD_REF" | grep -qE "^(${PREFIXES})/.+"; then
             echo "✅ Branch name follows convention: $HEAD_REF"
+          elif [ -n "$AGENT_PREFIXES" ] && printf '%s' "$HEAD_REF" | grep -qE "^(${AGENT_PREFIXES})/.+"; then
+            echo "✅ Tool-generated branch name accepted: $HEAD_REF"
           else
-            echo "::error title=Pull request title::Branch '$HEAD_REF' does not follow the '<type>/<topic>' naming convention (e.g. feat/login-form, bugfix/issue-42)."
+            echo "::error title=Branch name::Branch '$HEAD_REF' does not follow the '<type>/<topic>' naming convention (e.g. feat/login-form, bugfix/issue-42)."
             {
               echo "### 🌿 Branch Naming Check Failed"
               echo "Rename your branch to match '<type>/<topic>', e.g. git branch -m feat/my-topic."
+              echo ""
+              echo "If an automated tool created this branch, add its prefix to the"
+              echo "\`agent-prefixes\` input rather than renaming the branch by hand."
             } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
