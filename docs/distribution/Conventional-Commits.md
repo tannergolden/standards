@@ -44,7 +44,7 @@ Two rules below are **stricter than the Conventional Commits specification**, de
 - **Scope**: a short identifier for the area changed (`auth`, `api`, `ui`). **REQUIRED, and enforced** by `scripts/commit-check.py`. The specification treats the scope as optional; this standard does not, because `docs: add the seed` repeated across a hundred commits answers "where?" nowhere, while `docs(templates): add the seed` makes the log navigable. Use the area actually touched: `workflows`, `scripts`, `docs`, `deps`, `readme`, `config`, `operations`.
 - **Subject**: a brief summary in lowercase, imperative mood. It may begin with an emoji.
 - **Body**: **REQUIRED, on every commit, without exception.** One blank line after the subject, wrapped at 72 characters. Full sentences explaining **why** this change, and why this way rather than the obvious alternative.
-- **Author**: the repository owner, always. An AI agent that contributed is recorded as a co-author and never as the author, under **Who The Commit Is By** below.
+- **Author**: the human contributor who did the work. An AI agent that helped is recorded as a co-author and never as the author, under **Who The Commit Is By** below.
 - **Punctuation**: never an em dash (U+2014), in a subject or a body. Use a comma, a colon, parentheses, or a spaced hyphen. The rule is mechanical, encoded in `config/commitlint.config.js`.
 
 ---
@@ -81,26 +81,28 @@ the reader six months later.
 
 ### ✍️ Who The Commit Is By
 
-**The author is the repository owner. An AI agent that contributed is a co-author, never the author.**
+**The author is the human contributor who did the work. An AI agent that helped is a co-author, never the author.**
 
-| Field              | Who                                                    | Set by                                            |
-| :----------------- | :----------------------------------------------------- | :------------------------------------------------ |
-| Author             | The person the change belongs to                       | `user.name` and `user.email`, or `--author`       |
-| `Co-Authored-By:`  | Every additional contributor, an AI agent included     | A trailer in the body, one line per contributor   |
-| `Signed-off-by:`   | The person certifying the DCO                          | `git commit -s`                                   |
+Not "the repository owner". The author is **whoever was actually working on the change**, which is the owner in a repository with one contributor and is somebody else the moment there are two. Naming the owner on a commit a colleague wrote is the same false attribution as naming the agent, and it is the harder one to spot because it looks plausible.
 
-The trailer appears only when an agent actually contributed. A commit written by hand carries none, and adding one to look thorough is a false record in the one place a false record is permanent.
+| Field              | Who                                                       | Set by                                          |
+| :----------------- | :-------------------------------------------------------- | :---------------------------------------------- |
+| Author             | The human contributor who did the work                    | `user.name` and `user.email`, or `--author`     |
+| `Co-Authored-By:`  | Everyone else who contributed, an AI agent included       | A trailer in the body, one line per contributor |
+| `Signed-off-by:`   | The person certifying the DCO, normally the author        | `git commit -s`                                 |
+
+**The trailer is conditional on both halves being true.** It appears when an agent contributed to **that commit**, and not otherwise. A commit the contributor wrote by hand carries none, even in a session where an agent helped with something else, and adding one to look thorough is a false record in the one place a false record is permanent.
 
 **Why the author field rather than only the trailer.** `git blame`, `git shortlog` and the contributor graph all read the author. An agent in that field puts a tool where a person should be, so the history reports that nobody owns the change and offers nobody to ask about it six months later. The sign-off says the same thing from the other direction: the DCO is a certification a person makes about work they are accountable for, and a process cannot make it. Nothing about the agent's part is lost by moving it, because GitHub reads `Co-Authored-By:` and renders that contributor on the commit and in the contribution graph.
 
 > [!IMPORTANT]
 > **This repository got it wrong before the rule was written down, which is why the rule exists.** Five commits on `Development` carry `Co-Authored-By:` for an agent while being **authored** by that same agent. Each one claims the agent as an additional contributor and simultaneously records it as the only one. The trailer was right and the field was wrong, and nothing reported the contradiction because nothing reads the author field.
 
-An agent sets the identity once, before its first commit in a repository:
+An agent sets the identity to **the contributor it is working with**, before its first commit in a repository, and never to a name taken from the repository's own history:
 
 ```bash
-git config user.name 'Tanner Golden'
-git config user.email '24684994+tannergolden@users.noreply.github.com'
+git config user.name 'Ada Lovelace'
+git config user.email '00000000+ada@users.noreply.github.com'
 ```
 
 Every commit then carries the trailer in its body, above the sign-off:
@@ -112,17 +114,17 @@ The body, wrapped at 72 characters, saying why this change and why this
 way rather than the obvious alternative.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
-Signed-off-by: Tanner Golden <24684994+tannergolden@users.noreply.github.com>
+Signed-off-by: Ada Lovelace <00000000+ada@users.noreply.github.com>
 ```
 
 Where the identity cannot be configured, set it per commit instead:
 
 ```bash
-git commit -s --author='Tanner Golden <24684994+tannergolden@users.noreply.github.com>'
+git commit -s --author='Ada Lovelace <00000000+ada@users.noreply.github.com>'
 ```
 
 > [!NOTE]
-> **Use the account's GitHub noreply address, not a personal one.** It is the address the contribution graph resolves, and it keeps a private inbox out of a history that is public and permanent. A commit is not redactable: a rewrite replaces the object and leaves the original reachable by SHA for anyone who already has it.
+> **Use the contributor's GitHub noreply address, not a personal one.** It is the address the contribution graph resolves, so it credits the right person, and it keeps a private inbox out of a history that is public and permanent. A commit is not redactable: a rewrite replaces the object and leaves the original reachable by SHA for anyone who already has it.
 
 ---
 
@@ -153,7 +155,7 @@ Not enforced, and encouraged. One emoji after the colon reads well in a long log
 
 1. **Stage** what belongs in this commit, not everything you touched today.
 2. **Write the message**: `type(scope): subject`, a blank line, then the body.
-3. **Credit whoever contributed**: a `Co-Authored-By:` trailer per additional contributor, an AI agent included. The author field stays the repository owner.
+3. **Credit whoever contributed**: a `Co-Authored-By:` trailer per additional contributor, an AI agent included, and only where they contributed to this commit. The author field stays the human who did the work.
 4. **Sign off**: `git commit -s` adds the `Signed-off-by` trailer. The required **✍️ DCO Sign-Off** check blocks the merge without it. Forgot? `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` for a whole branch.
 5. **Push**: `git push -u origin HEAD`.
 6. **Open a pull request** into `Development`.
@@ -250,7 +252,7 @@ same expiry that already applies.
 
 - Combine unrelated changes into one commit.
 - Ship a subject-only commit, however small the change looks.
-- Let an AI agent author a commit. It is a co-author; the owner is the author.
+- Let an AI agent author a commit. It is a co-author; the human who did the work is the author.
 - Add a `Co-Authored-By:` trailer for an agent that did not contribute.
 - Use an em dash anywhere in the message. The gate rejects it.
 - Paste secrets, tokens or personal data into a message. History is forever, and a rewrite is not a redaction.
@@ -266,7 +268,7 @@ same expiry that already applies.
 | Subject too long or noisy             | Detail in the wrong place | Keep the subject under 72 characters and move the detail into the body   |
 | Missing breaking-change notice        | Impact not stated         | Add a `BREAKING CHANGE:` footer with details                             |
 | DCO check fails                       | No sign-off trailer       | `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` |
-| The log shows an agent as the author  | Agent identity configured | Set `user.name` and `user.email` to the owner, then `git commit --amend --reset-author`. Already pushed? Leave it and fix the identity, or rewrite deliberately |
+| The log shows an agent as the author  | Agent identity configured | Set `user.name` and `user.email` to the contributor it is working with, then `git commit --amend --reset-author`. Already pushed? Leave it and fix the identity, or rewrite deliberately |
 | Em dash rejected                      | Character in the message  | Replace with a comma, a colon, parentheses, or a spaced hyphen           |
 
 ---
