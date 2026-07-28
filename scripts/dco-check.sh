@@ -14,10 +14,9 @@
 # (git commit -s).
 # Exempt by contract: commits whose GitHub author is a [bot] account
 # (Dependabot - it carries its own provenance and never signs off).
-# Human-attributed automation commits are NOT exempt - automation commits
-# map to the login of whoever triggered them and @claude agent commits map
-# to their invoker's login, so all of them sign off mechanically (--signoff
-# or the agent's DCO backstop) like any human commit. Also exempt:
+# Human-attributed automation commits are NOT exempt - they map to the
+# login of whoever triggered them, so all of them sign off mechanically
+# (--signoff) like any human commit. Also exempt:
 # MERGE commits
 # (the "Update branch" button and merging the base into a topic branch
 # create unsigned merges authored by whoever clicked - the certificate

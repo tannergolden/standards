@@ -90,7 +90,6 @@ that lives somewhere else. `apply-standards.yml` writes those files for you; see
 | `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM                                             |
 | `publish-package.yml` | Publishes to npm, PyPI, crates.io, or any OCI registry. Each opt-in. Containers go multi-arch natively |
 | `preview-deploy.yml`  | Builds and deploys to a preview environment                                                            |
-| `claude.yml`          | Mention-gated AI agent. Inert without a key                                                            |
 
 > [!IMPORTANT]
 > **`release-publish.yml` and `publish-package.yml` do different jobs.** The first cuts a

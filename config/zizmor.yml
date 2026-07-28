@@ -57,10 +57,8 @@ rules:
   # (auditor persona) The audit asks that jobs reading a secret other than
   # GITHUB_TOKEN run inside a GitHub deployment environment. The flagged
   # secrets are the optional BOT_ACCESS_TOKEN, always hoisted into env as a
-  # direct assignment or an A-or-B fallback and consumed only by gh and git,
-  # and the Claude agent's API key, which the action's documented interface
-  # takes as an input (the presence gate yields only 'true' or 'false',
-  # never the value itself). Wrapping formatting, agent, and
+  # direct assignment or an A-or-B fallback and consumed only by gh and git.
+  # Wrapping formatting and
   # dependency-approval jobs in deployment environments would write a
   # deployment record on every automation run while adding no protection,
   # since the secret stays repository-scoped either way. Deploy-shaped jobs
@@ -69,7 +67,6 @@ rules:
   secrets-outside-env:
     ignore:
       - auto-format.yml
-      - claude.yml
       - dependabot-automerge.yml
       - maintenance.yml
 

@@ -49,7 +49,6 @@ Everything else is **event driven** and needs no schedule:
 | :------------------------- | :----------------------------------------------------------- |
 | Push and pull request      | `checks.yml`, `auto-format.yml`, `verify-stubs.yml`          |
 | Pull request, issue, comment | `governance.yml`; `dependabot-automerge.yml` on PRs only   |
-| Mentioning the assistant   | `claude.yml`                                                 |
 | Another workflow finishing | `ci-failure-alert.yml`                                       |
 | Release published          | `release.yml` - the `publish` and `prune-releases` jobs      |
 | Push to a preview branch   | `preview-deploy.yml`                                         |

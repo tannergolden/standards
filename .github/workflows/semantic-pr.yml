@@ -52,7 +52,7 @@ on:
           check, as a regular expression alternation.
         required: false
         type: string
-        default: 'feat|fix|bugfix|hotfix|docs|style|refactor|perf|test|build|ci|chore|security|revert|experiment|release|deps|claude|agent'
+        default: 'feat|fix|bugfix|hotfix|docs|style|refactor|perf|test|build|ci|chore|security|revert|experiment|release|deps|agent'
       commit-types:
         description: >-
           Comma-separated Conventional Commit types accepted in individual
