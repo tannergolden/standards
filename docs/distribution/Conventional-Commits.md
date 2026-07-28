@@ -183,7 +183,7 @@ same expiry that already applies.
 - **Changelogs**: `release-notes.yml` parses the resulting history with git-cliff to draft notes automatically.
 
 > [!IMPORTANT]
-> **One rule set, two encodings.** The CI gate (`scripts/commit-check.py`) and the local commitlint config express the same standard. Changing one without the other produces a rule nobody enforces, or a gate nothing documents.
+> **One rule set, three encodings.** The type list is written out in `scripts/commit-check.py`, in `config/commitlint.config.js`, and as the `commit-types` default in `semantic-pr.yml`. Changing one without the others produces a rule nobody enforces, or a message that passes one gate and fails another. This repository publishes its workflows rather than running them on itself, so nothing catches that automatically: run `python3 scripts/check-type-parity.py` before touching any of the three.
 
 ---
 
