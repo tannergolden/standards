@@ -96,6 +96,27 @@ echo "Settings:   ${SETTINGS_FILE}"
 echo
 
 # ── Plain repository settings ────────────────────────────────────────────────
+# ⚠️ VALIDATED BEFORE THE LOOP, because the loop cannot report its own
+# failure. It reads from a process substitution:
+#
+#   done < <(jq -r '.repository | to_entries[] ...' "$SETTINGS_FILE")
+#
+# and a failure in there is invisible to both `set -e` and `pipefail`. The
+# loop simply gets zero lines. A settings file with no `.repository` object,
+# or with it null or nested a level deeper, therefore produced a jq error
+# nothing acted on, CHANGED=0, and the summary line "already matches the
+# published set" - which is the worst available message, because it reports
+# the repository as correct having compared nothing.
+#
+# `settings-file` is a public input, so this is a caller's file and a
+# caller's mistake to be told about. Refuse rather than interpret, the same
+# way the release prune refuses `keep < 1`.
+if ! jq -e '(type == "object") and (.repository | type == "object") and (.repository | length > 0)' \
+    "$SETTINGS_FILE" >/dev/null 2>&1; then
+  echo "::error title=Repository settings::'${SETTINGS_FILE}' has no usable top-level 'repository' object, so there is nothing to compare and nothing would be applied. It must be a JSON object with a non-empty 'repository' object inside it; see data/repository-settings.json."
+  exit 1
+fi
+
 # Compared one at a time so the plan names the setting rather than a blob.
 PATCH='{}'
 CHANGED=0
