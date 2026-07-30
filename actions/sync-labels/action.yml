@@ -75,60 +75,17 @@ runs:
           echo "file=${GITHUB_ACTION_PATH}/../../data/labels.yml" >> "$GITHUB_OUTPUT"
         fi
 
-    # Descriptions over 100 characters are rejected by the API with a 422.
-    # Validated up front so the whole taxonomy fails before any of it is
-    # written, rather than half-applying and leaving the repository split
-    # between the old set and the new one.
-    - name: '🔍 Validate taxonomy'
-      shell: bash
-      env:
-        LABELS_FILE: ${{ steps.taxonomy.outputs.file }}
-      run: |
-        python3 - <<'PY'
-        import os, re, sys
-
-        path = os.environ["LABELS_FILE"]
-        field = re.compile(r"^(?:-\s+)?(name|color|description|renamed_from):\s*'(.*)'\s*$")
-        labels, current, problems = [], {}, []
-
-        with open(path, encoding="utf-8") as fh:
-            for n, raw in enumerate(fh, 1):
-                line = raw.strip()
-                if not line or line.startswith("#"):
-                    continue
-                m = field.match(line)
-                if not m:
-                    continue
-                key, value = m.group(1), m.group(2)
-                if key == "name":
-                    if current:
-                        labels.append(current)
-                    current = {"name": value, "_line": n}
-                else:
-                    current[key] = value
-        if current:
-            labels.append(current)
-
-        seen = {}
-        for label in labels:
-            name, line = label["name"], label["_line"]
-            desc = label.get("description", "")
-            if len(desc) > 100:
-                problems.append(f"line {line}: '{name}' description is {len(desc)} characters (limit 100)")
-            color = label.get("color", "")
-            if not re.fullmatch(r"[0-9a-fA-F]{6}", color):
-                problems.append(f"line {line}: '{name}' color '{color}' is not a 6-digit hex value")
-            if name in seen:
-                problems.append(f"line {line}: '{name}' is declared twice (first at line {seen[name]})")
-            seen[name] = line
-
-        if problems:
-            for p in problems:
-                print(f"::error title=Invalid label::{p}")
-            sys.exit(1)
-        print(f"✅ {len(labels)} labels validated.")
-        PY
-
+    # NOT VALIDATED HERE. `scripts/sync-labels.sh` validates the whole
+    # registry before its first write, with a real YAML parser and a
+    # strictly larger rule set: name length, case-insensitive duplicates
+    # (GitHub collides on those), a missing description, and a
+    # `renamed_from` naming the label itself.
+    #
+    # A second, line-oriented copy used to live here and disagreed with it.
+    # YAML doubles a single quote to escape it, so a 100-character
+    # description containing one apostrophe measured 101 as raw text and
+    # blocked the entire sync for a taxonomy the real validator accepts. Two
+    # validators means two places to look and two places to be wrong.
     - name: '🔖 Apply labels'
       shell: bash
       env:
