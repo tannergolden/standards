@@ -49,7 +49,17 @@ API = "https://api.github.com"
 SKIP_DIRS = {".git", "node_modules", ".venv", "vendor", "target", "dist", "build"}
 TEXT_SUFFIXES = {
     ".md", ".yml", ".yaml", ".json", ".jsonc", ".toml", ".txt", ".cfg", ".ini",
-    ".sh", ".py", ".js", ".ts", ".editorconfig", ".gitignore", ".gitattributes",
+    ".sh", ".py", ".js", ".ts",
+}
+
+# ⚠️ MATCHED BY NAME, NOT BY SUFFIX. A leading-dot file has no suffix at all:
+# `PurePath(".gitignore").suffix` is `''`, because the whole name is the stem.
+# These three used to sit in TEXT_SUFFIXES, where they matched nothing ever,
+# and a generated repository kept the template owner's handle verbatim in all
+# three while the commit this script writes claimed every identity had been
+# rewritten.
+TEXT_NAMES = {
+    "LICENSE", "CODEOWNERS", ".editorconfig", ".gitignore", ".gitattributes",
 }
 
 
@@ -153,7 +163,7 @@ def main() -> int:
             continue
         if any(part in SKIP_DIRS for part in path.parts):
             continue
-        if path.suffix not in TEXT_SUFFIXES and path.name not in {"LICENSE", "CODEOWNERS"}:
+        if path.suffix not in TEXT_SUFFIXES and path.name not in TEXT_NAMES:
             continue
         try:
             original = path.read_text(encoding="utf-8")
