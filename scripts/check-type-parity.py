@@ -1,24 +1,28 @@
 #!/usr/bin/env python3
-"""Assert the Conventional Commit type list is the same in all three places.
+"""Assert the Conventional Commit type list is the same in all five places.
 
 docs/distribution/Conventional-Commits.md promises one rule set with more
-than one encoding. Nothing enforced that promise, and the three copies sit
-in three languages, so drift would be silent and would show up as a commit
-that passes one gate and fails another.
+than one encoding. Nothing enforced that promise, and the copies sit in
+three languages, so drift would be silent and would show up as a commit that
+passes one gate and fails another.
 
-The three:
+The five:
 
   scripts/commit-check.py            DEFAULT_TYPES, the fallback the CI gate
                                      uses when no COMMIT_TYPES is passed
   config/commitlint.config.js        type-enum, for anyone running commitlint
                                      locally in a Node toolchain
   .github/workflows/semantic-pr.yml  the commit-types input default, which is
-                                     what actually reaches the gate in CI
+                                     what actually reaches the commit gate
+  .github/workflows/semantic-pr.yml  the title check's own `types:` list. A
+    (title-types)                    squash merge inherits the pull request
+                                     title as the commit subject, so this is
+                                     the most consequential copy of all
+  actions/commit-check/action.yml    the action's `types` default, for anyone
+                                     calling the action directly
 
-This repository publishes its workflows rather than running them on itself,
-so there is no CI job to hang this on. Run it by hand, the same way
-update-doc-indexes.py --check is run here: `make check-types`, or before
-touching any of the three files.
+Run it with `make check-types`, or as part of `make lint-docs`, which is
+what `self-checks.yml` calls.
 
 Exit 0 when they agree, 1 when they do not, naming what differs.
 """
@@ -31,6 +35,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# Keyed by LABEL, not by path: `semantic-pr.yml` encodes the list twice and
+# each copy needs its own pattern. A label may carry a `:suffix` to
+# distinguish them; the path is everything before it.
 SOURCES = {
     "scripts/commit-check.py": (
         r'DEFAULT_TYPES\s*=\s*\(\s*"([^"]*)"',
@@ -44,11 +51,30 @@ SOURCES = {
         r"commit-types:.*?default:\s*'([^']*)'",
         lambda m: m.split(","),
     ),
+    # ⚠️ THE TITLE GATE, and the reason this file grew past three sources.
+    # A squash merge inherits the pull request title as the commit subject,
+    # and `semantic-pr.yml` calls this "the only gate keeping a banned em
+    # dash out of history". Adding a type to the other copies without this
+    # one passed parity and then failed the required title check on the
+    # first pull request that used it: exactly the "passes one gate and
+    # fails another" drift this script exists to prevent, in the copy it
+    # was not reading.
+    ".github/workflows/semantic-pr.yml:title-types": (
+        r"\n\s+types:\s*\|\n((?:\s+[a-z]+\n)+)",
+        lambda m: m.split(),
+    ),
+    # The action's own default, which reaches anyone calling it directly
+    # rather than through semantic-pr.yml.
+    "actions/commit-check/action.yml": (
+        r"\n  types:.*?default:\s*'([^']*)'",
+        lambda m: m.split(","),
+    ),
 }
 
 
 def read(rel: str, pattern: str, parse) -> list[str] | None:
-    path = ROOT / rel
+    # A label may carry a `:suffix` naming which copy in the file it means.
+    path = ROOT / rel.split(":", 1)[0]
     if not path.is_file():
         print(f"::error::{rel} is missing; the type list cannot be compared.")
         return None
