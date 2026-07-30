@@ -19,9 +19,9 @@ be told about it.
 from __future__ import annotations
 
 import re
-import tomllib
 
 import pytest
+import tomllib
 from conftest import ROOT, load_yaml, workflow_step_shell
 
 CI = ".github/workflows/ci.yml"
