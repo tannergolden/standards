@@ -203,8 +203,16 @@ jobs:
             --jq '.[] | select(.draft) | [.id, .tag_name] | @tsv')
           while IFS=$'\t' read -r id tag; do
             [ -n "$id" ] || continue
+            # ⚠️ EXACTLY THE SHAPE THIS WORKFLOW MINTS, and nothing wider.
+            # The version step builds `v<x.y.z>-<branch>.next` and that is
+            # the whole namespace this prune owns. The pattern used to be
+            # `v*-"$BRANCH".*`, which matched anything after the branch
+            # name, so a maintainer's hand-written draft tagged
+            # `v1.4.0-main.hotfix` or `v1.4.0-main.2` was destroyed by an
+            # unattended weekly run. Release notes are the only changelog
+            # there is, and a deleted draft takes its prose with it.
             case "$tag" in
-              v*-"$BRANCH".*)
+              v*-"$BRANCH".next)
                 if OUT=$(gh api -X DELETE "/repos/$REPO/releases/$id" 2>&1); then
                   echo "Pruned superseded draft: $tag"
                 elif ! printf '%s' "$OUT" | grep -q "HTTP 404"; then
