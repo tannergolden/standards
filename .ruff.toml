@@ -41,3 +41,12 @@ ignore = [
 # The line-length ceiling is advisory in long help text and error messages,
 # where breaking a sentence hurts the reader more than the width does.
 "scripts/*.py" = ["E501"]
+# Tests assert, which is what `assert` is for; bandit's S101 exists for
+# production code where a stripped optimization would remove the check.
+# S108 likewise: a test that writes to a temp path is using the fixture it
+# was given, not guessing at /tmp. S106 flags a literal passed to an
+# argument named like a credential, which is precisely what a test supplies
+# on purpose: the scripts here REQUIRE a token to be present, so proving
+# they behave correctly means handing them a fake one. Every credential in
+# this folder is invalid by construction and never leaves the process.
+"tests/*.py" = ["E501", "S101", "S106", "S108"]

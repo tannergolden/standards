@@ -12,3 +12,6 @@ Thumbs.db
 # Python bytecode from the scripts in scripts/
 __pycache__/
 *.py[cod]
+
+# Test runner scratch
+.pytest_cache/

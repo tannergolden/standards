@@ -52,8 +52,40 @@ env:
   # turns an unrelated upstream release into a red check on code nobody
   # touched. That file pins WHAT is checked; this pins the checker.
   RUFF_VERSION: '0.15.8'
+  # Pinned for the same reason as ruff: an unpinned test runner turns an
+  # upstream release into a red check on code nobody touched.
+  PYTEST_VERSION: '9.1.1'
 
 jobs:
+  tests:
+    name: '🧪 Tests'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # read this repository
+    steps:
+      - name: '📂 Checkout'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🛡️ Harden Runner'
+        uses: ./actions/harden
+        with:
+          egress-policy: audit
+          notice: '🧪 Running the suite over the scripts and the workflow shell.'
+
+      # The suite reads `run:` blocks out of the workflows that ship and
+      # executes them against a temporary directory, so it tests the real
+      # code rather than a copy that can drift. It reaches no network: a
+      # scripted `gh` on PATH answers every call and fails loudly on one it
+      # was not told about.
+      - name: '🧪 pytest'
+        run: |
+          set -euo pipefail
+          pip install --quiet "pytest==${PYTEST_VERSION}"
+          python3 -m pytest
+
   scripts:
     name: '🐍 Scripts'
     runs-on: ubuntu-latest
