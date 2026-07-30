@@ -3,7 +3,8 @@
 # 🎯 Apply Standards
 #
 # Purpose: writes the label taxonomy into a repository, and optionally the
-# branch and tag rulesets. Two jobs, nothing else.
+# branch and tag rulesets, and optionally the repository settings. Three
+# jobs, nothing else.
 #
 # ⚠️ IT DOES NOT INSTALL STUBS. It once did, and the trigger files now ship
 # in the template repositories instead, which is where a consumer gets them.

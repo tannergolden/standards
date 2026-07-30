@@ -37,6 +37,7 @@ labeler action at run time, so they are configuration, not state.
 | `rulesets/protect-promotion-branches.json`   | `Preview` and `Release`                                |
 | `rulesets/protect-release-tags.json`         | Full version tags, making published releases immutable |
 | `labels.yml`                                 | The label taxonomy, create-or-update, never pruning    |
+| `repository-settings.json`                   | Merge strategy, workflow-token permissions, and the security features |
 
 > [!NOTE]
 > **These do not assume your branch names.** The first ruleset targets `~DEFAULT_BRANCH`, a ref
