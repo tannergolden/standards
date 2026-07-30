@@ -69,7 +69,10 @@ on:
         type: boolean
         default: true
       pages-environment:
-        description: 'Name of the documentation-site environment.'
+        description: >-
+          Name of the documentation-site environment. Empty SKIPS the pages
+          prune entirely, rather than pruning every environment: the job
+          passes this as an allowlist, and an empty allowlist means "all".
         required: false
         type: string
         default: 'github-pages'
@@ -108,7 +111,15 @@ jobs:
   # a repository that deploys nothing still gets its pages history tidied.
   deployments-pages:
     name: '🧹 Prune Pages Deployments'
-    if: ${{ inputs.prune-deployments }}
+    # ⚠️ AN EMPTY ENVIRONMENT NAME IS NOT AN EMPTY ALLOWLIST. This job hands
+    # `pages-environment` to the prune as its ONLY list, and
+    # `prune-deployments.py` documents an empty allowlist as "prune every
+    # environment". So a consumer with no documentation site, clearing this
+    # input because they have none, turned the PAGES job into a prune of
+    # every environment they own, production included.
+    #
+    # Nothing to scope to means nothing to do, so the job does not run.
+    if: ${{ inputs.prune-deployments && inputs.pages-environment != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

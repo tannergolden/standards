@@ -295,3 +295,19 @@ def git_repo(tmp_path):
 def requires(tool: str):
     """Skip a test when a tool the runner normally provides is absent."""
     return pytest.mark.skipif(shutil.which(tool) is None, reason=f"{tool} not installed")
+
+
+def load_script(rel: str):
+    """Import one of this repository's scripts as a module.
+
+    The file names use hyphens, so they are not importable by name. Loading
+    by path lets a test exercise a function directly instead of only
+    through the process boundary.
+    """
+    import importlib.util
+
+    path = ROOT / rel
+    spec = importlib.util.spec_from_file_location(path.stem.replace("-", "_"), path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
