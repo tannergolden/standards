@@ -62,6 +62,19 @@ def api(path: str, token: str, method: str = "GET", body: dict | None = None):
 
 
 def main() -> int:
+    # Read by name rather than by subscript: a consumer whose stub forgets
+    # `secrets: inherit` used to get a bare KeyError traceback out of a
+    # workflow whose entire job is to post a friendly advisory notice. Every
+    # other script here names the cause and the fix.
+    missing = [name for name in ("GH_TOKEN", "REPO") if not os.environ.get(name)]
+    if missing:
+        print(
+            f"::error title=Standards version::{' and '.join(missing)} "
+            f"{'are' if len(missing) > 1 else 'is'} not set, so this check cannot run. "
+            "Pass `secrets: inherit` from your stub, and check the action is given a "
+            "`token` and a `repository`."
+        )
+        return 1
     token = os.environ["GH_TOKEN"]
     repo = os.environ["REPO"]
     standards = os.environ.get("STANDARDS_REPO", "tannergolden/standards")

@@ -66,6 +66,22 @@ def load(path: pathlib.Path) -> list[dict[str, str]]:
             labels.append(current)
         else:
             current[key] = value
+
+    # ⚠️ VALIDATED HERE, WHERE THE ENTRY STILL HAS A NAME. `render()` reads
+    # `label["description"]` and `label["color"]` by subscript, and the
+    # GitHub labels API permits a label with neither, so a hand-edited
+    # registry that omits one used to die with a bare KeyError naming the
+    # missing KEY and not the offending LABEL. A traceback in an Actions log
+    # says which line of somebody else's code blew up; it does not say what
+    # to change.
+    for entry in labels:
+        missing = sorted({"color", "description"} - entry.keys())
+        if missing:
+            sys.exit(
+                f"::error::{path}: the label '{entry['name']}' has no "
+                f"{' and no '.join(missing)}. Every entry needs a name, a colour and a "
+                "description; add the missing field to the registry."
+            )
     return labels
 
 
