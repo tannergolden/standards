@@ -51,7 +51,10 @@ jobs:
 where a workflow lists any. Without them the workflow degrades and says so rather than failing.
 
 **5. A trigger file must live in your repository.** GitHub will not run a `workflow_call` definition
-that lives somewhere else. `apply-standards.yml` writes those files for you; see below.
+that lives somewhere else. Generating from a template installs every stub for you; adding one by
+hand is a copy-paste of the `uses:` block. **🎯 Apply Standards** does not write them - it applies
+labels, settings and rulesets through the API and never touches your tree. See
+[Getting Them Running](#-getting-them-running).
 
 ---
 
