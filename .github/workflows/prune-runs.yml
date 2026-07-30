@@ -30,7 +30,7 @@
 #   name: '🧹 Prune Run History'
 #   on:
 #     schedule:
-#       - cron: '30 6 * * 1'
+#       - cron: '0 8 * * 1'
 #     workflow_dispatch:
 #       inputs:
 #         dry-run:

@@ -22,8 +22,10 @@ _Staggered, off-peak, and yours to change._
 
 ## ⚠️ The Schedule Is Not Set Here
 
-Every workflow in this repository is **reusable**: it declares `on: workflow_call` and nothing else,
-so it carries no cron of its own and cannot fire on its own.
+Every workflow **published** here is **reusable**: it declares `on: workflow_call` and nothing else,
+so it carries no cron of its own and cannot fire on its own. Two files in that directory are local to
+this repository rather than published - `release.yml`, which is dispatch-only, and `self-checks.yml`,
+which carries the one cron that actually fires here and is listed below with the rest.
 
 **The `schedule:` block lives in your stub, in your repository.** That is the only place GitHub
 looks. The table below is the recommended cadence that the template repositories' stubs and the example
@@ -38,6 +40,7 @@ with nothing to sync back here.
 | :--------------------------- | :----------------------- | :-------------------------------------------------- |
 | `checks.yml`, weekly sweep   | Weekly, Mon 03:00        | CodeQL and the secret scan over code nothing touched |
 | `governance.yml`             | Weekly, Mon 04:00        | Start-of-week triage, stale sweep, locking, labels  |
+| `self-checks.yml` (local)    | Weekly, Mon 04:00        | This repository's own gate, so a moving upstream is caught  |
 | `release.yml`, `notes`       | Weekly, Mon 05:00        | One evolving draft, refreshed before the week opens |
 | `maintenance.yml`, `prune`   | Weekly, Mon 06:00        | Housekeeping, after the jobs that create the runs   |
 | `maintenance.yml`, `license` | Jan 1 and Jul 1 at 03:00 | January rolls the year, July is a verify pass       |
