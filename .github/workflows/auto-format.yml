@@ -117,12 +117,30 @@ jobs:
         id: install
         if: ${{ inputs.format-command == '' && hashFiles('package.json') != '' }}
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
+          # ⚠️ TWO PRECONDITIONS, NOT ONE. A lockfile makes the install
+          # pinnable; prettier being IN the tree makes the next step
+          # possible. `npx --no-install` refuses to fetch by design, so a
+          # repository with a package.json and a lockfile but no prettier
+          # dependency used to reach it and die - a Go or Python project
+          # carrying package.json for a docs toolchain, or one that formats
+          # with something else and did not pass `format-command`, went red
+          # on EVERY push to its integration branch, for a workflow whose
+          # own header calls itself a safety net.
+          #
+          # Both are skips rather than failures, for the same reason: this
+          # workflow is not a gate, and a repository that cannot run it has
+          # not done anything wrong.
+          if [ ! -f package-lock.json ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=Auto-format skipped::No package-lock.json, so there is nothing to pin an install against. Commit a lockfile to enable this workflow."
+          else
+            npm ci
+            if npm ls prettier --depth=0 >/dev/null 2>&1; then
+              echo "ready=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "ready=false" >> "$GITHUB_OUTPUT"
+              echo "::warning title=Auto-format skipped::prettier is not a dependency of this repository, and this workflow never installs one unpinned. Add prettier to devDependencies, or pass 'format-command' to run whatever formatter this project actually uses."
+            fi
           fi
 
       - name: '📄 Resolve Prettier configuration'
@@ -241,6 +259,7 @@ jobs:
             echo "### 🎨 Auto-format failed"
             echo ""
             echo "1. **Dependency install:** \`npm ci\` failed; check \`package-lock.json\`."
-            echo "2. **Formatting:** Prettier errored; reproduce locally."
-            echo "3. **Delivery:** a push or pull-request failure; check token scopes and branch protection on \`style/auto-format\`."
+            echo "2. **No formatter:** prettier is not a dependency here, or this project formats with something else. Add it to \`devDependencies\`, or pass \`format-command\`."
+            echo "3. **Formatting:** Prettier errored; reproduce locally."
+            echo "4. **Delivery:** a push or pull-request failure; check token scopes and branch protection on \`style/auto-format\`."
           } >> "$GITHUB_STEP_SUMMARY"
