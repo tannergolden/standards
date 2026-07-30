@@ -33,41 +33,63 @@ if ! existing=$(TITLE="$TITLE" gh issue list --state open --label "$LABEL" --jso
 fi
 existing="${existing%%$'\n'*}"
 
-if [ "$CONCLUSION" = "failure" ]; then
-  BODY="**Workflow:** ${WORKFLOW_NAME}
+# ⚠️ MORE THAN ONE CONCLUSION MEANS "BROKEN". `workflow_run.conclusion` is
+# not a boolean: alongside `failure` and `success` it takes `timed_out`,
+# `startup_failure`, `cancelled`, `action_required`, `neutral` and
+# `skipped`, and the calling workflow passes the field straight through.
+#
+# Branching on `failure` alone left the two most alarming outcomes silent. A
+# workflow on the default branch that hangs until the runner kills it
+# concludes `timed_out`. Broken YAML pushed to the default branch means the
+# workflow cannot start at all and concludes `startup_failure`. Neither
+# opened an issue, and the escalator's own step went green over both.
+#
+# `cancelled` and `skipped` stay inert on purpose: somebody chose those, and
+# an escalation issue for a deliberate cancellation is noise. An escalation
+# channel is only useful while everything in it is real.
+case "$CONCLUSION" in
+  failure | timed_out | startup_failure)
+    BODY="**Workflow:** ${WORKFLOW_NAME}
 **Branch:** \`${BRANCH}\`
 **Commit:** ${HEAD_SHA}
 **Run:** ${RUN_URL}
 
 This issue was opened automatically because a core workflow failed on a long-lived branch. It will be closed automatically when the workflow succeeds again."
-  if [ -n "$existing" ]; then
-    gh issue comment "$existing" --body "Still failing: ${RUN_URL} (commit ${HEAD_SHA})" \
-      || echo "::warning::Could not comment on escalation issue #$existing (gh/API error); the issue is still open and tracking the failure."
-    echo "Commented on existing issue #$existing"
-  else
-    # Self-sufficient labeling: in a derived repository the label sync may
-    # not have run yet, and `gh issue create --label` fails outright on a
-    # missing label - the escalation itself must never be the thing that
-    # breaks. --force makes this an update when the label already exists.
-    gh label create "$LABEL" --color 'b60205' \
-      --description '🚨 A core workflow is failing on a long-lived branch (opened/closed automatically).' \
-      --force >/dev/null 2>&1 || true
-    gh label create 'priority: high' --color 'd93f0b' \
-      --description '🛑 Blocking. Blocks a release or significant functionality. Needs attention very soon.' \
-      --force >/dev/null 2>&1 || true
-    if ! gh issue create --title "$TITLE" --label "$LABEL" --label 'priority: high' --body "$BODY"; then
-      echo "::error title=CI failure alert::Failed to open the CI-failure escalation issue for '${WORKFLOW_NAME}' on '${BRANCH}' - verify GH_TOKEN has issues: write. The failure is NOT being tracked."
-      exit 1
+    if [ -n "$existing" ]; then
+      gh issue comment "$existing" --body "Still failing: ${RUN_URL} (commit ${HEAD_SHA})" \
+        || echo "::warning::Could not comment on escalation issue #$existing (gh/API error); the issue is still open and tracking the failure."
+      echo "Commented on existing issue #$existing"
+    else
+      # Self-sufficient labeling: in a derived repository the label sync may
+      # not have run yet, and `gh issue create --label` fails outright on a
+      # missing label - the escalation itself must never be the thing that
+      # breaks. --force makes this an update when the label already exists.
+      gh label create "$LABEL" --color 'b60205' \
+        --description '🚨 A core workflow is failing on a long-lived branch (opened/closed automatically).' \
+        --force >/dev/null 2>&1 || true
+      gh label create 'priority: high' --color 'd93f0b' \
+        --description '🛑 Blocking. Blocks a release or significant functionality. Needs attention very soon.' \
+        --force >/dev/null 2>&1 || true
+      if ! gh issue create --title "$TITLE" --label "$LABEL" --label 'priority: high' --body "$BODY"; then
+        echo "::error title=CI failure alert::Failed to open the CI-failure escalation issue for '${WORKFLOW_NAME}' on '${BRANCH}' - verify GH_TOKEN has issues: write. The failure is NOT being tracked."
+        exit 1
+      fi
+      echo "Opened new failure issue"
     fi
-    echo "Opened new failure issue"
-  fi
-elif [ "$CONCLUSION" = "success" ] && [ -n "$existing" ]; then
-  # A failed close leaves a stale "CI failing" issue open after recovery; the
-  # next successful run re-attempts it (existing is found again), so warn
-  # rather than fail the recovery run.
-  gh issue close "$existing" --comment "Resolved: ${WORKFLOW_NAME} succeeded on \`${BRANCH}\` - ${RUN_URL}" \
-    || echo "::warning::Could not close resolved escalation issue #$existing (gh/API error); it will be retried on the next successful run."
-  echo "Closed issue #$existing"
-else
-  echo "Nothing to do (conclusion=$CONCLUSION, open issue=${existing:-none})"
-fi
+    ;;
+  success)
+    if [ -n "$existing" ]; then
+      # A failed close leaves a stale "CI failing" issue open after recovery;
+      # the next successful run re-attempts it (existing is found again), so
+      # warn rather than fail the recovery run.
+      gh issue close "$existing" --comment "Resolved: ${WORKFLOW_NAME} succeeded on \`${BRANCH}\` - ${RUN_URL}" \
+        || echo "::warning::Could not close resolved escalation issue #$existing (gh/API error); it will be retried on the next successful run."
+      echo "Closed issue #$existing"
+    else
+      echo "Nothing to do (conclusion=success, no open issue)"
+    fi
+    ;;
+  *)
+    echo "Nothing to do (conclusion=$CONCLUSION, open issue=${existing:-none})"
+    ;;
+esac
