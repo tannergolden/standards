@@ -30,4 +30,3 @@ exclude = [
 retry_wait_time = 5
 timeout = 20
 max_concurrency = 10
-output = "./lychee.md"

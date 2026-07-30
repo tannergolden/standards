@@ -411,6 +411,12 @@ jobs:
           # all come from the config: tune there, not here.
           args: '--config ${{ steps.lychee-config.outputs.path }} --root-dir . .'
           fail: ${{ inputs.fail-on-broken-links }}
+          # ⚠️ SET HERE, NOT IN THE CONFIG FILE. The action always passes
+          # `--output` on the command line, and a CLI flag beats a config
+          # key, so `output` in lychee.toml could never take effect. The
+          # summary step below reads this exact path; naming it once is what
+          # keeps the two in step.
+          output: './lychee.md'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
