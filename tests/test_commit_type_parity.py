@@ -82,11 +82,6 @@ class TestTheTitleGateIsCovered:
                 "        'security',\n",
                 "        'security',\n        'deps',\n",
             ),
-            (
-                ".github/workflows/semantic-pr.yml",
-                f"commit-types:\n        description: >-",
-                f"commit-types:\n        description: >-",
-            ),
         ):
             target = work / rel
             target.write_text(
