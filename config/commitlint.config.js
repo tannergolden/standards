@@ -15,20 +15,50 @@
 export default {
   // `extends` inherits the base rules from the widely-used `config-conventional` preset.
   extends: ['@commitlint/config-conventional'],
-  // House plugin: the em dash (U+2014) is banned in every commit message.
-  // The character is built from its code point so this config file never
-  // contains a banned sequence itself.
+  // House plugins. Both mirror `scripts/commit-check.py`, which is the gate
+  // that actually blocks a merge; this file is what a contributor runs
+  // locally, and the two are only useful if they agree. Every character is
+  // built from its code point so this config never contains a banned
+  // sequence itself.
   plugins: [
     {
       rules: {
-        'no-em-dash': ({ header, body, footer }) => {
-          const emDash = String.fromCharCode(0x2014);
+        // U+2013 EN DASH through U+2015 HORIZONTAL BAR. The em dash is the
+        // banned character; its neighbours go with it because none of the
+        // three belongs in a commit message and a range is harder to get
+        // wrong than a single code point. Same range as BANNED_DASHES in
+        // commit-check.py, which used to reject an en dash that this config
+        // accepted.
+        'no-banned-dashes': ({ header, body, footer }) => {
+          const banned = [0x2013, 0x2014, 0x2015].map((c) => String.fromCharCode(c));
           const tainted = [header, body, footer].some(
-            (part) => typeof part === 'string' && part.includes(emDash)
+            (part) =>
+              typeof part === 'string' && banned.some((dash) => part.includes(dash))
           );
           return [
             !tainted,
-            'commit message contains an em dash (U+2014); use a comma, a colon, parentheses, or a spaced hyphen instead',
+            'commit message contains an em dash, en dash or horizontal bar (U+2013 to U+2015); use a comma, a colon, parentheses, or a spaced hyphen instead',
+          ];
+        },
+
+        // The subject starts with a lowercase letter, optionally after one
+        // emoji and a space. Written as a plugin rather than as
+        // `subject-case`, because that rule's `sentence-case` detection has
+        // no notion of a leading emoji, and the house style puts an emoji on
+        // most subjects. This is the same test as commit-check.py: strip an
+        // optional emoji prefix, then require a lowercase ASCII letter.
+        'subject-lowercase': ({ subject }) => {
+          if (typeof subject !== 'string' || subject.length === 0) {
+            return [true, ''];
+          }
+          const stripped = subject.replace(
+            /^(?:[\u{1F000}-\u{1FAFF}\u2190-\u21FF\u2300-\u27BF\u2900-\u2BFF]\uFE0F?)\s/u,
+            ''
+          );
+          const first = stripped.charAt(0);
+          return [
+            first >= 'a' && first <= 'z',
+            'the subject must start with a lowercase letter, optionally after an emoji and a space',
           ];
         },
       },
@@ -61,14 +91,17 @@ export default {
       ],
     ],
 
-    // This rule enforces that the subject is *not* in any of the specified cases.
-    // We strictly ban UPPER-CASE (all caps), but allow sentence-case or PascalCase.
-    'subject-case': [
-      1, // Level: Warn
-      'never', // Applicable: Never
-      // Value: Disallowed cases
-      ['upper-case'],
-    ],
+    // Case is enforced by the `subject-lowercase` plugin above, which
+    // understands the leading emoji this house style uses. commitlint's own
+    // `subject-case` does not, so it is disabled rather than left to warn
+    // about something the plugin already decides.
+    'subject-case': [0],
+    // THE SCOPE IS REQUIRED, which the Conventional Commits specification
+    // treats as optional. `docs: add the seed` repeated across a hundred
+    // commits answers "where?" nowhere. commit-check.py has always required
+    // it; without this rule a contributor's local run accepted what the
+    // required check then rejected.
+    'scope-empty': [2, 'never'],
     // Ensures the subject line is never empty.
     'subject-empty': [2, 'never'],
     // Ensures the subject line does not end with a period.
@@ -77,7 +110,8 @@ export default {
     'type-case': [1, 'always', 'lower-case'],
     // Ensures the `type` is never empty.
     'type-empty': [2, 'never'],
-    // House rule: no em dashes anywhere in the message (see plugin above).
-    'no-em-dash': [2, 'always'],
+    // House rules, both defined in the plugin above.
+    'no-banned-dashes': [2, 'always'],
+    'subject-lowercase': [2, 'always'],
   },
 };

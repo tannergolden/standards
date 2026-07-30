@@ -298,7 +298,7 @@ To ensure 100% portability across diverse editors, terminal environments, and CI
    - **In Body Text**: Standard UTF-8 emojis are permitted for readability.
    - **In Templates & Critical Headers**: You **MUST** use HTML Hexadecimal Entities (e.g., `&#x1F680;` for 🚀, `&#x1F4DD;` for 📝). This prevents character corruption (mojibake) when documents are processed by scripts or viewed in legacy environments.
    - **Zero-Tolerance for Mojibake**: Corrupted sequences (the `Ã`-prefixed artifacts you get when UTF-8 is read as Latin-1) are prohibited and must be repaired on sight.
-3. **No Em Dashes**: The em dash character (U+2014) is prohibited in every file the repository writes: prose, comments, configuration, and commit messages alike. Use a comma, a colon, parentheses, or a spaced hyphen (" - ") instead. In prose it is a convention upheld by review; in a commit message `commit-check` rejects it through the `no-em-dash` rule in `config/commitlint.config.js`, wherever that action runs.
+3. **No Em Dashes**: The em dash character (U+2014) is prohibited in every file the repository writes: prose, comments, configuration, and commit messages alike. Use a comma, a colon, parentheses, or a spaced hyphen (" - ") instead. In prose it is a convention upheld by review; in a commit message it is mechanical, and the ban runs wider there: `scripts/commit-check.py` rejects U+2013 to U+2015, the en dash and horizontal bar alongside the em dash, because none of the three belongs in a commit subject and a range is harder to get wrong than a single code point. The `no-banned-dashes` rule in `config/commitlint.config.js` covers the same range, so a local run and the required check agree.
 
 ---
 
