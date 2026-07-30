@@ -304,6 +304,17 @@ jobs:
         env:
           EXPECTED: ${{ inputs.version }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
+          # ⚠️ THE PROBE READS AS THE PUBLISHER, not as a stranger.
+          # `actions/setup-node` has already written an `.npmrc` expecting a
+          # token, and without this the `npm view` below was anonymous. For a
+          # scoped package published `--access restricted`, or any private or
+          # self-hosted registry named by `npm-registry`, an anonymous read
+          # 404s and the version reads as NOT published. The idempotence this
+          # step exists to provide then never engaged: a re-run after an
+          # unrelated failure reached `npm publish` again and npm rejected the
+          # duplicate version. Same secret as the publish step, or the probe
+          # is answering a different question from the one that matters.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           if [ ! -f package.json ]; then
