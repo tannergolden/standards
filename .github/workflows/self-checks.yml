@@ -262,6 +262,20 @@ jobs:
           egress-policy: audit
           notice: '📋 Validating the rulesets, labels and settings written to repositories.'
 
+      # ⚠️ THE GENERATORS HAD NO GATE, AND THE DRIFT THEY PROMISED TO CATCH
+      # HAD ALREADY SHIPPED. `update-doc-indexes.py`'s docstring says an
+      # index "can never disagree with the tree";
+      # `docs/references/Repository-Labels.md` says "CI fails if it drifts";
+      # `check-type-parity.py` says the type list is asserted in three
+      # places. Nothing ran any of them, and `--check` on the doc indexes
+      # exited 1 on a clean checkout: the distribution hub advertised a
+      # description its own document no longer carried.
+      #
+      # `make lint-docs` runs all three, so this gate and a contributor's
+      # local command are the same command rather than two copies of it.
+      - name: '📄 Generated documents and the type list are current'
+        run: make lint-docs
+
       # These files are written TO a repository through the API. A malformed
       # ruleset is not caught by anything else here, and lands as a failed
       # apply in somebody else's repository.
