@@ -11,7 +11,7 @@ before anything relies on it.
 from __future__ import annotations
 
 import pytest
-from conftest import ROOT, load_yaml, workflow_step_shell
+from conftest import ROOT, load_yaml, workflow_inputs, workflow_on, workflow_step_shell
 
 
 class TestWorkflowStepShell:
@@ -95,6 +95,24 @@ class TestGitRepo:
 
     def test_is_clean_to_start_with(self, run_shell, git_repo):
         assert run_shell("git status --porcelain", cwd=git_repo).stdout.strip() == ""
+
+
+class TestWorkflowOn:
+    """`on:` is the boolean true after YAML 1.1 resolution, not the string."""
+
+    def test_reads_the_trigger_block(self):
+        assert "workflow_call" in workflow_on(load_yaml(".github/workflows/ci.yml"))
+
+    def test_reads_declared_inputs(self):
+        inputs = workflow_inputs(".github/workflows/ci.yml")
+        assert "lint-command" in inputs
+        assert inputs["node-version"]["default"] == "22.x"
+
+    def test_every_reusable_workflow_is_reachable_this_way(self):
+        for path in sorted((ROOT / ".github/workflows").glob("*.yml")):
+            assert workflow_on(load_yaml(f".github/workflows/{path.name}")), (
+                f"{path.name}: no trigger block found"
+            )
 
 
 class TestRepositoryShape:

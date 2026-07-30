@@ -122,6 +122,10 @@ protection, the rulesets:
 name: '🎯 Apply Standards'
 on:
   workflow_dispatch:
+    inputs:
+      dry-run:
+        type: boolean
+        default: true
 permissions: {}
 jobs:
   apply:
@@ -129,8 +133,17 @@ jobs:
       contents: read # check the calling repository out when labels-file names a file in it
       issues: write # apply the label taxonomy
     uses: tannergolden/standards/.github/workflows/apply-standards.yml@v1
+    with:
+      dry-run: ${{ inputs.dry-run }}
     secrets: inherit
 ```
+
+> [!IMPORTANT]
+> **`dry-run` defaults to `true`, and it covers labels as well as settings and rulesets.** A stub
+> that passes nothing therefore plans and writes nothing, on all three. That default is the right
+> way round for a ruleset, which can block every merge in the repository, so the first dispatch is
+> deliberately a plan. **Uncheck `dry-run` on the second dispatch to actually apply the taxonomy.**
+> Every job says which it did in the run summary.
 
 > [!WARNING]
 > **The `permissions:` on a calling job is a ceiling, not a grant.** A called workflow can never

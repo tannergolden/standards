@@ -77,7 +77,10 @@ on:
         type: boolean
         default: false
       dry-run:
-        description: 'For settings and rulesets: print what would be applied and change nothing.'
+        description: >-
+          For labels, settings and rulesets alike: print what would be
+          applied and change nothing. Defaults to true, so a run that
+          forgets it plans rather than writes.
         required: false
         type: boolean
         default: true
@@ -136,6 +139,20 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           labels-file: ${{ inputs.labels-file }}
           dry-run: ${{ inputs.dry-run }}
+
+      # The same note the other two jobs post. Without it this job was the
+      # one that could plan and write nothing while looking identical to a
+      # job that applied the taxonomy: green check, empty summary. Labels
+      # are the first thing a repository adopts, so it was also the one
+      # most likely to be run by somebody who had not read the input list.
+      - name: '📝 Next Step'
+        if: ${{ inputs.dry-run }}
+        run: |
+          {
+            echo ""
+            echo "> [!NOTE]"
+            echo "> This was a dry run. No labels were created or updated. Re-run with \`dry-run: false\` to apply, once the plan above looks right."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   settings:
     name: '⚙️ Apply Repository Settings'

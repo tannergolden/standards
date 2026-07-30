@@ -51,6 +51,24 @@ def load_yaml(rel: str) -> dict:
     return yaml.safe_load((ROOT / rel).read_text(encoding="utf-8"))
 
 
+def workflow_on(doc: dict) -> dict:
+    """The `on:` block of a parsed workflow.
+
+    YAML 1.1 resolves a bare `on` key to the boolean true, and PyYAML
+    follows the spec, so `doc["on"]` raises KeyError on every workflow file
+    in this repository while `doc[True]` works. Handled once here rather
+    than rediscovered by each test.
+    """
+    if "on" in doc:
+        return doc["on"]
+    return doc.get(True, {})
+
+
+def workflow_inputs(rel: str) -> dict:
+    """The declared `workflow_call` inputs of a reusable workflow."""
+    return workflow_on(load_yaml(rel)).get("workflow_call", {}).get("inputs", {})
+
+
 def _steps(doc: dict, job_id: str | None) -> list[dict]:
     if job_id is None:  # a composite action
         return doc["runs"]["steps"]
