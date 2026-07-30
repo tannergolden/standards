@@ -151,22 +151,37 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # After the release publishes and the major tag moves, the releases it
-  # superseded come down. This lives INSIDE Cut Release rather than on a
+  # After the release publishes and the major tag moves, the release PAGES
+  # it superseded come down. This lives INSIDE Cut Release rather than on a
   # release-event listener so the whole chain is one run: cut, move, prune.
   #
-  # The superseded tag goes WITH its release page here, which is safe only
-  # because of how this repository is consumed: every stub pins `@v1`, the
-  # moving major, and nothing pins a `vX.Y.Z`. A bare major is never a
-  # release artifact, so the prune cannot reach `v1`, and the called
-  # workflow refuses it by name besides.
+  # ⚠️ THE TAG STAYS. `delete-tags` used to be true here, on the reasoning
+  # that every stub pins `@v1` so nothing resolves a `vX.Y.Z`. That reasoning
+  # contradicted three other files and lost.
+  #
+  #   README.md               offers `@v1.4.2` as a supported pin, described
+  #                           as "Immutable release. For anyone who wants
+  #                           exactness". Deleting it breaks whoever took
+  #                           that advice, on their next run, with no signal.
+  #   data/README.md          says the tag ruleset makes published releases
+  #                           immutable, and that immutability is what an
+  #                           exact pin buys.
+  #   protect-release-tags    enforces it: `refs/tags/v*.*.*`, a `deletion`
+  #                           rule, `enforcement: active`, no bypass actors.
+  #
+  # With that ruleset applied the delete is refused outright and the prune
+  # job fails on every release, since `prune-releases.yml` runs under
+  # `set -euo pipefail`. Without it, the exact pin quietly stops resolving.
+  # Neither is acceptable, and only one line had to change to end both.
+  #
+  # A superseded release PAGE is clutter. Its tag is a contract.
   prune:
     name: '🧹 Prune Superseded Releases'
     needs: release
     permissions:
-      contents: write # deleting releases and their tags requires write
+      contents: write # deleting release pages requires write
     uses: ./.github/workflows/prune-releases.yml
     with:
       keep: 1
-      delete-tags: true
+      delete-tags: false
       dry-run: false
