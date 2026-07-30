@@ -30,6 +30,18 @@
 #       branches: ['__DEFAULT_BRANCH__']
 #     create:
 #     workflow_dispatch:
+#   concurrency:
+#     # ⚠️ `create` AND `push` BOTH FIRE when a repository is generated from
+#     # the template, so this workflow races itself on the one occasion it
+#     # matters most. Both runs find the sentinel, both rewrite identity
+#     # across the whole tree, and both push; the loser's
+#     # --force-with-lease sees a ref that moved and fails, leaving a
+#     # brand-new repository half-initialised with a red check on it.
+#     #
+#     # Not cancel-in-progress: a half-finished tree rewrite is worse than
+#     # a queued one, and the second run no-ops once the sentinel is gone.
+#     group: ${{ github.workflow }}-${{ github.repository }}
+#     cancel-in-progress: false
 #   permissions: {}
 #   jobs:
 #     init:
