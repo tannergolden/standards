@@ -68,7 +68,21 @@ permissions: {}
 jobs:
   alert:
     name: '🚨 Escalate or Resolve'
-    if: ${{ contains(fromJSON(inputs.branches || format('["{0}"]', github.event.repository.default_branch)), github.event.workflow_run.head_branch) }}
+    # ⚠️ PROVENANCE FIRST, THEN THE BRANCH. `workflow_run` also fires for
+    # runs triggered by a pull request from a FORK, in this repository's
+    # context and with this repository's token. Filtering on the head branch
+    # name alone was not enough: a contributor opening a pull request from
+    # their fork's `main` produces `head_branch: main`, which matched on
+    # every repository whose default branch is `main`, and the escalator
+    # opened a real `priority: high` issue here pointing at the fork's run.
+    # That is issue creation available to anyone who can open a pull
+    # request, needing only a failing check on their side.
+    #
+    # The comparison is joined with `&&` deliberately: as an alternative it
+    # would be decorative.
+    if: >-
+      ${{ github.event.workflow_run.head_repository.full_name == github.repository
+      && contains(fromJSON(inputs.branches || format('["{0}"]', github.event.repository.default_branch)), github.event.workflow_run.head_branch) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
