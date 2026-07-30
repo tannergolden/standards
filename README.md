@@ -23,12 +23,22 @@ _Called, never copied._
 
 ## 💡 What This Repository Is
 
-Every repository on this account gets its pipelines, guardrails, and conventions by **calling**
-this repository, never by copying from it.
+Every repository on this account follows the conventions published here. The ones with something
+to build also get their pipelines and guardrails by **calling** this repository, never by copying
+from it.
 
 A consuming repository holds a short trigger stub. The logic, the scripts, the linter
 configuration, and the standards themselves live here, so a fix lands once and reaches everything
 that points at it.
+
+> [!NOTE]
+> **The account's core repositories take the conventions and not the automation.**
+> [`tannergolden/.github`](https://github.com/tannergolden/.github),
+> [`tannergolden/tannergolden`](https://github.com/tannergolden/tannergolden), and
+> [`tannergolden/intelligence`](https://github.com/tannergolden/intelligence) hold no project to
+> lint, test or build, so they follow the documented standards by link without installing the gate
+> set. "Called, never copied" describes how the automation is delivered to the repositories that
+> run it, not a claim that every repository runs it.
 
 ```yaml
 jobs:
