@@ -281,6 +281,20 @@ def main():
     mode.add_argument("--write", action="store_true", help="regenerate every index in place")
     args = ap.parse_args()
 
+    # ⚠️ A MISSING DOCS FOLDER IS AN ERROR, NOT AN EMPTY RESULT. `os.walk`
+    # on a path that does not exist yields nothing and raises nothing, so
+    # `hosts` came back empty and --check printed its success line having
+    # inspected zero files. Run from the wrong directory, or in a repository
+    # that adopted this generator without a docs/ folder, the gate the
+    # styling spec lists as enforcement said everything was fine.
+    #
+    # Present-but-empty is left alone: a repository can legitimately have
+    # the folder and no markdown in it yet. Only ABSENT is unanswerable.
+    if not os.path.isdir(DOCS):
+        print(f"::error::'{DOCS}/' does not exist, so no index could be checked.")
+        print(f"         Run this from the repository root, or create {DOCS}/.")
+        return 1
+
     hosts = []
     for root, _dirs, names in os.walk(DOCS):
         for name in sorted(names):
