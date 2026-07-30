@@ -106,6 +106,17 @@ filter_unconventional = true
 split_commits = false
 # Regex for parsing and grouping commits
 commit_parsers = [
+    # ⚠️ ORDER IS THE RULE HERE: git-cliff takes the FIRST parser that
+    # matches, so anything narrow must sit above the group that would
+    # otherwise swallow it. This skip is above `^chore` for exactly that
+    # reason - placed below it, a `chore(docs):` subject would be grouped
+    # and the skip would never fire.
+    #
+    # It replaces a `skip_commits` key that git-cliff does not read at all.
+    # An unknown key is ignored silently, so these bot commits were landing
+    # in "🔧 Miscellaneous & Tooling" in every set of release notes while
+    # the config looked like it had already handled them.
+    { message = "^chore\\(docs\\): 🏥 update repository health status", skip = true },
     { message = "^feat", group = "✨ New Features" },
     { message = "^fix", group = "🐛 Bug Fixes" },
     { message = "^refactor", group = "♻️ Refactoring" },
@@ -120,8 +131,6 @@ commit_parsers = [
 protect_breaking_commits = true
 # Filter out commits by patterns
 filter_commits = false
-# Skip commits from the bot
-skip_commits = "chore\\(docs\\): 🏥 update repository health status on.*"
 # Tag pattern
 tag_pattern = "v[0-9].*"
 # Sort order (oldest or newest first)
