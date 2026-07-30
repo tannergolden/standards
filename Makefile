@@ -24,9 +24,10 @@
 # ---
 
 RUFF_VERSION ?= 0.15.8
+PRETTIER_VERSION ?= 3.8.1
 PYTEST_VERSION ?= 9.1.1
 
-.PHONY: help setup lint lint-fix lint-docs test docs-index check-types
+.PHONY: help setup lint lint-fix lint-docs lint-format test docs-index check-types
 
 help: ## Show the available targets
 	@grep -hE '^[a-z][a-z-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -48,6 +49,9 @@ lint-docs: ## Fail when a generated document or the commit-type list has drifted
 	python3 scripts/update-doc-indexes.py --check
 	python3 scripts/update-label-docs.py --check
 	python3 scripts/check-type-parity.py
+
+lint-format: ## Check formatting against the published Prettier config
+	npx --yes "prettier@$(PRETTIER_VERSION)" --config config/prettierrc.json --ignore-path config/prettierignore --check "**/*.{md,yml,yaml,json,js}"
 
 test: ## Run the test suite
 	python3 -m pytest

@@ -56,3 +56,30 @@ class TestNothingHasDrifted:
         flag = "" if generator.endswith("check-type-parity.py") else " --check"
         result = run_shell(f"python3 {ROOT / generator}{flag}", cwd=ROOT)
         assert result.returncode == 0, result
+
+
+class TestTheFormatterIsGatedToo:
+    """A rule enforced everywhere except at its origin drifts back."""
+
+    def test_self_checks_runs_the_formatter(self):
+        assert "prettier" in all_run_blocks().lower(), (
+            "nothing checks formatting here, so the config this repository publishes "
+            "can drift out of compliance in the tree that defines it"
+        )
+
+    def test_it_checks_rather_than_writes(self):
+        blocks = all_run_blocks()
+        prettier = "\n".join(ln for ln in blocks.split("\n") if "prettier" in ln.lower() or "--" in ln)
+        assert "--write" not in prettier, (
+            "the gate reformats the tree; rewriting from CI is auto-format.yml's job"
+        )
+
+    def test_the_version_is_pinned(self):
+        doc = load_yaml(SELF_CHECKS)
+        assert "PRETTIER_VERSION" in doc["env"], "an unpinned formatter reddens untouched code"
+
+    def test_the_make_target_and_the_gate_agree(self):
+        makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+        assert "lint-format" in makefile
+        for flag in ("--config config/prettierrc.json", "--ignore-path config/prettierignore"):
+            assert flag in makefile, f"`make lint-format` does not pass {flag}"

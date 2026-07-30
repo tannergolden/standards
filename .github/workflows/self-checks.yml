@@ -55,6 +55,9 @@ env:
   # Pinned for the same reason as ruff: an unpinned test runner turns an
   # upstream release into a red check on code nobody touched.
   PYTEST_VERSION: '9.1.1'
+  # Pinned for the same reason again: a formatter that moves reformats code
+  # nobody touched, and this one gates the tree.
+  PRETTIER_VERSION: '3.8.1'
 
 jobs:
   tests:
@@ -275,6 +278,22 @@ jobs:
       # local command are the same command rather than two copies of it.
       - name: '📄 Generated documents and the type list are current'
         run: make lint-docs
+
+      # ⚠️ THE FORMATTER THIS REPOSITORY PUBLISHES, RUN ON THIS REPOSITORY.
+      # `auto-format.yml` enforces `config/prettierrc.json` in every
+      # consuming repository and had never been run here, so 23 files failed
+      # the standard this repository is the source of. A rule enforced
+      # everywhere except at its origin is a rule waiting to drift back.
+      #
+      # `--check`, never `--write`: this is a gate, and reformatting a tree
+      # from CI is `auto-format.yml`'s job, through a pull request.
+      - name: '🎨 Formatting matches the published config'
+        run: |
+          set -euo pipefail
+          npx --yes "prettier@${PRETTIER_VERSION}" \
+            --config config/prettierrc.json \
+            --ignore-path config/prettierignore \
+            --check "**/*.{md,yml,yaml,json,js}"
 
       # These files are written TO a repository through the API. A malformed
       # ruleset is not caught by anything else here, and lands as a failed
