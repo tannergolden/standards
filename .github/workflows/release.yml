@@ -99,6 +99,35 @@ jobs:
             exit 1
           fi
 
+          # ⚠️ A RELEASE ONLY EVER MOVES FORWARD. Neither of the two
+          # publishing steps checks ordering on its own: `gh release create
+          # --latest` marks whatever it is handed as the latest release, and
+          # `git tag -f` moves the major pointer onto it. Publishing a
+          # version older than the current one therefore moves both
+          # backwards, and every repository pinned to `@v1` DOWNGRADES on
+          # its next run.
+          #
+          # Keeping version tags closed the common path in, since an
+          # already-published version is caught by the check above. It does
+          # not cover a version whose tag is absent: a historic cleanup, an
+          # imported repository, or a mistyped line.
+          #
+          # `sort -V` orders numerically, so v1.10.0 is correctly newer than
+          # v1.9.0. A string comparison gets that backwards.
+          if ! PUBLISHED="$(gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate \
+              --jq '.[] | select(.draft == false) | .tag_name' 2>&1)"; then
+            echo "::error title=Release::Could not read the existing releases of ${GITHUB_REPOSITORY} to check this version moves forward: ${PUBLISHED}. Refusing to publish rather than assuming."
+            exit 1
+          fi
+          LATEST="$(printf '%s\n' "$PUBLISHED" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+          if [ -n "$LATEST" ]; then
+            NEWEST="$(printf '%s\n%s\n' "$LATEST" "$VERSION" | sort -V | tail -n 1)"
+            if [ "$NEWEST" != "$VERSION" ] || [ "$VERSION" = "$LATEST" ]; then
+              echo "::error title=Release::'$VERSION' is not newer than the current release '$LATEST'. Publishing it would mark an older version as latest and move the major tag backwards, downgrading every repository pinned to it."
+              exit 1
+            fi
+          fi
+
           echo "major=${VERSION%%.*}" >> "$GITHUB_OUTPUT"
 
       # Actions resolve `uses:` against the ref they are called at, so every
