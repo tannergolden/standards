@@ -122,19 +122,25 @@ required_job_ids() {
   done | sed 's| /.*||' | sed '/^$/d' | sort -u
 }
 
-# Sets WORKFLOWS_READABLE=false when the workflow directory cannot be listed.
-# That is NOT the same as "no workflow declares these checks", and conflating
-# the two makes this refuse every private repository whose token holds
-# administration write but not contents read.
+# An unlistable workflow directory is NOT the same as "no workflow declares
+# these checks", and conflating the two makes this refuse every private
+# repository whose token holds administration write but not contents read.
+#
+# ⚠️ THE LISTING IS HOISTED OUT OF THE FUNCTION ON PURPOSE. It used to set
+# WORKFLOWS_READABLE=false from inside `declared_job_ids`, which is invoked
+# as `$(declared_job_ids | sort -u)` - a command substitution AND a
+# pipeline, so two subshells deep. The assignment never reached this scope,
+# the flag always read `true`, and the diagnosis below was dead code. The
+# operator was told to fix workflows that were fine.
 WORKFLOWS_READABLE=true
+workflow_file_names() {
+  gh api "repos/${TARGET_REPO}/contents/.github/workflows" \
+    --jq '.[] | select(.type == "file") | .name' 2>/dev/null || true
+}
+
 declared_job_ids() {
-  local names name
-  names="$(gh api "repos/${TARGET_REPO}/contents/.github/workflows" \
-    --jq '.[] | select(.type == "file") | .name' 2>/dev/null || true)"
-  if [ -z "$names" ]; then
-    WORKFLOWS_READABLE=false
-    return 0
-  fi
+  local names="$1" name
+  [ -n "$names" ] || return 0
   while IFS= read -r name; do
     case "$name" in
       *.yml | *.yaml) ;;
@@ -156,7 +162,10 @@ MISSING=''
 if [ "$REQUIRE_CHECKS" = "true" ]; then
   WANTED="$(required_job_ids)"
   if [ -n "$WANTED" ]; then
-    DECLARED="$(declared_job_ids | sort -u)"
+    # Assigned HERE, in the parent, so the flag survives.
+    NAMES="$(workflow_file_names)"
+    [ -n "$NAMES" ] || WORKFLOWS_READABLE=false
+    DECLARED="$(declared_job_ids "$NAMES" | sort -u)"
     MISSING="$(comm -23 <(printf '%s\n' "$WANTED") <(printf '%s\n' "$DECLARED") || true)"
   fi
 fi
