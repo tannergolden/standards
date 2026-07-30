@@ -770,7 +770,24 @@ jobs:
             TAGS="$VERSION"
             # `latest` must not follow a prerelease, or `docker pull` gives
             # people the unstable build by default.
-            if [ "$IS_PRERELEASE" = "true" ]; then
+            #
+            # ⚠️ READ FROM THE VERSION AS WELL AS THE EVENT. `IS_PRERELEASE`
+            # comes from `github.event.release.prerelease`, and on a
+            # `workflow_dispatch` run - one of the two triggers the
+            # documented stub declares - there is no `release` object at
+            # all, so it is the empty string and this test was false.
+            # Dispatching `v2.0.0-rc.1` therefore pushed `latest` at a
+            # release candidate, which is the exact outcome the line above
+            # says must not happen.
+            #
+            # A semver prerelease identifier is part of the version itself,
+            # so it is true whichever event fired. `2.0.0-rc.1` contains a
+            # hyphen after the numeric core; `2.0.0` does not.
+            case "$VERSION" in
+              *-*) VERSION_IS_PRERELEASE=true ;;
+              *) VERSION_IS_PRERELEASE=false ;;
+            esac
+            if [ "$IS_PRERELEASE" = "true" ] || [ "$VERSION_IS_PRERELEASE" = "true" ]; then
               echo "::notice title=No latest tag::This is a prerelease, so 'latest' was not moved."
             else
               TAGS="${TAGS} latest"
