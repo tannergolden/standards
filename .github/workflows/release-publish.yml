@@ -292,9 +292,20 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
 
+      # `setup` is OPTIONAL, everywhere. Nothing in the published contract
+      # requires a repository to declare it, and every other call site
+      # probes before invoking. This one ran it bare, so a Makefile
+      # declaring only `build` and `test`, which is an ordinary Makefile,
+      # aborted the release job with "No rule to make target 'setup'"
+      # before anything was built, packaged, attested or published.
       - name: '📦 Install Dependencies'
         if: ${{ steps.gate.outputs.proceed == 'true' && hashFiles('Makefile') != '' }}
-        run: make setup
+        run: |
+          if { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^setup:'; then
+            make setup
+          else
+            echo "::notice title=Setup skipped::No 'setup' target in a Makefile, so dependency installation was left to the toolchain steps above."
+          fi
 
       - name: '🏗️ Build Project'
         if: ${{ steps.gate.outputs.proceed == 'true' }}

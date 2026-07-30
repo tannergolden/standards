@@ -150,7 +150,11 @@ runs:
         # `make setup` is the repository's own answer to "get ready to
         # build", whatever its language. Skipped rather than failed where
         # the Makefile does not define it.
-        if make -n setup >/dev/null 2>&1; then
+        #
+        # Probed against make's target database, not with `make -n setup`:
+        # the latter exits 0 for a `setup/` DIRECTORY, so this step reported
+        # having installed dependencies while running nothing at all.
+        if { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^setup:'; then
           make setup
         else
           echo "::notice title=No setup target::This repository's Makefile does not define 'setup', so dependency installation was left to the toolchain steps above."
