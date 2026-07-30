@@ -19,6 +19,7 @@ what the ref selector happened to be called.
 
 from __future__ import annotations
 
+import json
 import subprocess
 
 import pytest
@@ -50,7 +51,7 @@ def validate(run_shell, fake_gh):
     """
 
     def _validate(cwd, version="v1.4.0", default_branch="main", **env):
-        fake_gh.route("releases", "")
+        fake_gh.route("releases", "[]")
         return run_shell(
             workflow_step_shell(RELEASE, "release", STEP),
             cwd=cwd,
@@ -136,8 +137,12 @@ class TestTheVersionMustMoveForward:
     """
 
     def _released(self, run_shell, repo, tags, version="v1.4.0", fake_gh=None):
-        listing = "\n".join(tags)
-        fake_gh.route("releases", listing + ("\n" if listing else ""))
+        # The real API shape: a list of release objects. The fake applies
+        # the step's own `--jq` to it, so the filter is under test too.
+        fake_gh.route(
+            "releases",
+            json.dumps([{"tag_name": tag, "draft": False} for tag in tags]),
+        )
         return run_shell(
             workflow_step_shell(RELEASE, "release", STEP),
             cwd=repo,

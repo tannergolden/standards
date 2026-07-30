@@ -74,7 +74,7 @@ class TestTheGuardInThePruneStillProtectsTheMajor:
             {"tag_name": "v2", "draft": False, "prerelease": False, "published_at": "2024-01-01T00:00:00Z"},
             {"tag_name": "v1.9.9", "draft": False, "prerelease": False, "published_at": "2024-02-01T00:00:00Z"},
         ]
-        fake_gh.route("releases", "\n".join(json.dumps(r) for r in releases) + "\n")
+        fake_gh.route("releases", json.dumps(releases))
         fake_gh.route("release delete", "")
         result = run_shell(
             workflow_step_shell(PRUNE, "prune", "🧹 Prune"),

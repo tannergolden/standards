@@ -132,3 +132,21 @@ class TestRepositoryShape:
         )
         assert result.returncode == 0
         assert "Nothing to compare" in result.stdout
+
+
+class TestFakeGhAppliesJq:
+    """Several scripts rely on `gh api --jq` doing the transform."""
+
+    def test_applies_a_jq_filter_to_the_routed_body(self, run_shell, fake_gh):
+        fake_gh.route("repos/o/r", '{"default_branch":"main"}')
+        result = run_shell("""gh api repos/o/r --jq '.default_branch'""", env=fake_gh.env())
+        assert result.stdout.strip() == "main"
+
+    def test_emits_raw_strings_the_way_gh_does(self, run_shell, fake_gh):
+        fake_gh.route("list", '[{"n":"a"},{"n":"b"}]')
+        result = run_shell("""gh api list --jq '.[].n'""", env=fake_gh.env())
+        assert result.stdout.split() == ["a", "b"]
+
+    def test_without_a_filter_the_body_is_untouched(self, run_shell, fake_gh):
+        fake_gh.route("raw", '{"a":1}')
+        assert '{"a":1}' in run_shell("gh api raw", env=fake_gh.env()).stdout

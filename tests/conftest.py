@@ -252,12 +252,35 @@ def fake_gh(tmp_path):
         textwrap.dedent(
             f"""\
             #!/usr/bin/env python3
-            import json, sys, pathlib
-            args = " ".join(sys.argv[1:])
+            # A scripted `gh`. `--jq` is applied for real, by shelling out to
+            # jq, because several scripts here rely on gh doing the transform
+            # and a fake that returned raw JSON would exercise a code path
+            # that never runs in production.
+            import json, subprocess, sys, pathlib
+            argv = sys.argv[1:]
+            args = " ".join(argv)
             pathlib.Path({str(calls_file)!r}).open("a").write(args + "\\n")
+
+            jq_filter = None
+            for i, a in enumerate(argv):
+                if a == "--jq" and i + 1 < len(argv):
+                    jq_filter = argv[i + 1]
+                elif a.startswith("--jq="):
+                    jq_filter = a[len("--jq="):]
+
             for route in json.loads(pathlib.Path({str(routes_file)!r}).read_text()):
                 if route["match"] in args:
-                    sys.stdout.write(route["stdout"])
+                    out = route["stdout"]
+                    if jq_filter and route["code"] == 0 and out.strip():
+                        done = subprocess.run(
+                            ["jq", "-r", jq_filter],
+                            input=out, capture_output=True, text=True,
+                        )
+                        if done.returncode != 0:
+                            sys.stderr.write(done.stderr)
+                            sys.exit(done.returncode)
+                        out = done.stdout
+                    sys.stdout.write(out)
                     sys.exit(route["code"])
             sys.stderr.write("fake gh: no route for: " + args + "\\n")
             sys.exit(1)

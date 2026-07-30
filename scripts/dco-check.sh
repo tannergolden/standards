@@ -86,6 +86,22 @@ commits_tsv="$(fetch_commits_tsv)" || {
   exit 1
 }
 
+# ⚠️ THE COMMITS ENDPOINT IS CAPPED AT 250, however it is paginated.
+# `--paginate` stops because no further `Link: rel="next"` arrives, and the
+# curl fallback stops for the same reason. Neither can tell "that was all of
+# them" from "that is as many as you are allowed to see", so a pull request
+# with more than 250 commits had everything past the cap examined by nothing
+# and this required check printed a green tick over it.
+#
+# The pull request itself reports its own commit count, so the two numbers
+# are comparable. Failing closed on a mismatch matches how this script
+# already treats an API error and a non-array body: an unknown is not a pass.
+EXPECTED="$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '.commits' 2>/dev/null || true)"
+if ! printf '%s' "$EXPECTED" | grep -qE '^[0-9]+$'; then
+  echo "::error title=DCO sign-off::Could not read how many commits this pull request has, so there is no way to tell whether the listing was complete - failing closed."
+  exit 1
+fi
+
 # One TSV row per commit: sha, author login ("-" when unmapped), parent
 # count, and the number of Signed-off-by trailers in the message.
 # --paginate covers PRs larger than one API page.
@@ -102,6 +118,18 @@ while IFS=$'\t' read -r sha login parents signoffs; do
     offenders+=("$sha")
   fi
 done <<< "$commits_tsv"
+
+if [ "$total" -lt "$EXPECTED" ]; then
+  echo "::error title=DCO sign-off::Only ${total} of this pull request's ${EXPECTED} commit(s) could be listed. GitHub caps that endpoint at 250, so the rest were checked by nothing and this gate cannot vouch for them - failing closed."
+  {
+    echo "### ✍️ DCO Sign-Off Could Not Complete"
+    echo ""
+    echo "GitHub returns at most **250** commits for a pull request, and this one has **${EXPECTED}**. Only \`${total}\` were examined, so a commit past the cap could be missing its sign-off and this check would not have seen it."
+    echo ""
+    echo "**Fix it:** shrink the pull request, or rebase and squash the branch so it carries fewer than 250 commits. Sign off the whole branch at once with \`git rebase --signoff @{upstream}\`."
+  } >> "$GITHUB_STEP_SUMMARY"
+  exit 1
+fi
 
 if [ "${#offenders[@]}" -eq 0 ]; then
   echo "✅ DCO: all ${total} commit(s) carry a Signed-off-by trailer (or are bot-authored)."
