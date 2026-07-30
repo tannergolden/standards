@@ -59,7 +59,22 @@ jobs:
       issues: write # apply the command's label and assignment changes
     # Issues only, and only for comments that begin with a slash. A pull
     # request comment arrives on the same event and is not ours to handle.
-    if: ${{ !github.event.issue.pull_request && startsWith(github.event.comment.body, '/') }}
+    #
+    # ⚠️ AND ONLY FROM SOMEONE WITH A RELATIONSHIP TO THE REPOSITORY. This
+    # job acts on an instruction a stranger wrote, holding `issues: write`.
+    # Without the association check, anyone on GitHub could comment
+    # `/label pinned` on a public consuming repository and have it applied:
+    # `pinned` and `automated` are both in the stale sweep's exemption list
+    # in `governance.yml`, so an outsider could make any issue permanently
+    # un-ageable, and `/assign` could be pointed anywhere.
+    #
+    # `governance.yml` already gates its greeting on `author_association`.
+    # The shape was established; it had simply not reached the one job that
+    # does what an outsider tells it to.
+    if: >-
+      ${{ !github.event.issue.pull_request
+      && startsWith(github.event.comment.body, '/')
+      && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) }}
     steps:
       - name: '🛡️ Harden Runner'
         uses: tannergolden/standards/actions/harden@v1
