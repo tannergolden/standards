@@ -110,9 +110,23 @@ runs:
       # fifteen of them. See the note in config/zizmor.yml.
       run: | # zizmor: ignore[github-env]
         set -euo pipefail
-        # Runner images expose each preinstalled JDK as JAVA_HOME_<major>_X64.
-        VAR="JAVA_HOME_${WANTED}_X64"
-        SELECTED="${!VAR:-}"
+        # Runner images expose each preinstalled JDK as JAVA_HOME_<major>_X64,
+        # so only a bare MAJOR can name one.
+        #
+        # ⚠️ CHECKED BEFORE THE INDIRECT EXPANSION, because the input is
+        # spliced into a shell VARIABLE NAME. Anything that is not an integer
+        # builds an illegal identifier, and `${!VAR}` then aborts the step
+        # with `invalid variable name` under `set -euo pipefail`. That is how
+        # `java-version: '21.0.5'`, which is how most people write a Java
+        # version, failed every job calling this action in a repository with
+        # a pom.xml, while the input's own description promised a fallback.
+        SELECTED=""
+        if [ -z "${WANTED//[0-9]/}" ] && [ -n "$WANTED" ]; then
+          VAR="JAVA_HOME_${WANTED}_X64"
+          SELECTED="${!VAR:-}"
+        elif [ -n "$WANTED" ]; then
+          echo "::warning title=Java version::'$WANTED' is not a major version number, and a runner image only exposes preinstalled JDKs by major (JAVA_HOME_<major>_X64). Pass '21' rather than '21.0.5'. Falling back to the image default."
+        fi
         if [ -n "$SELECTED" ] && [ -d "$SELECTED" ]; then
           echo "JAVA_HOME=$SELECTED" >> "$GITHUB_ENV"
           echo "$SELECTED/bin" >> "$GITHUB_PATH"

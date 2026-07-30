@@ -150,3 +150,20 @@ class TestFakeGhAppliesJq:
     def test_without_a_filter_the_body_is_untouched(self, run_shell, fake_gh):
         fake_gh.route("raw", '{"a":1}')
         assert '{"a":1}' in run_shell("gh api raw", env=fake_gh.env()).stdout
+
+
+class TestExportedEnvironmentAndPath:
+    """A step that hands something to later steps does it through these."""
+
+    def test_captures_github_env_writes(self, run_shell):
+        result = run_shell('echo "JAVA_HOME=/opt/java" >> "$GITHUB_ENV"')
+        assert result.exported == {"JAVA_HOME": "/opt/java"}
+
+    def test_captures_github_path_additions(self, run_shell):
+        result = run_shell('echo "/opt/java/bin" >> "$GITHUB_PATH"')
+        assert result.path_additions == ["/opt/java/bin"]
+
+    def test_both_are_empty_when_a_step_writes_neither(self, run_shell):
+        result = run_shell("true")
+        assert result.exported == {}
+        assert result.path_additions == []

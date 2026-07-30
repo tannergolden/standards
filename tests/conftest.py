@@ -100,13 +100,25 @@ def workflow_step_shell(rel: str, job_id: str | None, step_id: str) -> str:
 class ShellResult:
     """The outcome of running a step, in the terms Actions itself uses."""
 
-    def __init__(self, proc: subprocess.CompletedProcess, outputs: dict, summary: str):
+    def __init__(
+        self,
+        proc: subprocess.CompletedProcess,
+        outputs: dict,
+        summary: str,
+        exported: dict,
+        path_additions: list,
+    ):
         self.proc = proc
         self.returncode = proc.returncode
         self.stdout = proc.stdout
         self.stderr = proc.stderr
         self.outputs = outputs
         self.summary = summary
+        # What the step handed to the steps after it, via $GITHUB_ENV and
+        # $GITHUB_PATH. A step that "selects a toolchain" is only observable
+        # through these.
+        self.exported = exported
+        self.path_additions = path_additions
 
     @property
     def output(self) -> str:
@@ -124,9 +136,10 @@ class ShellResult:
 def run_shell(tmp_path):
     """Run a step's shell in a temp directory with Actions' environment.
 
-    `GITHUB_OUTPUT`, `GITHUB_ENV` and `GITHUB_STEP_SUMMARY` are real files,
-    so a step that writes `ran=false` to `$GITHUB_OUTPUT` can be asserted on
-    exactly as the next step would read it.
+    `GITHUB_OUTPUT`, `GITHUB_ENV`, `GITHUB_PATH` and `GITHUB_STEP_SUMMARY`
+    are real files, so a step that writes `ran=false` to `$GITHUB_OUTPUT`
+    can be asserted on exactly as the next step would read it, and a step
+    that selects a toolchain is observable through what it exported.
 
     The environment is CLEARED apart from what a runner guarantees, so a
     test cannot pass because of a variable that happened to be exported in
@@ -142,7 +155,8 @@ def run_shell(tmp_path):
         out_file = tmp_path / "_github_output"
         env_file = tmp_path / "_github_env"
         sum_file = tmp_path / "_github_summary"
-        for f in (out_file, env_file, sum_file):
+        path_file = tmp_path / "_github_path"
+        for f in (out_file, env_file, sum_file, path_file):
             f.write_text("", encoding="utf-8")
 
         base = {
@@ -152,6 +166,7 @@ def run_shell(tmp_path):
             "GITHUB_OUTPUT": str(out_file),
             "GITHUB_ENV": str(env_file),
             "GITHUB_STEP_SUMMARY": str(sum_file),
+            "GITHUB_PATH": str(path_file),
             "RUNNER_TEMP": str(runner_temp),
             "GITHUB_WORKSPACE": str(workdir),
         }
@@ -168,12 +183,21 @@ def run_shell(tmp_path):
             timeout=120,
         )
 
-        outputs = {}
-        for line in out_file.read_text(encoding="utf-8").splitlines():
-            if "=" in line:
-                key, _, value = line.partition("=")
-                outputs[key] = value
-        return ShellResult(proc, outputs, sum_file.read_text(encoding="utf-8"))
+        def as_pairs(path):
+            pairs = {}
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if "=" in line:
+                    key, _, value = line.partition("=")
+                    pairs[key] = value
+            return pairs
+
+        return ShellResult(
+            proc,
+            as_pairs(out_file),
+            sum_file.read_text(encoding="utf-8"),
+            as_pairs(env_file),
+            [ln for ln in path_file.read_text(encoding="utf-8").splitlines() if ln.strip()],
+        )
 
     return _run
 
