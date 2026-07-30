@@ -292,7 +292,7 @@ jobs:
           set -euo pipefail
           if [ -n "$COMMAND" ]; then
             bash -c "$COMMAND"
-          elif [ -f Makefile ] && make -n build > /dev/null 2>&1; then
+          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^build:'; then
             make build
           else
             echo "::notice title=No build step::Publishing the tree as it is. Set build-command if the package needs compiling first."

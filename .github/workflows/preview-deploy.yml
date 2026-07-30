@@ -105,7 +105,7 @@ jobs:
       - name: '🏗️ Build Project'
         id: build
         run: |
-          if make -n build >/dev/null 2>&1; then make build; else
+          if { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^build:'; then make build; else
             echo "::notice title=Skipped::no 'build' target in this repository's Makefile"
           fi
 

@@ -175,6 +175,23 @@ jobs:
       # target of the same name, else skip. RAN=true/false is recorded so
       # the summary can tell "passed" apart from "never ran", which is the
       # distinction that decides whether this job is a real gate.
+      #
+      # ⚠️ WHY THE TARGET PROBE IS NOT `make -n <stage>`. It used to be, and
+      # `make -n` does not answer the question it appears to. GNU make treats
+      # an existing FILE OR DIRECTORY of the target's name as an
+      # already-satisfied target and exits 0 for it WITH NO MAKEFILE PRESENT
+      # AT ALL: in a repository containing a `build/` or `test/` directory,
+      # `make -n build` printed "Nothing to be done" and succeeded. That
+      # recorded ran=true, `make build` then did nothing, and the guard below
+      # saw a stage had run. The required check reported green having
+      # validated nothing, which is the one outcome this workflow exists to
+      # prevent.
+      #
+      # So the probe asks make for its own target database instead: a
+      # makefile must exist, and the stage must appear in `make -np` as a
+      # declared rule. `-n` keeps it a dry run, so nothing is built and the
+      # default goal does not fire. A directory named after the stage is no
+      # longer mistaken for a build system.
       - name: '✨ Run Linter'
         id: lint
         env:
@@ -182,7 +199,7 @@ jobs:
         run: |
           if [ -n "$COMMAND" ]; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; bash -c "$COMMAND"
-          elif make -n lint >/dev/null 2>&1; then
+          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^lint:'; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; make lint
           else
             echo "ran=false" >> "$GITHUB_OUTPUT"
@@ -192,7 +209,7 @@ jobs:
       - name: '📝 Lint Documentation'
         id: lintdocs
         run: |
-          if make -n lint-docs >/dev/null 2>&1; then
+          if { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^lint-docs:'; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; make lint-docs
           else
             echo "ran=false" >> "$GITHUB_OUTPUT"
@@ -206,7 +223,7 @@ jobs:
         run: |
           if [ -n "$COMMAND" ]; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; bash -c "$COMMAND"
-          elif make -n test >/dev/null 2>&1; then
+          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^test:'; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; make test
           else
             echo "ran=false" >> "$GITHUB_OUTPUT"
@@ -220,7 +237,7 @@ jobs:
         run: |
           if [ -n "$COMMAND" ]; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; bash -c "$COMMAND"
-          elif make -n build >/dev/null 2>&1; then
+          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^build:'; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; make build
           else
             echo "ran=false" >> "$GITHUB_OUTPUT"
