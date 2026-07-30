@@ -75,11 +75,19 @@ on:
         default: 7
       keep-recent-commits:
         description: >-
-          Also keep every run tied to this many latest default-branch
-          commits. 0 by default: the day window is the protection here.
+          Never delete runs from this many latest default-branch commits.
+          The default of 35 is one page of the commit-history view.
+          Both protections are on by default and are independent: the day
+          window covers any commit-triggered run, while the commit window
+          matches a run's head_sha against the last N DEFAULT-BRANCH
+          commits and so protects nothing on a pull request branch. This
+          workflow and `prune.yml` ship the same pair of
+          defaults deliberately: one wrapper of a destructive action
+          quietly offering less safety than the other is a difference
+          nobody notices until the history is gone.
         required: false
         type: number
-        default: 0
+        default: 35
 
 permissions: {}
 
