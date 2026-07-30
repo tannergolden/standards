@@ -23,10 +23,25 @@ rules:
   # All three follow the documented-safe pattern: none check out or execute
   # pull-request HEAD code. They call GitHub APIs only (labels, size,
   # first-interaction greeting, PR-title lint, DCO trailer reads, failure
-  # issues). The single checkout among them, in semantic-pr's DCO job, takes
-  # the BASE repository at its default state purely to run the trusted
-  # dco-check script. `pull_request_target` is REQUIRED for fork pull
-  # requests to receive labels and status checks at all.
+  # issues). `pull_request_target` is REQUIRED for fork pull requests to
+  # receive labels and status checks at all.
+  #
+  # THE ONE CHECKOUT IN THE FAMILY is in governance.yml's `triage` job. It
+  # takes `actions/checkout` with NO `ref:`, which under
+  # `pull_request_target` resolves to the BASE branch, and with
+  # `persist-credentials: false`. Nothing from the pull request is fetched,
+  # and nothing checked out is executed: the steps after it are
+  # `actions/labeler`, a size labeler and a conflict labeler, all of which
+  # read the diff through the API.
+  #
+  # semantic-pr.yml has NO checkout at all, in any job. Its DCO job says so
+  # in its own header and reads the trailers through the API for exactly
+  # this reason. An earlier version of this comment said the opposite - that
+  # semantic-pr held the only checkout - which meant the one privileged
+  # checkout in the family was the one this note never described. It was
+  # safe by accident of `actions/checkout`'s default ref rather than by the
+  # reasoning recorded here, and an accepted risk is only accepted while the
+  # reason written beside it is the true one.
   dangerous-triggers:
     ignore:
       # Consumer stub names. This repository publishes these workflows and
