@@ -177,11 +177,11 @@ test('returns 201 on valid payload', async () => {
 
 <strong>📏 Coverage & Quality Gates</strong>
 
-| Metric    |             Threshold | Notes                                     |
-| --------- | --------------------: | ----------------------------------------- |
-| Lines     |                   80% | Project-wide; do not chase vanity numbers |
-| Branches  |                   75% | Focus on risky logic/edges                |
-| Functions |                   80% | Critical modules may set higher           |
+| Metric    |                Threshold | Notes                                     |
+| --------- | -----------------------: | ----------------------------------------- |
+| Lines     |                      80% | Project-wide; do not chase vanity numbers |
+| Branches  |                      75% | Focus on risky logic/edges                |
+| Functions |                      80% | Critical modules may set higher           |
 | E2E Smoke | 100% of top 3 to 5 flows | Login, happy purchase, critical write     |
 
 > [!TIP]

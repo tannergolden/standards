@@ -44,23 +44,23 @@ only describes jobs is a workflow.
 
 ## 📦 What's Here
 
-| Action                | Ships                       | Does                                                                          |
-| :-------------------- | :-------------------------- | :---------------------------------------------------------------------------- |
-| `harden`              |                             | Pins the runner-hardening action in one place, and posts the job notice       |
-| `setup`               |                             | Makes the toolchains a repository uses available, detected from its manifests |
-| `config`              | `config/*`                  | Hands a workflow a shared config file, honoring a caller override             |
-| `dco-check`           | `scripts/dco-check.sh`      | Verifies the sign-off trailer on every human commit in a pull request         |
-| `commit-check`        | `scripts/commit-check.py`   | Verifies every human commit message follows Conventional Commits              |
-| `open-pr`             | `scripts/open-pr.sh`        | Delivers automation changes as one evolving pull request                      |
-| `sync-labels`         | `data/labels.yml`, script   | Applies the label taxonomy, create-or-update, never pruning                   |
-| `apply-rulesets`      | `data/rulesets/*`, script   | Creates or updates branch and tag rulesets, matched by name                   |
-| `sbom`                | script                      | Writes a dependency inventory for any ecosystem, not just npm                 |
-| `init-template`       | script                      | Rewrites a generated repository's identity to its new owner, once             |
-| `standards-version`   | script                      | Opens one issue when a newer major of these standards is published            |
-| `ci-failure-alert`    | script                      | Opens an issue when a watched workflow fails, closes it on recovery           |
-| `prune-deployments`   | script                      | Deletes superseded deployments, keeping the current successful one            |
-| `prune-workflow-runs` | script                      | Deletes old runs, keeping recent history and anything in flight               |
-| `apply-settings`      | script                      | Brings a repository's settings in line with the published set                 |
+| Action                | Ships                     | Does                                                                          |
+| :-------------------- | :------------------------ | :---------------------------------------------------------------------------- |
+| `harden`              |                           | Pins the runner-hardening action in one place, and posts the job notice       |
+| `setup`               |                           | Makes the toolchains a repository uses available, detected from its manifests |
+| `config`              | `config/*`                | Hands a workflow a shared config file, honoring a caller override             |
+| `dco-check`           | `scripts/dco-check.sh`    | Verifies the sign-off trailer on every human commit in a pull request         |
+| `commit-check`        | `scripts/commit-check.py` | Verifies every human commit message follows Conventional Commits              |
+| `open-pr`             | `scripts/open-pr.sh`      | Delivers automation changes as one evolving pull request                      |
+| `sync-labels`         | `data/labels.yml`, script | Applies the label taxonomy, create-or-update, never pruning                   |
+| `apply-rulesets`      | `data/rulesets/*`, script | Creates or updates branch and tag rulesets, matched by name                   |
+| `sbom`                | script                    | Writes a dependency inventory for any ecosystem, not just npm                 |
+| `init-template`       | script                    | Rewrites a generated repository's identity to its new owner, once             |
+| `standards-version`   | script                    | Opens one issue when a newer major of these standards is published            |
+| `ci-failure-alert`    | script                    | Opens an issue when a watched workflow fails, closes it on recovery           |
+| `prune-deployments`   | script                    | Deletes superseded deployments, keeping the current successful one            |
+| `prune-workflow-runs` | script                    | Deletes old runs, keeping recent history and anything in flight               |
+| `apply-settings`      | script                    | Brings a repository's settings in line with the published set                 |
 
 ---
 

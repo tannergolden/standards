@@ -40,16 +40,16 @@ We utilize labels to provide instant visual context and to power our automation 
 
 Most labels arrive mechanically - know which ones are yours to set and which the machine owns (a manual change to a machine-owned label is re-asserted on the next event):
 
-| Applier                          | Labels it owns                                                                                                                            |
-| :------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
-| **Issue forms** (at creation)    | `type: *` and `status: needs triage`; two also declare a fixed `area: *`.                                                                    |
-| **Path labeler** (every PR push) | `area: *` from the file paths touched, per [`config/labeler.yml`](../../config/labeler.yml).                                                 |
-| **Size labeler** (every PR push) | `size: *` from the changed-lines count.                                                                                                   |
-| **Conflict / stale sweeps**      | `status: conflict` on merge-conflict PRs; `status: stale` on long-inactive items.                                                         |
-| **CI failure alerts**            | `ci: failure` on the auto-opened issue when a core workflow breaks (removed on recovery).                                                 |
-| **Dependabot**                   | `dependencies` on its update PRs.                                                                                                         |
-| **Automation PR openers**        | `automated` on machine-authored PRs (the licence-year roll, the doc-index refresh) - stale-exempt, filterable.                               |
-| **You (humans)**                 | `priority: *`, `risk: *`, `semver: *`, `status: needs info`, the community trio, and any triage corrections.                              |
+| Applier                          | Labels it owns                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------------- |
+| **Issue forms** (at creation)    | `type: *` and `status: needs triage`; two also declare a fixed `area: *`.                                      |
+| **Path labeler** (every PR push) | `area: *` from the file paths touched, per [`config/labeler.yml`](../../config/labeler.yml).                   |
+| **Size labeler** (every PR push) | `size: *` from the changed-lines count.                                                                        |
+| **Conflict / stale sweeps**      | `status: conflict` on merge-conflict PRs; `status: stale` on long-inactive items.                              |
+| **CI failure alerts**            | `ci: failure` on the auto-opened issue when a core workflow breaks (removed on recovery).                      |
+| **Dependabot**                   | `dependencies` on its update PRs.                                                                              |
+| **Automation PR openers**        | `automated` on machine-authored PRs (the licence-year roll, the doc-index refresh) - stale-exempt, filterable. |
+| **You (humans)**                 | `priority: *`, `risk: *`, `semver: *`, `status: needs info`, the community trio, and any triage corrections.   |
 
 ---
 
@@ -87,119 +87,119 @@ from one that did, for those nine.
 
 ### 🚦 Priority
 
-| Label | Colour | Meaning |
-| :---- | :----- | :------ |
+| Label                | Colour    | Meaning                                                                                    |
+| :------------------- | :-------- | :----------------------------------------------------------------------------------------- |
 | `priority: critical` | `#b60205` | 🚨 Urgent. Production outage, severe crash, or security breach. Must be fixed immediately. |
-| `priority: high` | `#d93f0b` | 🛑 Blocking. Blocks a release or significant functionality. Needs attention very soon. |
-| `priority: medium` | `#fbca04` | 🟡 Normal. Standard scheduled work. Important but does not block a release. |
-| `priority: low` | `#0e8a16` | 🟢 Optional. Nice-to-have features or cosmetic tweaks. Pick up when time permits. |
+| `priority: high`     | `#d93f0b` | 🛑 Blocking. Blocks a release or significant functionality. Needs attention very soon.     |
+| `priority: medium`   | `#fbca04` | 🟡 Normal. Standard scheduled work. Important but does not block a release.                |
+| `priority: low`      | `#0e8a16` | 🟢 Optional. Nice-to-have features or cosmetic tweaks. Pick up when time permits.          |
 
 ### 📦 Semantic Versioning
 
-| Label | Colour | Meaning |
-| :---- | :----- | :------ |
-| `semver: major` | `#b60205` | 💥 Breaking Change. Incompatible API changes. Bumps MAJOR version. |
-| `semver: minor` | `#1d76db` | 🎉 New Feature. Backward-compatible functionality. Bumps MINOR version. |
-| `semver: patch` | `#0e8a16` | 🩹 Bug Fix. Backward-compatible fix. Bumps PATCH version. |
-| `semver: none` | `#bfdadc` | 👻 Internal. Changes to tests, CI, or docs that do not require a version bump. |
+| Label           | Colour    | Meaning                                                                        |
+| :-------------- | :-------- | :----------------------------------------------------------------------------- |
+| `semver: major` | `#b60205` | 💥 Breaking Change. Incompatible API changes. Bumps MAJOR version.             |
+| `semver: minor` | `#1d76db` | 🎉 New Feature. Backward-compatible functionality. Bumps MINOR version.        |
+| `semver: patch` | `#0e8a16` | 🩹 Bug Fix. Backward-compatible fix. Bumps PATCH version.                      |
+| `semver: none`  | `#bfdadc` | 👻 Internal. Changes to tests, CI, or docs that do not require a version bump. |
 
 ### ☢️ Risk
 
-| Label | Colour | Meaning |
-| :---- | :----- | :------ |
+| Label            | Colour    | Meaning                                                                      |
+| :--------------- | :-------- | :--------------------------------------------------------------------------- |
 | `risk: critical` | `#b60205` | ☢️ Extremely high risk. Likely to cause outages or break core functionality. |
-| `risk: high` | `#d93f0b` | 🔥 High chance of side effects. Requires extensive regression testing. |
-| `risk: medium` | `#fbca04` | 🌩️ Moderate risk. Changes logic that could impact other components. |
-| `risk: low` | `#0e8a16` | 🌤️ Minimal risk. Unlikely to cause regressions or side effects. |
-| `risk: none` | `#c2e0c6` | 🏳️ Zero risk. Changes to documentation, comments, or formatting only. |
+| `risk: high`     | `#d93f0b` | 🔥 High chance of side effects. Requires extensive regression testing.       |
+| `risk: medium`   | `#fbca04` | 🌩️ Moderate risk. Changes logic that could impact other components.          |
+| `risk: low`      | `#0e8a16` | 🌤️ Minimal risk. Unlikely to cause regressions or side effects.              |
+| `risk: none`     | `#c2e0c6` | 🏳️ Zero risk. Changes to documentation, comments, or formatting only.        |
 
 ### 📋 Status & Lifecycle
 
-| Label | Colour | Meaning |
-| :---- | :----- | :------ |
-| `status: needs triage` | `#f9d0c4` | 🔍 New issue waiting for a maintainer to validate and categorize it. |
-| `status: ready` | `#0e8a16` | ✅ Triaged and specified; ready for someone to pick up. |
-| `status: needs info` | `#f7c6c7` | 🗣️ Waiting on the author for details; a reply un-sticks it, silence lets it go stale. |
-| `status: in progress` | `#c5def5` | 🏗️ A contributor is actively working on this task. |
-| `status: needs review` | `#bfd4f2` | 👀 Code is written and the Pull Request is waiting for peer review. |
-| `status: blocked` | `#e99695` | ⛔ Work cannot proceed due to external factors or dependencies. |
-| `status: on hold` | `#fbca04` | ⏸️ Intentionally paused; work is deferred for now. |
-| `status: conflict` | `#d93f0b` | 🔀 The pull request has merge conflicts that must be resolved. |
-| `status: stale` | `#fef2c0` | 🕸️ Inactive for a long period; will be closed if no further activity occurs. |
-| `status: awaiting release` | `#5319e7` | 🚢 Merged and waiting for the next release; the fix exists but is not published yet. |
+| Label                      | Colour    | Meaning                                                                               |
+| :------------------------- | :-------- | :------------------------------------------------------------------------------------ |
+| `status: needs triage`     | `#f9d0c4` | 🔍 New issue waiting for a maintainer to validate and categorize it.                  |
+| `status: ready`            | `#0e8a16` | ✅ Triaged and specified; ready for someone to pick up.                               |
+| `status: needs info`       | `#f7c6c7` | 🗣️ Waiting on the author for details; a reply un-sticks it, silence lets it go stale. |
+| `status: in progress`      | `#c5def5` | 🏗️ A contributor is actively working on this task.                                    |
+| `status: needs review`     | `#bfd4f2` | 👀 Code is written and the Pull Request is waiting for peer review.                   |
+| `status: blocked`          | `#e99695` | ⛔ Work cannot proceed due to external factors or dependencies.                       |
+| `status: on hold`          | `#fbca04` | ⏸️ Intentionally paused; work is deferred for now.                                    |
+| `status: conflict`         | `#d93f0b` | 🔀 The pull request has merge conflicts that must be resolved.                        |
+| `status: stale`            | `#fef2c0` | 🕸️ Inactive for a long period; will be closed if no further activity occurs.          |
+| `status: awaiting release` | `#5319e7` | 🚢 Merged and waiting for the next release; the fix exists but is not published yet.  |
 
 ### 🚨 Continuous Integration
 
-| Label | Colour | Meaning |
-| :---- | :----- | :------ |
+| Label         | Colour    | Meaning                                                                             |
+| :------------ | :-------- | :---------------------------------------------------------------------------------- |
 | `ci: failure` | `#b60205` | 🚨 A core workflow is failing on a long-lived branch (opened/closed automatically). |
 
 ### 👚 Size
 
-| Label | Colour | Meaning |
-| :---- | :----- | :------ |
-| `size: extra small` | `#c2e0c6` | 🐜 Tiny change. Likely a one-line fix, typo correction, or config tweak. |
-| `size: small` | `#0e8a16` | 🔹 Small task. Straightforward work that takes a few hours. |
-| `size: medium` | `#fbca04` | 🔶 Medium task. Standard feature or bug fix taking a few days. |
-| `size: large` | `#d93f0b` | 🟥 Large task. Significant logic changes or new feature implementation. |
+| Label               | Colour    | Meaning                                                                             |
+| :------------------ | :-------- | :---------------------------------------------------------------------------------- |
+| `size: extra small` | `#c2e0c6` | 🐜 Tiny change. Likely a one-line fix, typo correction, or config tweak.            |
+| `size: small`       | `#0e8a16` | 🔹 Small task. Straightforward work that takes a few hours.                         |
+| `size: medium`      | `#fbca04` | 🔶 Medium task. Standard feature or bug fix taking a few days.                      |
+| `size: large`       | `#d93f0b` | 🟥 Large task. Significant logic changes or new feature implementation.             |
 | `size: extra large` | `#b60205` | 🦕 Massive task. High complexity; implies the issue should probably be broken down. |
 
 ### 🏷️ Change Types
 
-| Label | Colour | Meaning |
-| :---- | :----- | :------ |
-| `type: security` | `#b60205` | 🔒 Security fixes, patches, or vulnerability resolution. |
-| `type: tests` | `#c2e0c6` | 🧪 Adding, updating, or fixing unit/integration/E2E tests. |
-| `type: documentation` | `#0052cc` | 📚 Improvements or additions to documentation/READMEs. |
-| `type: chore` | `#bfdadc` | 🔧 Routine maintenance, dependency updates, or build scripts. |
-| `type: refactor` | `#c5def5` | ♻️ Code changes that improve structure or quality without changing behavior. |
-| `type: performance` | `#fbca04` | ⚡ Improvements to speed, memory usage, or resource optimization. |
-| `type: discussion` | `#d4c5f9` | 💬 Requires conversation or a decision before coding begins. |
-| `type: release` | `#5319e7` | 🚀 Tasks specifically related to shipping a new version or deploying. |
-| `type: accessibility` | `#006b75` | ♿ Fixes or features to ensure A11y compliance. |
-| `type: bug` | `#d73a4a` | 🐛 An unexpected problem or unintended behavior in the code. |
-| `type: feature` | `#1d76db` | ✨ A request for new functionality or capability. |
-| `type: feedback` | `#fef2c0` | 💡 General feedback, suggestions, or impressions from users. |
-| `type: build` | `#e4e669` | 🏗️ Build system, packaging, or external dependency changes. |
-| `type: ci` | `#bfd4f2` | ⚙️ CI configuration, workflows, or pipeline changes. |
-| `type: style` | `#f9d0c4` | 🎨 Formatting and whitespace only; no change to behaviour. |
-| `type: revert` | `#e99695` | ⏪ Reverts an earlier change; the commit undone is named in the body. |
-| `type: deprecation` | `#d93f0b` | ⚠️ Still works today, scheduled for removal in a future major; the warning before the break. |
+| Label                 | Colour    | Meaning                                                                                      |
+| :-------------------- | :-------- | :------------------------------------------------------------------------------------------- |
+| `type: security`      | `#b60205` | 🔒 Security fixes, patches, or vulnerability resolution.                                     |
+| `type: tests`         | `#c2e0c6` | 🧪 Adding, updating, or fixing unit/integration/E2E tests.                                   |
+| `type: documentation` | `#0052cc` | 📚 Improvements or additions to documentation/READMEs.                                       |
+| `type: chore`         | `#bfdadc` | 🔧 Routine maintenance, dependency updates, or build scripts.                                |
+| `type: refactor`      | `#c5def5` | ♻️ Code changes that improve structure or quality without changing behavior.                 |
+| `type: performance`   | `#fbca04` | ⚡ Improvements to speed, memory usage, or resource optimization.                            |
+| `type: discussion`    | `#d4c5f9` | 💬 Requires conversation or a decision before coding begins.                                 |
+| `type: release`       | `#5319e7` | 🚀 Tasks specifically related to shipping a new version or deploying.                        |
+| `type: accessibility` | `#006b75` | ♿ Fixes or features to ensure A11y compliance.                                              |
+| `type: bug`           | `#d73a4a` | 🐛 An unexpected problem or unintended behavior in the code.                                 |
+| `type: feature`       | `#1d76db` | ✨ A request for new functionality or capability.                                            |
+| `type: feedback`      | `#fef2c0` | 💡 General feedback, suggestions, or impressions from users.                                 |
+| `type: build`         | `#e4e669` | 🏗️ Build system, packaging, or external dependency changes.                                  |
+| `type: ci`            | `#bfd4f2` | ⚙️ CI configuration, workflows, or pipeline changes.                                         |
+| `type: style`         | `#f9d0c4` | 🎨 Formatting and whitespace only; no change to behaviour.                                   |
+| `type: revert`        | `#e99695` | ⏪ Reverts an earlier change; the commit undone is named in the body.                        |
+| `type: deprecation`   | `#d93f0b` | ⚠️ Still works today, scheduled for removal in a future major; the warning before the break. |
 
 ### 🏗️ Technical Areas
 
-| Label | Colour | Meaning |
-| :---- | :----- | :------ |
-| `area: infrastructure` | `#006b75` | 🧱 Core infrastructure, cloud resources, CI/CD pipelines, or hosting. |
-| `area: dx` | `#c5def5` | 💻 Developer Experience: Tooling, scripts, and workflows to improve productivity. |
-| `area: governance` | `#5319e7` | ⚖️ Licenses, code of conduct, security policies, and contribution guidelines. |
-| `area: frontend` | `#bfdadc` | 🌐 Client-side code, web interface, or browser logic. |
-| `area: backend` | `#008672` | ⚙️ Server-side logic, databases, or API endpoints. |
-| `area: mobile` | `#1d76db` | 📱 iOS, Android, or React Native specific code. |
-| `area: ui/ux` | `#fef2c0` | 🎨 Visual design, CSS styling, or user experience flows. |
-| `area: database` | `#fbca04` | 🗄️ SQL queries, schema changes, or migrations. |
-| `area: api` | `#bfd4f2` | 📡 REST or GraphQL interface definitions. |
-| `area: analytics` | `#d4c5f9` | 📈 Tracking, data logging, or business intelligence. |
-| `area: i18n` | `#0052cc` | 🌍 Internationalization, translations, or localization. |
+| Label                  | Colour    | Meaning                                                                           |
+| :--------------------- | :-------- | :-------------------------------------------------------------------------------- |
+| `area: infrastructure` | `#006b75` | 🧱 Core infrastructure, cloud resources, CI/CD pipelines, or hosting.             |
+| `area: dx`             | `#c5def5` | 💻 Developer Experience: Tooling, scripts, and workflows to improve productivity. |
+| `area: governance`     | `#5319e7` | ⚖️ Licenses, code of conduct, security policies, and contribution guidelines.     |
+| `area: frontend`       | `#bfdadc` | 🌐 Client-side code, web interface, or browser logic.                             |
+| `area: backend`        | `#008672` | ⚙️ Server-side logic, databases, or API endpoints.                                |
+| `area: mobile`         | `#1d76db` | 📱 iOS, Android, or React Native specific code.                                   |
+| `area: ui/ux`          | `#fef2c0` | 🎨 Visual design, CSS styling, or user experience flows.                          |
+| `area: database`       | `#fbca04` | 🗄️ SQL queries, schema changes, or migrations.                                    |
+| `area: api`            | `#bfd4f2` | 📡 REST or GraphQL interface definitions.                                         |
+| `area: analytics`      | `#d4c5f9` | 📈 Tracking, data logging, or business intelligence.                              |
+| `area: i18n`           | `#0052cc` | 🌍 Internationalization, translations, or localization.                           |
 
 ### 🤝 GitHub Defaults & Community
 
-| Label | Colour | Meaning |
-| :---- | :----- | :------ |
-| `bug` | `#d73a4a` | Something isn't working |
-| `enhancement` | `#a2eeef` | New feature or request |
-| `documentation` | `#0075ca` | Improvements or additions to documentation |
-| `invalid` | `#e4e669` | This doesn't seem right |
-| `duplicate` | `#cfd3d7` | This issue or pull request already exists |
-| `wontfix` | `#ffffff` | This will not be worked on |
-| `automated` | `#c0a062` | 🤖 Opened by repository automation (sync, formatting, refresh) - stale-exempt and ready to merge. |
-| `dependencies` | `#0052cc` | 📦 Pull requests that update a dependency file (usually created by bots). |
-| `regression` | `#b60205` | 📉 Worked in an earlier release and does not now; a fix should add a test. |
-| `upstream` | `#5319e7` | ⬆️ The cause is in a dependency; tracked here, fixed there. |
-| `pinned` | `#1d76db` | 📌 Never auto-close. The stale sweep skips anything carrying this. |
-| `good first issue` | `#7057ff` | Good for newcomers |
-| `help wanted` | `#008672` | Extra attention is needed |
-| `question` | `#d876e3` | Further information is requested |
+| Label              | Colour    | Meaning                                                                                           |
+| :----------------- | :-------- | :------------------------------------------------------------------------------------------------ |
+| `bug`              | `#d73a4a` | Something isn't working                                                                           |
+| `enhancement`      | `#a2eeef` | New feature or request                                                                            |
+| `documentation`    | `#0075ca` | Improvements or additions to documentation                                                        |
+| `invalid`          | `#e4e669` | This doesn't seem right                                                                           |
+| `duplicate`        | `#cfd3d7` | This issue or pull request already exists                                                         |
+| `wontfix`          | `#ffffff` | This will not be worked on                                                                        |
+| `automated`        | `#c0a062` | 🤖 Opened by repository automation (sync, formatting, refresh) - stale-exempt and ready to merge. |
+| `dependencies`     | `#0052cc` | 📦 Pull requests that update a dependency file (usually created by bots).                         |
+| `regression`       | `#b60205` | 📉 Worked in an earlier release and does not now; a fix should add a test.                        |
+| `upstream`         | `#5319e7` | ⬆️ The cause is in a dependency; tracked here, fixed there.                                       |
+| `pinned`           | `#1d76db` | 📌 Never auto-close. The stale sweep skips anything carrying this.                                |
+| `good first issue` | `#7057ff` | Good for newcomers                                                                                |
+| `help wanted`      | `#008672` | Extra attention is needed                                                                         |
+| `question`         | `#d876e3` | Further information is requested                                                                  |
 
 _71 labels._ The registry is [`data/labels.yml`](../../data/labels.yml).
 

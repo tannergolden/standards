@@ -45,7 +45,7 @@
 # the 'type:' labels instead; these are not ours to style.
 - name: 'bug'
   color: 'd73a4a'
-  description: 'Something isn''t working'
+  description: "Something isn't working"
 
 - name: 'enhancement'
   color: 'a2eeef'
@@ -141,7 +141,7 @@
 
 - name: 'invalid'
   color: 'e4e669'
-  description: 'This doesn''t seem right'
+  description: "This doesn't seem right"
 
 - name: 'duplicate'
   color: 'cfd3d7'

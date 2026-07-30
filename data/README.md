@@ -31,12 +31,12 @@ That is also the line between this folder and `config/`. Anything **written to**
 here; anything **read by** a tool during a run lives in `config/`. The labeler rules are read by the
 labeler action at run time, so they are configuration, not state.
 
-| File                                         | Applied to                                             |
-| :------------------------------------------- | :----------------------------------------------------- |
-| `rulesets/protect-integration-branches.json` | Your default branch, plus `Experimental`/`Development` |
-| `rulesets/protect-promotion-branches.json`   | `Preview` and `Release`                                |
-| `rulesets/protect-release-tags.json`         | Full version tags, making published releases immutable |
-| `labels.yml`                                 | The label taxonomy, create-or-update, never pruning    |
+| File                                         | Applied to                                                            |
+| :------------------------------------------- | :-------------------------------------------------------------------- |
+| `rulesets/protect-integration-branches.json` | Your default branch, plus `Experimental`/`Development`                |
+| `rulesets/protect-promotion-branches.json`   | `Preview` and `Release`                                               |
+| `rulesets/protect-release-tags.json`         | Full version tags, making published releases immutable                |
+| `labels.yml`                                 | The label taxonomy, create-or-update, never pruning                   |
 | `repository-settings.json`                   | Merge strategy, workflow-token permissions, and the security features |
 
 > [!NOTE]

@@ -63,14 +63,14 @@ private one. Twelve stubs, grouped and pinned to `@v1`.
 
 ## 📦 What's Inside
 
-| Path                                                | Purpose                                                                  |
-| :-------------------------------------------------- | :----------------------------------------------------------------------- |
+| Path                                                | Purpose                                                                                                                             |
+| :-------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
 | [`.github/workflows/`](.github/workflows/README.md) | 21 reusable workflows, called with `uses:` at the job level, plus two local to this repository: `release.yml` and `self-checks.yml` |
-| [`actions/`](actions/README.md)                     | 15 composite actions, called with `uses:` at the step level              |
-| [`data/`](data/README.md)                           | Rulesets and the label taxonomy, written **to** a repository             |
-| `config/`                                           | Linter and tooling configuration, read **by** a tool during a run        |
-| `docs/`                                             | The standards themselves, followed by link. Start at the standards index |
-| `scripts/`                                          | Helpers the actions above ship and invoke                                |
+| [`actions/`](actions/README.md)                     | 15 composite actions, called with `uses:` at the step level                                                                         |
+| [`data/`](data/README.md)                           | Rulesets and the label taxonomy, written **to** a repository                                                                        |
+| `config/`                                           | Linter and tooling configuration, read **by** a tool during a run                                                                   |
+| `docs/`                                             | The standards themselves, followed by link. Start at the standards index                                                            |
+| `scripts/`                                          | Helpers the actions above ship and invoke                                                                                           |
 
 The two `uses:` mechanisms are not interchangeable, and the difference decides where a thing lives.
 A **reusable workflow** is checked out against the **calling** repository, so it can operate on your

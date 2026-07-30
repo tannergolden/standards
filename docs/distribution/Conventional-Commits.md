@@ -87,11 +87,11 @@ The first half is barely a rule. Git already records the person making the commi
 
 **The exception is the part worth writing down**, because it is the one case where the obvious behavior is wrong. An AI agent making the commit must not take the author field. The author is the human contributor it is working with, and the agent is recorded beneath, in the trailer.
 
-| Field              | Who                                                       | Set by                                          |
-| :----------------- | :-------------------------------------------------------- | :---------------------------------------------- |
-| Author             | Whoever is contributing the commit. Never an AI           | Read from `user.name` and `user.email`          |
-| `Co-Authored-By:`  | Everyone else who contributed, an AI always among them    | A trailer in the body, one line per contributor |
-| `Signed-off-by:`   | The person certifying the DCO, normally the author        | `git commit -s`                                 |
+| Field             | Who                                                    | Set by                                          |
+| :---------------- | :----------------------------------------------------- | :---------------------------------------------- |
+| Author            | Whoever is contributing the commit. Never an AI        | Read from `user.name` and `user.email`          |
+| `Co-Authored-By:` | Everyone else who contributed, an AI always among them | A trailer in the body, one line per contributor |
+| `Signed-off-by:`  | The person certifying the DCO, normally the author     | `git commit -s`                                 |
 
 **"Always a co-author" is about the slot, not the frequency.** An AI is always credited in the trailer rather than the author field, and the trailer appears only on the commits it actually contributed to. A commit the contributor wrote by hand carries none, even in a session where an agent helped with something else an hour earlier. The trailer records who worked on these changes, not who was in the room.
 
@@ -111,10 +111,10 @@ Never hardcode a name, and never infer one from the repository's history, which 
 
 Two answers mean the identity is not usable as an author, and both are a question rather than a guess:
 
-| What comes back    | What it means                                                                                                     |
-| :----------------- | :----------------------------------------------------------------------------------------------------------------- |
-| Nothing            | Nobody configured an identity. Ask whose it should be, then set it                                                 |
-| The agent's own    | The environment commits as the tool by default. Ask before committing: this is the defect the rule exists to prevent, arriving pre-installed |
+| What comes back | What it means                                                                                                                                |
+| :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nothing         | Nobody configured an identity. Ask whose it should be, then set it                                                                           |
+| The agent's own | The environment commits as the tool by default. Ask before committing: this is the defect the rule exists to prevent, arriving pre-installed |
 
 > [!WARNING]
 > **The second is the common one, not the edge case.** An agent harness routinely ships a global `user.name` and `user.email` of its own, so a repository with no local override commits as the tool without anyone choosing that. Nothing announces it, `git commit` succeeds, and the wrong name is visible only to somebody who thinks to run `git log --format='%an'` afterwards. Check at the start of the first commit in a repository, not after the branch is pushed.
@@ -277,15 +277,15 @@ same expiry that already applies.
 
 ### 🆘 Troubleshooting
 
-| Symptom                               | Likely cause              | Fix                                                                      |
-| :------------------------------------ | :------------------------ | :----------------------------------------------------------------------- |
-| Message check fails on a pull request | Wrong type or format      | Adjust to `type(scope): subject`; the type list is above                 |
-| Rejected for a missing scope          | Scope omitted             | This standard requires it. `docs:` becomes `docs(readme):`               |
-| Subject too long or noisy             | Detail in the wrong place | Keep the subject under 72 characters and move the detail into the body   |
-| Missing breaking-change notice        | Impact not stated         | Add a `BREAKING CHANGE:` footer with details                             |
-| DCO check fails                       | No sign-off trailer       | `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` |
+| Symptom                               | Likely cause                                                                    | Fix                                                                                                                                                                   |
+| :------------------------------------ | :------------------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Message check fails on a pull request | Wrong type or format                                                            | Adjust to `type(scope): subject`; the type list is above                                                                                                              |
+| Rejected for a missing scope          | Scope omitted                                                                   | This standard requires it. `docs:` becomes `docs(readme):`                                                                                                            |
+| Subject too long or noisy             | Detail in the wrong place                                                       | Keep the subject under 72 characters and move the detail into the body                                                                                                |
+| Missing breaking-change notice        | Impact not stated                                                               | Add a `BREAKING CHANGE:` footer with details                                                                                                                          |
+| DCO check fails                       | No sign-off trailer                                                             | `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}`                                                                                              |
 | The log shows an agent as the author  | The resolved identity is the tool, usually from a global config the harness set | Set `user.name` and `user.email` to the contributor, then `git commit --amend --reset-author`. Already pushed? Leave it and fix the identity, or rewrite deliberately |
-| Em dash rejected                      | Character in the message  | Replace with a comma, a colon, parentheses, or a spaced hyphen           |
+| Em dash rejected                      | Character in the message                                                        | Replace with a comma, a colon, parentheses, or a spaced hyphen                                                                                                        |
 
 ---
 

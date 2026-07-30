@@ -26,10 +26,10 @@ Every failure raised by these workflows is a GitHub **annotation**: a titled,
 one-line summary that appears at the top of the run, in the job's step list, and
 on the pull request - without opening a log.
 
-| Part | What it carries | Example |
-| :--- | :--- | :--- |
-| **Title** | Which subsystem failed. Always present, so the Actions UI never shows a bare "Error" | `Rulesets`, `DCO sign-off`, `Release publish` |
-| **Message** | What happened *and* the move that fixes it, in one sentence | "Repository settings need a token with administration write... Add a PAT or GitHub App token as the `ADMIN_TOKEN` secret" |
+| Part        | What it carries                                                                      | Example                                                                                                                   |
+| :---------- | :----------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| **Title**   | Which subsystem failed. Always present, so the Actions UI never shows a bare "Error" | `Rulesets`, `DCO sign-off`, `Release publish`                                                                             |
+| **Message** | What happened _and_ the move that fixes it, in one sentence                          | "Repository settings need a token with administration write... Add a PAT or GitHub App token as the `ADMIN_TOKEN` secret" |
 
 Two rules make them worth reading, and they apply to any script you add:
 
@@ -62,13 +62,13 @@ Before escalating, perform these atomic checks to eliminate 95% of common config
 
 ## 🔟 Common Pathological Symptoms
 
-| Symptom                  | Probable Cause                | Immediate Resolution                                                                       |
-| :----------------------- | :---------------------------- | :----------------------------------------------------------------------------------------- |
-| **CI Red / Local Green** | Environmental drift.          | `nvm use`; sync lockfile with `npm ci`.                                                    |
-| **Hook Bypass**          | Husky initialization failure. | `make setup`; `chmod +x .husky/*`.                                                         |
-| **Blocked PR**           | Missing status checks.        | Update Branch Protection to match CI job names.                                            |
-| **Merge Conflict**       | Divergent branch history.     | `git rebase origin/Development` & force-with-lease.                                        |
-| **Emulator Failure**     | Port conflict.                | `lsof -i :8080` → `kill -9 <PID>`.                                                         |
+| Symptom                  | Probable Cause                | Immediate Resolution                                                      |
+| :----------------------- | :---------------------------- | :------------------------------------------------------------------------ |
+| **CI Red / Local Green** | Environmental drift.          | `nvm use`; sync lockfile with `npm ci`.                                   |
+| **Hook Bypass**          | Husky initialization failure. | `make setup`; `chmod +x .husky/*`.                                        |
+| **Blocked PR**           | Missing status checks.        | Update Branch Protection to match CI job names.                           |
+| **Merge Conflict**       | Divergent branch history.     | `git rebase origin/Development` & force-with-lease.                       |
+| **Emulator Failure**     | Port conflict.                | `lsof -i :8080` → `kill -9 <PID>`.                                        |
 | **Secret Leak**          | Credential committed to Git.  | Revoke key; follow [&#x1F512; Security & Secrets](Security-&-Secrets.md). |
 
 ---

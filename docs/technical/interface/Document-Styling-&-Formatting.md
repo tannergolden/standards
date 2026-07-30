@@ -38,15 +38,15 @@ It also publishes its workflows rather than running them on itself, so the
 column below says where each rule is actually checked, and admits where the
 answer is nowhere:
 
-| Rule                            | Checked by                                                        |
-| :------------------------------ | :---------------------------------------------------------------- |
-| Machined indexes match the tree | `scripts/update-doc-indexes.py --check`, run here on demand       |
-| Label reference matches registry | `scripts/update-label-docs.py --check`, run here on demand        |
-| Spelling                        | `typos`, in `ci.yml`, in consuming repositories                    |
-| Links resolve                   | `lychee`, in `ci.yml`, in consuming repositories                   |
-| Hidden frontmatter, comment form | Convention. Upheld by review                                      |
-| Exactly four `tags`             | Convention. Upheld by review                                      |
-| No `_` as a space in a filename | Convention. Upheld by review                                      |
+| Rule                             | Checked by                                                  |
+| :------------------------------- | :---------------------------------------------------------- |
+| Machined indexes match the tree  | `scripts/update-doc-indexes.py --check`, run here on demand |
+| Label reference matches registry | `scripts/update-label-docs.py --check`, run here on demand  |
+| Spelling                         | `typos`, in `ci.yml`, in consuming repositories             |
+| Links resolve                    | `lychee`, in `ci.yml`, in consuming repositories            |
+| Hidden frontmatter, comment form | Convention. Upheld by review                                |
+| Exactly four `tags`              | Convention. Upheld by review                                |
+| No `_` as a space in a filename  | Convention. Upheld by review                                |
 
 Everything else in this specification - the badges, the centered headers, the
 taglines, the fully-capped titles - is **convention, followed by hand**. It is
@@ -151,16 +151,16 @@ _[Tagline in italics.]_
 [Badges]
 ```
 
-| Element               | Specification                         | Description                                                                                            |
-| :-------------------- | :------------------------------------ | :----------------------------------------------------------------------------------------------------- |
-| **Lint Suppression**  | `<!-- markdownlint-disable MD041 -->` | Required as the first line after the frontmatter comment, allowing the centered `div` before Heading 1. |
-| **Div Open**          | `<div align="center">`                | Centers all contained elements.                                                                        |
-| **Emoji + Heading 1** | `# 🚀 Feature Name`                   | The primary document title.                                                                            |
-| **Top Anchor**        | `<a name="top"></a>`                  | Enables the "Back to Top" footer links.                                                                |
+| Element               | Specification                         | Description                                                                                                             |
+| :-------------------- | :------------------------------------ | :---------------------------------------------------------------------------------------------------------------------- |
+| **Lint Suppression**  | `<!-- markdownlint-disable MD041 -->` | Required as the first line after the frontmatter comment, allowing the centered `div` before Heading 1.                 |
+| **Div Open**          | `<div align="center">`                | Centers all contained elements.                                                                                         |
+| **Emoji + Heading 1** | `# 🚀 Feature Name`                   | The primary document title.                                                                                             |
+| **Top Anchor**        | `<a name="top"></a>`                  | Enables the "Back to Top" footer links.                                                                                 |
 | **Description**       | `**Bold Text**`                       | **One sentence, on one rendered line.** Aim for 90 characters or fewer, and keep it longer than the tagline beneath it. |
-| **Tagline**           | `_Italicized Text_`                   | **Unique Requirement:** A high-level principle specific to _this_ file. Do not reuse generic taglines. |
-| **Badges**            | Shields.io Images                     | **Optional.** If a document carries them, the palette and placement rules below apply.                 |
-| **Div Close**         | `</div>`                              | Closes the centered block, after the badges where there are any.                                       |
+| **Tagline**           | `_Italicized Text_`                   | **Unique Requirement:** A high-level principle specific to _this_ file. Do not reuse generic taglines.                  |
+| **Badges**            | Shields.io Images                     | **Optional.** If a document carries them, the palette and placement rules below apply.                                  |
+| **Div Close**         | `</div>`                              | Closes the centered block, after the badges where there are any.                                                        |
 
 > [!NOTE]
 > **The description is one line because it is read as a masthead, not as prose.** A

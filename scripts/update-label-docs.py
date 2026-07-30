@@ -148,6 +148,28 @@ def render(labels: list[dict[str, str]]) -> str:
     return "\n".join(out)
 
 
+# A GFM table delimiter row: only the alignment colons carry meaning, the
+# dash COUNT is Prettier padding the column to its widest cell.
+DELIMITER = re.compile(r"^\|(?:\s*:?-+:?\s*\|)+$")
+
+
+def _normalized(text: str) -> str:
+    """Strip formatting that carries no meaning, and nothing else.
+
+    Two kinds: runs of spaces, which is Prettier padding cells to a common
+    width, and the length of a dash run in a table delimiter row, which is
+    the same padding expressed in dashes. An alignment colon IS meaning and
+    survives, so `:---` and `---:` still differ.
+    """
+    out = []
+    for line in text.split("\n"):
+        line = re.sub(r"[ \t]+", " ", line).strip()
+        if DELIMITER.match(line):
+            line = re.sub(r"-+", "-", line)
+        out.append(line)
+    return "\n".join(out)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--check", action="store_true",
@@ -167,7 +189,20 @@ def main() -> int:
     pattern = re.compile(re.escape(BEGIN) + r".*?" + re.escape(END), re.S)
     updated = pattern.sub(lambda _: generated, text)
 
-    if updated == text:
+    # ⚠️ COMPARED WHITESPACE-INSENSITIVELY, so Prettier's cell padding is not
+    # read as drift. Prettier pads Markdown table cells to a common width;
+    # this generator does not. Comparing byte for byte meant the two fought:
+    # the formatter padded, `--check` called the document out of date,
+    # regenerating stripped the padding, and the formatter put it back. Neither
+    # tool is wrong and neither converges.
+    #
+    # `update-doc-indexes.py` settled this question already, in the same
+    # words: "Table rows are compared whitespace-insensitively so Prettier's
+    # cell padding never false-flags." One answer, not two.
+    #
+    # Padding is not content: a row whose CELLS changed still differs after
+    # collapsing runs of spaces, so real drift is still caught.
+    if _normalized(updated) == _normalized(text):
         print(f"{DOC.relative_to(ROOT)} is up to date")
         return 0
     if args.check:

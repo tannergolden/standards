@@ -30,10 +30,13 @@ export default {
         // commit-check.py, which used to reject an en dash that this config
         // accepted.
         'no-banned-dashes': ({ header, body, footer }) => {
-          const banned = [0x2013, 0x2014, 0x2015].map((c) => String.fromCharCode(c));
+          const banned = [0x2013, 0x2014, 0x2015].map((c) =>
+            String.fromCharCode(c)
+          );
           const tainted = [header, body, footer].some(
             (part) =>
-              typeof part === 'string' && banned.some((dash) => part.includes(dash))
+              typeof part === 'string' &&
+              banned.some((dash) => part.includes(dash))
           );
           return [
             !tainted,

@@ -36,15 +36,15 @@ repository, which is why a correction lands once and reaches everything.
 
 How work moves from a branch to a release.
 
-| Standard                                                                               | Covers                                                    |
-| :------------------------------------------------------------------------------------- | :-------------------------------------------------------- |
-| [Distribution & Workflow](distribution/Distribution-&-Workflow.md)                     | Section overview                                          |
-| [Branching Strategy & Workflow](distribution/Branching-Strategy-&-Workflow.md)         | The branch model every trigger keys on                    |
-| [Conventional Commits](distribution/Conventional-Commits.md)                           | The commit message standard, and where it is enforced     |
-| [Pull Requests & Code Reviews](distribution/Pull-Requests-&-Code-Reviews.md)           | Review rubric and etiquette                               |
-| [Continuous Integration & Delivery](distribution/Continuous-Integration-&-Delivery.md) | How the pipelines are wired                               |
-| [Testing Strategy](distribution/Testing-Strategy.md)                                   | The layered testing contract                              |
-| [Releases & Versioning](distribution/Releases-&-Versioning.md)                         | Cutting, versioning, and publishing releases              |
+| Standard                                                                               | Covers                                                |
+| :------------------------------------------------------------------------------------- | :---------------------------------------------------- |
+| [Distribution & Workflow](distribution/Distribution-&-Workflow.md)                     | Section overview                                      |
+| [Branching Strategy & Workflow](distribution/Branching-Strategy-&-Workflow.md)         | The branch model every trigger keys on                |
+| [Conventional Commits](distribution/Conventional-Commits.md)                           | The commit message standard, and where it is enforced |
+| [Pull Requests & Code Reviews](distribution/Pull-Requests-&-Code-Reviews.md)           | Review rubric and etiquette                           |
+| [Continuous Integration & Delivery](distribution/Continuous-Integration-&-Delivery.md) | How the pipelines are wired                           |
+| [Testing Strategy](distribution/Testing-Strategy.md)                                   | The layered testing contract                          |
+| [Releases & Versioning](distribution/Releases-&-Versioning.md)                         | Cutting, versioning, and publishing releases          |
 
 ---
 

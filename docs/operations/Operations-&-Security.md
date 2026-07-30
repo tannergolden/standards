@@ -35,14 +35,14 @@ Operations is about the long-term sustainability of the project. Our objective i
 
 Use the links below to navigate our operational and security standards.
 
-| Index  | Strategic Artifact                                                  | Critical Intent                                |
-| :----- | :------------------------------------------------------------------ | :--------------------------------------------- |
-| **01** | [&#x1F6E1;&#xFE0F; Branch Protection](./Branch-Protection.md)       | Policy and technical setup for git guardrails. |
-| **02** | [&#x2699;&#xFE0F; Repository Settings](./Repository-Settings.md)    | The complete map of every repository setting.  |
-| **03** | [&#x1F512; Security & Secrets](./Security-&-Secrets.md)             | Handling sensitive data across environments.   |
-| **04** | [&#x1F4E6; Dependency Management](./Dependency-Management.md)       | Update cadence and supply-chain safety.        |
-| **05** | [&#x1F9E9; Repository Hygiene](./Repository-Hygiene.md)             | Habitual tasks for a clean codebase.           |
-| **06** | [&#x1F9EF; Troubleshooting](./Troubleshooting.md)                   | The first-responder guide for common issues.   |
+| Index  | Strategic Artifact                                               | Critical Intent                                |
+| :----- | :--------------------------------------------------------------- | :--------------------------------------------- |
+| **01** | [&#x1F6E1;&#xFE0F; Branch Protection](./Branch-Protection.md)    | Policy and technical setup for git guardrails. |
+| **02** | [&#x2699;&#xFE0F; Repository Settings](./Repository-Settings.md) | The complete map of every repository setting.  |
+| **03** | [&#x1F512; Security & Secrets](./Security-&-Secrets.md)          | Handling sensitive data across environments.   |
+| **04** | [&#x1F4E6; Dependency Management](./Dependency-Management.md)    | Update cadence and supply-chain safety.        |
+| **05** | [&#x1F9E9; Repository Hygiene](./Repository-Hygiene.md)          | Habitual tasks for a clean codebase.           |
+| **06** | [&#x1F9EF; Troubleshooting](./Troubleshooting.md)                | The first-responder guide for common issues.   |
 
 ---
 

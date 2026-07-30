@@ -65,9 +65,9 @@ Orchestrated by `.github/workflows/governance.yml`:
 
 ## ⚙️ Configuration Details
 
-| Trigger         | Custom Message                  | Target Documentation                                               |
-| :-------------- | :------------------------------ | :----------------------------------------------------------------- |
-| **First Issue** | Friendly thanks + context       | [Contributing](https://github.com/tannergolden/.github/blob/Development/CONTRIBUTING.md)                           |
+| Trigger         | Custom Message                  | Target Documentation                                                                     |
+| :-------------- | :------------------------------ | :--------------------------------------------------------------------------------------- |
+| **First Issue** | Friendly thanks + context       | [Contributing](https://github.com/tannergolden/.github/blob/Development/CONTRIBUTING.md) |
 | **First PR**    | Celebration + Quality Checklist | [Contributing](https://github.com/tannergolden/.github/blob/Development/CONTRIBUTING.md) |
 
 ---

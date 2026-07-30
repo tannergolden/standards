@@ -29,7 +29,7 @@ _PR-only merges. Linear history. Restricted pushes._
 > - **`protect-integration-branches.json`** covers `Experimental` and `Development` (the working lines). Force-push is blocked for everyone **except the repository owner** (the Repository-admin role is a ruleset bypass actor), so the owner can rewrite history on those two branches - most notably to normalize the generation root commit at Day 0.
 > - **`protect-promotion-branches.json`** covers `Preview` and `Release` (the promotion lines). Force-push and deletion are blocked for **everyone**: their history is immutable.
 > - **`protect-release-tags.json`** covers the `v*.*.*` **tag** namespace: once minted, an exact version tag can be neither moved nor deleted, by anyone - the artifacts your users downloaded stay pointed at the commit they were built from. Creating new tags (which the release automation does) stays unrestricted, and an admin can temporarily disable the ruleset in Settings for genuine emergencies.
-> - **The pattern is `v*.*.*`, not `v*`, and that is load-bearing.** A moving major tag like `v1` is *supposed* to be re-pointed at every release in its line - that is the entire mechanism by which a fix reaches consumers. `v*` would protect it too and quietly break every future release. Two dots is what separates the immutable version from the movable major.
+> - **The pattern is `v*.*.*`, not `v*`, and that is load-bearing.** A moving major tag like `v1` is _supposed_ to be re-pointed at every release in its line - that is the entire mechanism by which a fix reaches consumers. `v*` would protect it too and quietly break every future release. Two dots is what separates the immutable version from the movable major.
 >
 > Both **branch** rulesets require green CI before any merge (status checks `🧪 Lint, Test & Build`, `🔍 Scan for Secrets`, and `✍️ DCO Sign-Off`). The DCO check runs on every PR and passes automatically for bot-authored commits, so Dependabot and sync PRs are never blocked. If you rename those CI job names, update the `required_status_checks` contexts in **both** rulesets to match. Note: on organization-owned repositories without a (free-tier) `GITLEAKS_LICENSE` secret, the secret-scan check **stays green but scans nothing** - a preflight skips gitleaks with a warning, so add the key to make the gate real.
 >
@@ -45,7 +45,7 @@ _PR-only merges. Linear history. Restricted pushes._
 >
 > To have a **workflow** do it instead, dispatch `apply-standards.yml` with `apply-rulesets: true`. That path needs an `ADMIN_TOKEN` secret, because the workflow is not you: `GITHUB_TOKEN` cannot write rulesets under any permissions, and the job fails with that explanation rather than a bare 403. See [Creating the `ADMIN_TOKEN`](#-creating-the-admin_token) for how to make one.
 >
-> **Either way it previews first.** A ruleset names required status checks, and a check that nothing can report leaves pull requests *pending* rather than failed - blocking every merge with no error to explain it. The script refuses to apply a ruleset whose checks no workflow in the target declares; `REQUIRE_CHECKS=false` overrides that when the workflows are arriving in the same change.
+> **Either way it previews first.** A ruleset names required status checks, and a check that nothing can report leaves pull requests _pending_ rather than failed - blocking every merge with no error to explain it. The script refuses to apply a ruleset whose checks no workflow in the target declares; `REQUIRE_CHECKS=false` overrides that when the workflows are arriving in the same change.
 
 ## 🎯 Our Protection Strategy
 
@@ -71,11 +71,11 @@ Reviews column = the **recommended team posture** once you have reviewers; the s
 > [!IMPORTANT]
 > **Always Squash & Merge.** The rulesets enforce it: `allowed_merge_methods` is `["squash"]` on both branch rulesets, so a linear history is policy rather than etiquette.
 >
-> Repository *settings* are a separate matter, and initialisation does not touch them: `init-template.yml` rewrites identity, nothing more. Dispatch **🎯 Apply Standards** with `apply-settings: true` to write them, or set them by hand. Either way they are squash-only merges with the pull request title and body as the commit, head branches deleted on merge, auto-merge available, sign-off required on web edits, Issues and Discussions on, the workflow token on Read and write, and the security features on. The full list, with the reason each one is required, is [`data/repository-settings.json`](../../data/repository-settings.json), and the complete map - written, gated, file-carried, or deliberately manual - is [&#x2699;&#xFE0F; Repository Settings](./Repository-Settings.md).
+> Repository _settings_ are a separate matter, and initialisation does not touch them: `init-template.yml` rewrites identity, nothing more. Dispatch **🎯 Apply Standards** with `apply-settings: true` to write them, or set them by hand. Either way they are squash-only merges with the pull request title and body as the commit, head branches deleted on merge, auto-merge available, sign-off required on web edits, Issues and Discussions on, the workflow token on Read and write, and the security features on. The full list, with the reason each one is required, is [`data/repository-settings.json`](../../data/repository-settings.json), and the complete map - written, gated, file-carried, or deliberately manual - is [&#x2699;&#xFE0F; Repository Settings](./Repository-Settings.md).
 >
 > **Settings and rulesets are separate jobs on purpose.** A wrong setting is a checkbox; a wrong ruleset blocks every merge in the repository. Keeping them apart means turning on secret scanning cannot cost you the merge button.
 >
-> **Leave *Workflow permissions* on "Read and write".** Every stub declares its own ceiling, and that ceiling is capped by this setting: on "read-only" a called workflow asking for `issues: write` fails the run before any job starts, with no log to read. `apply-settings` writes this one too, and puts it back if something narrowed it.
+> **Leave _Workflow permissions_ on "Read and write".** Every stub declares its own ceiling, and that ceiling is capped by this setting: on "read-only" a called workflow asking for `issues: write` fails the run before any job starts, with no log to read. `apply-settings` writes this one too, and puts it back if something narrowed it.
 
 > [!NOTE]
 > **Shipped default vs. team hardening.** Both branch rulesets in `data/rulesets/` ship with `required_approving_review_count: 0` - PRs are gated on **green CI only**, so a solo maintainer is never deadlocked approving their own pull requests. The review counts in the matrix above are the **recommended team configuration**: once you have a second maintainer, raise the count (and consider `dismiss_stale_reviews_on_push` and `require_code_owner_review`) by editing the ruleset JSON before you apply it, or afterwards under **Settings → Rules → Rulesets**.
@@ -124,7 +124,7 @@ Hardening beyond the shipped default is a settings change, not a new file - for 
 
 **You only need this for the workflow path.** Running `apply-rulesets.sh` yourself
 needs no token at all, because you already hold the rights. The secret exists so a
-*workflow* can do it, and the workflow is not you.
+_workflow_ can do it, and the workflow is not you.
 
 **The built-in `GITHUB_TOKEN` can never do this.** Writing a ruleset requires the
 repository `administration` permission, which GitHub does not grant to the built-in
@@ -146,12 +146,12 @@ Go to **[Settings → Developer settings → Personal access tokens → Fine-gra
 tokens](https://github.com/settings/personal-access-tokens/new)** and fill the form
 exactly like this:
 
-| Field                      | Value                                                                 |
-| :------------------------- | :-------------------------------------------------------------------- |
-| **Token name**             | `apply-standards-generated-repos`                                     |
-| **Description**            | see below                                                             |
-| **Expiration**             | **30 days**                                                           |
-| **Repository access**      | *Only select repositories* → the generated repositories only          |
+| Field                      | Value                                                                                         |
+| :------------------------- | :-------------------------------------------------------------------------------------------- |
+| **Token name**             | `apply-standards-generated-repos`                                                             |
+| **Description**            | see below                                                                                     |
+| **Expiration**             | **30 days**                                                                                   |
+| **Repository access**      | _Only select repositories_ → the generated repositories only                                  |
 | **Repository permissions** | **Administration** → **Read and write**; on a PRIVATE repository also **Contents** → **Read** |
 
 Description, which you can paste as-is:
@@ -165,9 +165,9 @@ in each repository it is applied to. Safe to revoke: settings and rulesets
 already applied are unaffected, and re-applying only needs a new token.
 ```
 
-**Select repositories, and select the right ones.** *All repositories* hands a token
+**Select repositories, and select the right ones.** _All repositories_ hands a token
 that can rewrite branch protection to everything you own, including the templates and
-the standards repository itself. Choose *Only select repositories* and pick the ones
+the standards repository itself. Choose _Only select repositories_ and pick the ones
 **generated from the templates**, which are the only repositories this is ever applied
 to. The templates and `standards` are never targets: a template has nothing to protect,
 and the standards repository is a publisher whose settings you manage directly.
@@ -207,7 +207,7 @@ In the repository that will run the workflow: **Settings → Secrets and variabl
 Actions → New repository secret**, named exactly `ADMIN_TOKEN`.
 
 Store it on the repository being protected, not on the standards repository. The
-stub runs in *your* repository, so that is where the secret is read from.
+stub runs in _your_ repository, so that is where the secret is read from.
 
 ### Then
 

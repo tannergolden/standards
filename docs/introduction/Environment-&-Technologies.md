@@ -77,15 +77,15 @@ Deliver high-fidelity iOS and Android applications from a single codebase using 
 
 Every project standardized on this system must implement the following `make` targets to allow CI automation to function without language-specific logic.
 
-| Command               | Standard Lifecycle Purpose                                       |
-| :-------------------- | :--------------------------------------------------------------- |
-| **`make setup`**      | Install all dependencies and configure local hooks.              |
-| **`make dev`**        | Start the local development server or emulators.                 |
-| **`make lint`**       | Run static analysis, formatting, and style checks.               |
-| **`make lint-docs`**  | Audit every document against the docs law (a required CI gate).  |
-| **`make test`**       | Execute the primary automated test suite (Unit/Integration).     |
-| **`make build`**      | Compile, bundle, or containerize for production.                 |
-| **`make deploy`**     | Promote the current artifact to a specific environment.          |
+| Command              | Standard Lifecycle Purpose                                      |
+| :------------------- | :-------------------------------------------------------------- |
+| **`make setup`**     | Install all dependencies and configure local hooks.             |
+| **`make dev`**       | Start the local development server or emulators.                |
+| **`make lint`**      | Run static analysis, formatting, and style checks.              |
+| **`make lint-docs`** | Audit every document against the docs law (a required CI gate). |
+| **`make test`**      | Execute the primary automated test suite (Unit/Integration).    |
+| **`make build`**     | Compile, bundle, or containerize for production.                |
+| **`make deploy`**    | Promote the current artifact to a specific environment.         |
 
 > [!TIP]
 > **Instant environment, two ways.** A devcontainer in your own repository gives you a one-click reproducible environment in Codespaces or any devcontainer-aware editor. The shipped one is deliberately language-neutral; add the toolchain features your project needs.

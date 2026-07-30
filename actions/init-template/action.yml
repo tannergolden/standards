@@ -24,7 +24,7 @@
 # ---
 
 name: '🎉 Initialise From Template'
-description: 'Rewrites a generated repository''s identity to its new owner, once, then disables itself.'
+description: "Rewrites a generated repository's identity to its new owner, once, then disables itself."
 
 inputs:
   token:

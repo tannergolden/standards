@@ -48,11 +48,11 @@ We rely on automated triage to keep the repository organized without manual toil
 
 The logic for our triage system resides in these infrastructure files:
 
-| Layer        | Configuration Path                     | Purpose                                                  |
-| :----------- | :------------------------------------- | :------------------------------------------------------- |
+| Layer        | Configuration Path                 | Purpose                                                  |
+| :----------- | :--------------------------------- | :------------------------------------------------------- |
 | **Logic**    | `.github/workflows/governance.yml` | The primary orchestration workflow.                      |
-| **Area Map** | `.github/labeler.yml`                  | Maps repository paths to `area:` labels.                 |
-| **Registry** | `.github/labels.yml`                   | The canonical label set, synced by the `label-sync` job. |
+| **Area Map** | `.github/labeler.yml`              | Maps repository paths to `area:` labels.                 |
+| **Registry** | `.github/labels.yml`               | The canonical label set, synced by the `label-sync` job. |
 
 > [!NOTE]
 > **The intake surface belongs to your repository.** The issue forms, discussion templates and `release.yml` are copied in when a repository is generated from the template and are yours to edit from that point - nothing reaches back to change them. What stays shared is the label registry itself: `data/labels.yml` here is applied over the GitHub API by the governance workflow's `label-sync` job, create-or-update only, so labels you add by hand survive. Run **🎯 Apply Standards** once to provision the taxonomy, and the forms can apply labels from the very first issue.

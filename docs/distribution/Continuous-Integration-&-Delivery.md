@@ -45,11 +45,11 @@ _Deterministic builds. Automated validation. Secure promotion._
 
 The shipped rulesets require these three status checks - the job names below are the exact contexts the rulesets reference:
 
-| Required check            | Source workflow   | Why it exists                                                       |
-| ------------------------- | ----------------- | ------------------------------------------------------------------- |
+| Required check            | Source workflow   | Why it exists                                                                      |
+| ------------------------- | ----------------- | ---------------------------------------------------------------------------------- |
 | **🧪 Lint, Test & Build** | `ci.yml`          | One deterministic job: lint, then test, then build, using the commands you give it |
-| **🔍 Scan for Secrets**   | `gitleaks.yml`    | Blocks any PR that introduces a credential or token                 |
-| **✍️ DCO Sign-Off**       | `semantic-pr.yml` | Blocks any PR whose human-authored commits lack `Signed-off-by:`    |
+| **🔍 Scan for Secrets**   | `gitleaks.yml`    | Blocks any PR that introduces a credential or token                                |
+| **✍️ DCO Sign-Off**       | `semantic-pr.yml` | Blocks any PR whose human-authored commits lack `Signed-off-by:`                   |
 
 If you add project-specific gates (typecheck, coverage thresholds, E2E), add their job names to the ruleset's required checks - and keep the job `name:` stable, because renaming a job silently un-requires it.
 

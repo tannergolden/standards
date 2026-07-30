@@ -36,27 +36,27 @@ with nothing to sync back here.
 
 ## 🚦 Recommended Cadence
 
-| Workflow, job                | Recommended (UTC)        | Why that slot                                       |
-| :--------------------------- | :----------------------- | :-------------------------------------------------- |
-| `checks.yml`, weekly sweep   | Weekly, Mon 03:00        | CodeQL and the secret scan over code nothing touched |
-| `governance.yml`             | Weekly, Mon 04:00        | Start-of-week triage, stale sweep, locking, labels  |
-| `self-checks.yml` (local)    | Weekly, Mon 04:00        | This repository's own gate, so a moving upstream is caught  |
-| `release.yml`, `notes`       | Weekly, Mon 05:00        | One evolving draft, refreshed before the week opens |
-| `maintenance.yml`, `prune`   | Weekly, Mon 06:00        | Housekeeping, after the jobs that create the runs   |
-| `maintenance.yml`, `license` | Jan 1 and Jul 1 at 03:00 | January rolls the year, July is a verify pass       |
-| `lifecycle.yml`, `standards` | Weekly, Mon 07:00        | Last of the weekly sweep, and it usually does nothing |
+| Workflow, job                | Recommended (UTC)        | Why that slot                                              |
+| :--------------------------- | :----------------------- | :--------------------------------------------------------- |
+| `checks.yml`, weekly sweep   | Weekly, Mon 03:00        | CodeQL and the secret scan over code nothing touched       |
+| `governance.yml`             | Weekly, Mon 04:00        | Start-of-week triage, stale sweep, locking, labels         |
+| `self-checks.yml` (local)    | Weekly, Mon 04:00        | This repository's own gate, so a moving upstream is caught |
+| `release.yml`, `notes`       | Weekly, Mon 05:00        | One evolving draft, refreshed before the week opens        |
+| `maintenance.yml`, `prune`   | Weekly, Mon 06:00        | Housekeeping, after the jobs that create the runs          |
+| `maintenance.yml`, `license` | Jan 1 and Jul 1 at 03:00 | January rolls the year, July is a verify pass              |
+| `lifecycle.yml`, `standards` | Weekly, Mon 07:00        | Last of the weekly sweep, and it usually does nothing      |
 
 Everything else is **event driven** and needs no schedule:
 
-| Trigger                    | Workflows                                                    |
-| :------------------------- | :----------------------------------------------------------- |
-| Push and pull request      | `checks.yml`, `auto-format.yml`, `verify-stubs.yml`          |
-| Pull request, issue, comment | `governance.yml`; `dependabot-automerge.yml` on PRs only   |
-| Another workflow finishing | `ci-failure-alert.yml`                                       |
-| Release published          | `release.yml` - the `publish` and `prune-releases` jobs      |
-| Push to a preview branch   | `preview-deploy.yml`                                         |
-| Manual dispatch only       | `apply-standards.yml`; the `package` and `prune-drafts` tasks |
-| Repository generated       | `lifecycle.yml` - the `init` job, once                       |
+| Trigger                      | Workflows                                                     |
+| :--------------------------- | :------------------------------------------------------------ |
+| Push and pull request        | `checks.yml`, `auto-format.yml`, `verify-stubs.yml`           |
+| Pull request, issue, comment | `governance.yml`; `dependabot-automerge.yml` on PRs only      |
+| Another workflow finishing   | `ci-failure-alert.yml`                                        |
+| Release published            | `release.yml` - the `publish` and `prune-releases` jobs       |
+| Push to a preview branch     | `preview-deploy.yml`                                          |
+| Manual dispatch only         | `apply-standards.yml`; the `package` and `prune-drafts` tasks |
+| Repository generated         | `lifecycle.yml` - the `init` job, once                        |
 
 > [!NOTE]
 > **Draft-release deletion is dispatch-only on purpose.** It deletes releases, and a destructive

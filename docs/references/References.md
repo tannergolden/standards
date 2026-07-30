@@ -35,22 +35,22 @@ References are the "fast-track" to unblocking yourself. Our objective is to prov
 
 Use the links below for rapid lookup of repository standards and commands.
 
-| Index  | Strategic Artifact                                                        | Critical Intent                                  |
-| :----- | :------------------------------------------------------------------------ | :----------------------------------------------- |
-| **01** | [&#x1F3AB; Repository Labels](Repository-Labels.md)                       | Decoding the taxonomy of triage.                 |
+| Index  | Strategic Artifact                                                     | Critical Intent                                  |
+| :----- | :--------------------------------------------------------------------- | :----------------------------------------------- |
+| **01** | [&#x1F3AB; Repository Labels](Repository-Labels.md)                    | Decoding the taxonomy of triage.                 |
 | **02** | [&#x2328;&#xFE0F; Git Commands](../library/Git-Commands.md)            | Copy-paste guide for common workflows.           |
-| **03** | [&#x1F4D8; Glossary](Glossary.md)                                         | The official A-Z terminology of the project.     |
+| **03** | [&#x1F4D8; Glossary](Glossary.md)                                      | The official A-Z terminology of the project.     |
 | **04** | [&#x1F9E0; GitHub Concepts Recap](../library/GitHub-Concepts-Recap.md) | The platform mental model behind the automation. |
 
 ### ⚡ Route Yourself
 
-| You are asking…                               | Open                                                                                                                                                                            |
-| :-------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| "What does this term mean?"                   | [Glossary](Glossary.md)                                                                                                                                                         |
-| "Which label applies - and who sets it?"      | [Repository Labels](Repository-Labels.md)                                                                                                                                       |
-| "What's the exact command for…?"              | [Git Commands](../library/Git-Commands.md)                                                                                                                                   |
-| "How does that GitHub feature actually work?" | [GitHub Concepts Recap](../library/GitHub-Concepts-Recap.md)                                                                                                                 |
-| "Why did the gate/bot just do that?"          | The automation guides - start at [Automation Schedules](../distribution/automation/Automation-Schedules.md).                 |
+| You are asking…                               | Open                                                                                                         |
+| :-------------------------------------------- | :----------------------------------------------------------------------------------------------------------- |
+| "What does this term mean?"                   | [Glossary](Glossary.md)                                                                                      |
+| "Which label applies - and who sets it?"      | [Repository Labels](Repository-Labels.md)                                                                    |
+| "What's the exact command for…?"              | [Git Commands](../library/Git-Commands.md)                                                                   |
+| "How does that GitHub feature actually work?" | [GitHub Concepts Recap](../library/GitHub-Concepts-Recap.md)                                                 |
+| "Why did the gate/bot just do that?"          | The automation guides - start at [Automation Schedules](../distribution/automation/Automation-Schedules.md). |
 
 ### 🔗 See also
 

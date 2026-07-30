@@ -44,12 +44,12 @@ The validation engine runs in three modes:
 
 The pipeline utilizes the `lycheeverse/lychee-action` and is orchestrated within the repository's CI/CD layer.
 
-| Setting            | Value                           | Purpose                                                                                                                                     |
-| :----------------- | :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| Setting            | Value                          | Purpose                                                                                                                                     |
+| :----------------- | :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Workflow**       | `.github/workflows/checks.yml` | Execution logic and reporting.                                                                                                              |
-| **Scope**          | `.`                             | Recursive scan of all files.                                                                                                                |
-| **Exclusions**     | Set in root `lychee.toml`       | Self-referential badge raw URLs, GitHub `commit`/`tree`/`blob` deep links, localhost/example hosts, Liquid placeholders, and build folders. |
-| **Failure Policy** | **Advisory** (`fail: false`)    | Findings surface in the job summary without blocking CI. Set `fail: true` in `checks.yml` to make broken links a hard gate.                |
+| **Scope**          | `.`                            | Recursive scan of all files.                                                                                                                |
+| **Exclusions**     | Set in root `lychee.toml`      | Self-referential badge raw URLs, GitHub `commit`/`tree`/`blob` deep links, localhost/example hosts, Liquid placeholders, and build folders. |
+| **Failure Policy** | **Advisory** (`fail: false`)   | Findings surface in the job summary without blocking CI. Set `fail: true` in `checks.yml` to make broken links a hard gate.                 |
 
 ---
 

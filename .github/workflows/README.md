@@ -85,16 +85,16 @@ labels, settings and rulesets through the API and never touches your tree. See
 
 ### Pruning and release
 
-| Workflow              | Does                                                                                                   |
-| :-------------------- | :----------------------------------------------------------------------------------------------------- |
-| `prune.yml`           | Scheduled sweep: superseded deployments and old workflow runs                                          |
-| `prune-drafts.yml`    | Deletes every draft release. Dispatch only, deliberately separate                                      |
+| Workflow              | Does                                                                                                                       |
+| :-------------------- | :------------------------------------------------------------------------------------------------------------------------- |
+| `prune.yml`           | Scheduled sweep: superseded deployments and old workflow runs                                                              |
+| `prune-drafts.yml`    | Deletes every draft release. Dispatch only, deliberately separate                                                          |
 | `prune-releases.yml`  | ⚠️ Deletes PUBLISHED releases a newer one supersedes. `dry-run` defaults true; `delete-tags` breaks every full-version pin |
-| `prune-runs.yml`      | Deletes old workflow runs, with a day window and a recent-commit window                                |
-| `release-notes.yml`   | Maintains one evolving draft release per branch                                                        |
-| `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM                                             |
-| `publish-package.yml` | Publishes to npm, PyPI, crates.io, or any OCI registry. Each opt-in. Containers go multi-arch natively |
-| `preview-deploy.yml`  | Builds and deploys to a preview environment                                                            |
+| `prune-runs.yml`      | Deletes old workflow runs, with a day window and a recent-commit window                                                    |
+| `release-notes.yml`   | Maintains one evolving draft release per branch                                                                            |
+| `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM                                                                 |
+| `publish-package.yml` | Publishes to npm, PyPI, crates.io, or any OCI registry. Each opt-in. Containers go multi-arch natively                     |
+| `preview-deploy.yml`  | Builds and deploys to a preview environment                                                                                |
 
 > [!IMPORTANT]
 > **`release-publish.yml` and `publish-package.yml` do different jobs.** The first cuts a
