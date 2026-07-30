@@ -21,8 +21,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 SCRIPT = "scripts/dco-check.sh"
 
 
