@@ -65,6 +65,7 @@ jobs:
         id: check
         env:
           VERSION: ${{ inputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
           if ! printf '%s' "$VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
@@ -75,6 +76,29 @@ jobs:
             echo "::error title=Release::Tag '$VERSION' already exists. A published version is immutable; cut a new patch instead."
             exit 1
           fi
+
+          # ⚠️ THE DISPATCH REF IS NOT TRUSTED. `workflow_dispatch` carries
+          # no branch restriction, so the ref selector on the form can name
+          # any branch in the repository, and the checkout above takes it.
+          # Without this, anyone with write access could publish `v1.4.0`
+          # from an unmerged branch and force-move `v1` onto its HEAD, which
+          # every consumer pinned to `@v1` would then execute on their next
+          # run. Nothing downstream would look unusual.
+          #
+          # Tested by ANCESTRY rather than by branch name: what has to be
+          # true is that this commit is already on the default branch, which
+          # stays true for a legitimate re-cut from an earlier merged commit
+          # and does not care what the ref happened to be called.
+          BASE="refs/remotes/origin/${DEFAULT_BRANCH}"
+          if ! git rev-parse -q --verify "$BASE" >/dev/null; then
+            echo "::error title=Release::Could not resolve '${BASE}' to check that this commit is on the release line. The checkout needs fetch-depth: 0. Refusing to publish rather than guessing."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD "$BASE"; then
+            echo "::error title=Release::This commit is not on the default branch '${DEFAULT_BRANCH}'. A release is cut from merged, reviewed code: moving the major tag onto anything else hands unreviewed code to every repository pinned to it. Merge first, then dispatch against the default branch."
+            exit 1
+          fi
+
           echo "major=${VERSION%%.*}" >> "$GITHUB_OUTPUT"
 
       # Actions resolve `uses:` against the ref they are called at, so every
