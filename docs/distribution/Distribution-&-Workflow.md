@@ -37,14 +37,14 @@ Use the links below to navigate our delivery and distribution protocols.
 
 <!-- AUTO-INDEX:BEGIN dir=distribution style=table exclude=Distribution-&-Workflow.md -->
 
-| Index  | Strategic Artifact                                                                    | Critical Intent                                                               |
-| :----- | :------------------------------------------------------------------------------------ | :---------------------------------------------------------------------------- |
-| **01** | [&#x1F33F; Conventional Commits](./Conventional-Commits.md)                           | The commit message standard, and the two places it is deliberately stricter.  |
-| **02** | [&#x1F33F; Branching Strategy & Workflow](./Branching-Strategy-&-Workflow.md)         | The quad-tier branching model and the workflow for moving code to production. |
-| **03** | [&#x1F4DD; Continuous Integration & Delivery](./Continuous-Integration-&-Delivery.md) | How CI and delivery are wired, from pull-request checks to release workflows. |
-| **04** | [&#x1F91D; Pull Requests & Code Reviews](./Pull-Requests-&-Code-Reviews.md)           | Pull-request etiquette and the code review rubric.                            |
-| **05** | [&#x1F6A2; Releases & Versioning](./Releases-&-Versioning.md)                         | How releases are cut, versioned, and published.                               |
-| **06** | [&#x1F9EA; Testing Strategy](./Testing-Strategy.md)                                   | The layered testing strategy from unit tests to end-to-end validation.        |
+| Index  | Strategic Artifact                                                                    | Critical Intent                                                                                                                                    |
+| :----- | :------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **01** | [&#x1F33F; Branching Strategy & Workflow](./Branching-Strategy-&-Workflow.md)         | The quad-tier branching model and the workflow for moving code to production.                                                                      |
+| **02** | [&#x1F4DD; Continuous Integration & Delivery](./Continuous-Integration-&-Delivery.md) | How CI and delivery are wired, from pull-request checks to release workflows.                                                                      |
+| **03** | [&#x1F33F; Conventional Commits](./Conventional-Commits.md)                           | The commit message standard every repository on these standards follows, including the two places it deliberately diverges from the specification. |
+| **04** | [&#x1F91D; Pull Requests & Code Reviews](./Pull-Requests-&-Code-Reviews.md)           | Pull-request etiquette and the code review rubric.                                                                                                 |
+| **05** | [&#x1F6A2; Releases & Versioning](./Releases-&-Versioning.md)                         | How releases are cut, versioned, and published.                                                                                                    |
+| **06** | [&#x1F9EA; Testing Strategy](./Testing-Strategy.md)                                   | The layered testing strategy from unit tests to end-to-end validation.                                                                             |
 
 <!-- AUTO-INDEX:END -->
 
