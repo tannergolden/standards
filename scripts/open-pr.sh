@@ -75,7 +75,14 @@ if [ -z "$BASE" ]; then
   if [ -n "${GITHUB_REPOSITORY:-}" ] && command -v gh >/dev/null 2>&1; then
     BASE="$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.default_branch' 2>/dev/null || true)"
   fi
-  BASE="${BASE:-$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')}"
+  # `|| true` because this is a FALLBACK and must be allowed to find
+  # nothing. `git symbolic-ref refs/remotes/origin/HEAD` exits 128 in any
+  # clone that has no origin/HEAD, which includes every `actions/checkout`
+  # by default, and under `pipefail` that status propagated out of the
+  # command substitution and `set -e` killed the script at this line with
+  # exit 128 and no message at all - before the `main` default below, which
+  # exists precisely for this case, could ever be reached.
+  BASE="${BASE:-$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||' || true)}"
   BASE="${BASE:-main}"
   echo "No base branch given; using the repository default '$BASE'."
 fi
@@ -83,7 +90,19 @@ AUTO_LABEL='automated'
 
 # Snapshot porcelain output once - piping into `grep -q` under pipefail
 # can SIGPIPE git on large change sets and misreport them.
-if [ -z "$(git status --porcelain)" ]; then
+# ⚠️ THE STATUS IS CAPTURED FIRST, so a FAILURE is not read as a clean
+# tree. A command substitution inside an `if` condition is one of `set -e`'s
+# documented exemptions and `pipefail` does not apply to a bare one either,
+# so `git status` exiting non-zero produced empty output that looked exactly
+# like "nothing to do". A container job hitting `fatal: detected dubious
+# ownership`, or a step running before any checkout, printed "No changes
+# detected" and exited 0: the automation pull request silently never opened
+# and the run was green.
+if ! STATUS="$(git status --porcelain)"; then
+  echo "::error title=Pull request::\`git status\` failed, so it is not possible to tell whether there is anything to propose. Is this a checked-out repository, and does the job have a checkout step before this one?"
+  exit 1
+fi
+if [ -z "$STATUS" ]; then
   echo "No changes detected - nothing to propose."
   exit 0
 fi

@@ -53,6 +53,7 @@ import unicodedata
 DOCS = "docs"
 BEGIN = re.compile(r"<!--\s*AUTO-INDEX:BEGIN\s+(.*?)\s*-->")
 END = "<!-- AUTO-INDEX:END -->"
+FENCE = re.compile(r"^(?:```|~~~)")
 ALWAYS_EXCLUDE = {"README.md", "Documentation.md"}
 
 
@@ -239,10 +240,21 @@ def process(path: str, write: bool):
     with open(path, encoding="utf-8") as fh:
         lines = fh.read().split("\n")
     out, stale, i = [], False, 0
+    # ⚠️ A MARKER INSIDE A FENCED BLOCK IS AN EXAMPLE, NOT AN INSTRUCTION.
+    # The styling spec documents this very format by showing it, and without
+    # tracking fences that example is parsed as a live marker: `--write`
+    # deletes whatever sits between the two lines and `--check` calls the
+    # spec permanently stale. It is harmless only while the example happens
+    # to be empty, which is not a property anyone maintains on purpose.
+    fenced = False
     while i < len(lines):
         line = lines[i]
         out.append(line)
-        m = BEGIN.search(line)
+        if FENCE.match(line.strip()):
+            fenced = not fenced
+            i += 1
+            continue
+        m = None if fenced else BEGIN.search(line)
         if not m:
             i += 1
             continue

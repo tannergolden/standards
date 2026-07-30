@@ -61,6 +61,18 @@ def api(path: str, token: str, method: str = "GET", body: dict | None = None):
         return json.load(response)
 
 
+def current_major(pinned: dict[str, int]) -> int:
+    """The major this repository is effectively on: the STALEST pin.
+
+    Taking the highest meant a half-migrated repository was never told. One
+    stub moved to v2 and the rest left on v1 reported `current = 2`, the
+    comparison short-circuited, and the stubs still on v1 were never
+    mentioned by the one mechanism that exists to mention them. The lowest
+    is the one that still needs the news.
+    """
+    return min(pinned.values())
+
+
 def main() -> int:
     # Read by name rather than by subscript: a consumer whose stub forgets
     # `secrets: inherit` used to get a bare KeyError traceback out of a
@@ -92,7 +104,7 @@ def main() -> int:
         print(f"::notice::No stub in {workflow_dir} pins {standards} at a major tag. Nothing to compare.")
         return 0
 
-    current = max(pinned.values())
+    current = current_major(pinned)
     print(f"Pinned major across {len(pinned)} stub(s): v{current}")
 
     try:
