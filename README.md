@@ -55,7 +55,7 @@ private one. Twelve stubs, grouped and pinned to `@v1`.
 
 | Path                                                | Purpose                                                                  |
 | :-------------------------------------------------- | :----------------------------------------------------------------------- |
-| [`.github/workflows/`](.github/workflows/README.md) | 21 reusable workflows, called with `uses:` at the job level              |
+| [`.github/workflows/`](.github/workflows/README.md) | 21 reusable workflows, called with `uses:` at the job level, plus two local to this repository: `release.yml` and `self-checks.yml` |
 | [`actions/`](actions/README.md)                     | 15 composite actions, called with `uses:` at the step level              |
 | [`data/`](data/README.md)                           | Rulesets and the label taxonomy, written **to** a repository             |
 | `config/`                                           | Linter and tooling configuration, read **by** a tool during a run        |
@@ -68,10 +68,17 @@ tree but cannot see its own. A **composite action** is fetched with its whole re
 ship code and configuration beside it. Anything that carries a script or a config file is therefore
 an action; anything that describes jobs is a workflow.
 
-This repository publishes these standards and runs none of them on itself. Consuming repositories
-are where the workflows execute; here they are source. Validate a change by running the checks
-against the working tree directly, which is the only thing that can test a change **to** an action,
-since every published path resolves a pin and would exercise the released copy rather than the diff.
+The workflows published here are **source**, not something this repository runs on itself:
+consuming repositories are where they execute. That left a gap for a long time, because a change to
+an action reached consumers before anything had executed it.
+
+[`.github/workflows/self-checks.yml`](.github/workflows/self-checks.yml) closes it. It is local to
+this repository rather than published, the same way `release.yml` is, and **every first-party
+`uses:` in it is a local path** - `./actions/harden`, never `tannergolden/standards/actions/harden@v1`.
+That is the whole point: a local path resolves against the checked-out tree and therefore tests the
+diff, while a published path resolves the pin and would test the last release instead, reporting
+green on a pull request that breaks the very action it is changing. A local path is the only
+reference that can test a change **to** an action.
 
 ---
 

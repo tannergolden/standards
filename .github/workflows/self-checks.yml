@@ -1,0 +1,260 @@
+# --- This Repository's Own Checks ---
+#
+# 🚦 Self Checks
+#
+# Purpose: gate changes to the standards themselves, before a release moves
+# the tag that every consuming repository executes.
+#
+# ⚠️ THIS REPOSITORY USED TO HAVE NO CI AT ALL. Every consumer runs the
+# gates published here; the repository publishing them ran nothing on itself.
+# A change to an action or a script was merged unchecked and released behind
+# two sanity steps in `release.yml` (a version format check, and a check that
+# internal references resolve) - neither of which executes a single line of
+# what it is about to publish. The blast radius of a bad release is every
+# repository pinned to `@v1`, on their next run, with no pull request on
+# their side to notice it.
+#
+# WHY THIS IS NOT A `workflow_call` FILE. Everything else in this directory
+# is published for other repositories to call. This one runs here and is not
+# for export, the same way `release.yml` is. It is not part of the `@v1`
+# surface and no consumer should reference it.
+#
+# ⚠️ EVERY `uses:` BELOW IS A LOCAL PATH, AND THAT IS THE ENTIRE POINT.
+# `uses: ./actions/harden` resolves against the CHECKED-OUT TREE, so it
+# exercises the diff under review. Writing `tannergolden/standards/actions/
+# harden@v1` here would resolve the pin and test the last release instead -
+# green on a pull request that breaks the action it is changing. A local
+# path is the only reference that can test a change TO an action.
+#
+# The one cost: a local action cannot be used before the checkout that
+# provides it, so `harden` runs second here rather than first. In a consuming
+# repository it is fetched remotely and stays the opening step.
+#
+# ---
+
+name: '🚦 Self Checks'
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 4 * * 1' # weekly, so a moving upstream is caught on untouched code
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
+
+env:
+  # Pinned for the reason `.ruff.toml` sets out at length: an unpinned linter
+  # turns an unrelated upstream release into a red check on code nobody
+  # touched. That file pins WHAT is checked; this pins the checker.
+  RUFF_VERSION: '0.15.8'
+
+jobs:
+  scripts:
+    name: '🐍 Scripts'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # read this repository
+    steps:
+      - name: '📂 Checkout'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🛡️ Harden Runner'
+        uses: ./actions/harden
+        with:
+          egress-policy: audit
+          notice: '🐍 Linting the scripts these actions ship and invoke.'
+
+      # `ruff check` only. `.ruff.toml` configures `[lint]` and nothing else,
+      # so linting is the rule this repository actually adopted. Adding
+      # `ruff format --check` here would redden this gate on its first run
+      # against seven scripts that predate it - a reformat is a decision to
+      # take deliberately, not a side effect of switching CI on.
+      - name: '🧹 ruff (rules from .ruff.toml)'
+        run: |
+          set -euo pipefail
+          pip install --quiet "ruff==${RUFF_VERSION}"
+          ruff check .
+
+      - name: '🔍 Every script parses'
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q scripts/
+          for f in scripts/*.sh actions/*/*.sh; do
+            [ -e "$f" ] || continue
+            bash -n "$f"
+          done
+
+  workflows:
+    name: '🧰 Workflows & Actions'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # read this repository
+    steps:
+      - name: '📂 Checkout'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🛡️ Harden Runner'
+        uses: ./actions/harden
+        with:
+          egress-policy: audit
+          notice: '🧰 actionlint and zizmor over the workflows and actions published here.'
+
+      - name: '🔍 actionlint (Actions semantics)'
+        run: |
+          set -euo pipefail
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          "$(go env GOPATH)/bin/actionlint" -color
+
+      - name: '🛡️ zizmor (Actions security audit)'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pip install --quiet 'zizmor==1.26.1'
+          zizmor --no-progress --persona=pedantic --config config/zizmor.yml \
+            .github/workflows actions
+
+  actions:
+    name: '🎬 Composite Actions'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # read this repository
+    steps:
+      - name: '📂 Checkout'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The first real execution of a first-party action against the diff.
+      # If this step fails, the action under review is broken - which is
+      # exactly the failure that used to reach consumers instead of CI.
+      - name: '🛡️ Harden Runner (smoke test, local path)'
+        uses: ./actions/harden
+        with:
+          egress-policy: audit
+          notice: '🎬 Validating every composite action published here.'
+
+      - name: '📐 Every action.yml is well-formed'
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, sys, yaml
+
+          problems = []
+          found = 0
+          for action in sorted(pathlib.Path('actions').glob('*/action.yml')):
+              found += 1
+              doc = yaml.safe_load(action.read_text(encoding='utf-8')) or {}
+              for key in ('name', 'description', 'runs'):
+                  if key not in doc:
+                      problems.append(f"{action}: missing top-level '{key}'")
+              runs = doc.get('runs') or {}
+              if runs.get('using') != 'composite':
+                  problems.append(f"{action}: runs.using is {runs.get('using')!r}, expected 'composite'")
+              for i, step in enumerate(runs.get('steps') or []):
+                  if 'run' in step and 'shell' not in step:
+                      problems.append(f"{action}: step {i} has 'run' without 'shell'")
+
+          for p in problems:
+              print(f"::error title=Composite action::{p}")
+          print(f"\n{found} action(s) checked, {len(problems)} problem(s).")
+          sys.exit(1 if problems else 0)
+          PY
+
+      # Every script an action ships must exist. A composite action that
+      # references a script the repository does not contain fails only when a
+      # consumer runs it, which is the class of break this whole workflow is
+      # here to catch.
+      - name: '🔗 Every script an action references exists'
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, re, sys
+
+          # Both spellings: the shell variable these actions actually use, and
+          # the expression form, so a future action written the other way is
+          # covered rather than silently skipped.
+          PATTERN = re.compile(
+              r'(?:\$\{GITHUB_ACTION_PATH\}|\$\{\{\s*github\.action_path\s*\}\})/([\w./-]+)')
+
+          missing = []
+          checked = 0
+          for action in sorted(pathlib.Path('actions').glob('*/action.yml')):
+              for ref in PATTERN.findall(action.read_text(encoding='utf-8')):
+                  checked += 1
+                  if not (action.parent / ref).exists():
+                      missing.append(f"{action}: references {ref}, which does not exist")
+
+          for m in missing:
+              print(f"::error title=Missing script::{m}")
+
+          # A reference count of zero means the pattern stopped matching, not
+          # that the actions stopped shipping scripts. That is a check that
+          # checks nothing, so it fails rather than passing quietly.
+          if checked == 0:
+              print("::error title=Missing script::No script references found at all - "
+                    "the pattern no longer matches how these actions invoke their scripts.")
+              sys.exit(1)
+
+          print(f"\n{checked} reference(s) checked, {len(missing)} missing.")
+          sys.exit(1 if missing else 0)
+          PY
+
+  data:
+    name: '📋 Data & Config'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # read this repository
+    steps:
+      - name: '📂 Checkout'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🛡️ Harden Runner'
+        uses: ./actions/harden
+        with:
+          egress-policy: audit
+          notice: '📋 Validating the rulesets, labels and settings written to repositories.'
+
+      # These files are written TO a repository through the API. A malformed
+      # ruleset is not caught by anything else here, and lands as a failed
+      # apply in somebody else's repository.
+      - name: '📐 Every YAML and JSON parses'
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib, sys, yaml
+
+          problems = []
+          checked = 0
+          for f in sorted(list(pathlib.Path('.').rglob('*.yml'))
+                          + list(pathlib.Path('.').rglob('*.yaml'))
+                          + list(pathlib.Path('.').rglob('*.json'))):
+              if '.git/' in str(f):
+                  continue
+              checked += 1
+              try:
+                  text = f.read_text(encoding='utf-8')
+                  json.loads(text) if f.suffix == '.json' else yaml.safe_load(text)
+              except Exception as exc:  # noqa: BLE001 - report, do not raise
+                  problems.append(f"{f}: {exc}")
+
+          for p in problems:
+              print(f"::error title=Parse failure::{p}")
+          print(f"\n{checked} file(s) checked, {len(problems)} problem(s).")
+          sys.exit(1 if problems else 0)
+          PY
