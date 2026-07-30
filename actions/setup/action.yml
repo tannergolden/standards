@@ -96,7 +96,19 @@ runs:
       shell: bash
       env:
         WANTED: ${{ inputs.java-version }}
-      run: |
+      # ACCEPTED FINDING: zizmor's `github-env` audit flags any write to
+      # GITHUB_ENV or GITHUB_PATH whose value it cannot prove is static. The
+      # value written here is neither caller-supplied nor attacker-supplied:
+      # it is read back out of the RUNNER'S OWN environment by indirect
+      # expansion, and both branches below require it to name a directory
+      # that already exists on the image. `java-version` selects WHICH
+      # runner variable to read; it never becomes the value.
+      #
+      # Suppressed inline rather than in config/zizmor.yml because that file
+      # keys ignores by BASE FILE NAME, and every composite action here is
+      # `action.yml` - an entry there would silence this audit across all
+      # fifteen of them. See the note in config/zizmor.yml.
+      run: | # zizmor: ignore[github-env]
         set -euo pipefail
         # Runner images expose each preinstalled JDK as JAVA_HOME_<major>_X64.
         VAR="JAVA_HOME_${WANTED}_X64"

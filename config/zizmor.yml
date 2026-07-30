@@ -81,6 +81,19 @@ rules:
     ignore:
       - publish-package.yml
 
+  # --- Accepted inline, not here ---
+  #
+  # One finding is suppressed at its own line instead of in this file:
+  # `github-env` on the Java selection step in `actions/setup/action.yml`.
+  # Entries here are keyed by base file name, and every composite action in
+  # this repository is named `action.yml`, so an entry would silence that
+  # audit across all fifteen of them rather than the one step that earned
+  # it. The reasoning travels with the code, in the comment above that step.
+  #
+  # That is the only reason to accept a finding inline. Anything a file name
+  # CAN scope belongs here, where the whole accepted-risk register is
+  # readable in one place.
+
   # --- Pinning policy ---
   #
   # Everything gets hash-pinned. The single exception is this repository's OWN
