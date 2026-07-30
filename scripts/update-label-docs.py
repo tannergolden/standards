@@ -46,7 +46,20 @@ FAMILIES = [
     ("", "🤝 GitHub Defaults & Community"),
 ]
 
-FIELD = re.compile(r"^(?:-\s+)?(name|color|description|renamed_from):\s*'(.*)'\s*$")
+# ⚠️ BOTH YAML QUOTING STYLES, because both are valid and a formatter
+# chooses. `'Something isn''t working'` and `"Something isn't working"` are
+# the same string; this repository's own published Prettier config rewrites
+# the first into the second. Accepting only single quotes meant running that
+# formatter over `data/labels.yml` made this generator refuse the file it
+# exists to read, and `make lint-docs` failed with "unparseable line" - two
+# tools shipped from the same repository disagreeing about their own data.
+#
+# Unquoted scalars stay rejected: the registry's contract is quoted values,
+# and accepting bare ones would start reading things YAML itself would read
+# differently (`color: 011235` is a number, not a hex string).
+FIELD = re.compile(
+    r"""^(?:-\s+)?(name|color|description|renamed_from):\s*(?:'(?P<sq>.*)'|"(?P<dq>.*)")\s*$"""
+)
 
 
 def load(path: pathlib.Path) -> list[dict[str, str]]:
@@ -60,7 +73,13 @@ def load(path: pathlib.Path) -> list[dict[str, str]]:
         m = FIELD.match(line)
         if not m:
             sys.exit(f"unparseable line in {path}: {raw!r}")
-        key, value = m.group(1), m.group(2).replace("''", "'")
+        # A doubled quote is YAML's escape inside a SINGLE-quoted scalar
+        # only; inside a double-quoted one an apostrophe stands for itself.
+        if m.group("sq") is not None:
+            value = m.group("sq").replace("''", "'")
+        else:
+            value = m.group("dq")
+        key = m.group(1)
         if key == "name":
             current = {"name": value}
             labels.append(current)
