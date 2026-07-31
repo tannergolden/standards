@@ -1,0 +1,48 @@
+# --- This Repository's Own Dependabot Automation ---
+#
+# 🦾 Automate Dependabot
+#
+# Purpose: approve and queue Dependabot's patch and minor updates here, the
+# same way every consuming repository does.
+#
+# ⚠️ NOT PUBLISHED, and under a different name for a mechanical reason.
+# `dependabot-automerge.yml` beside this file is a `workflow_call` file: it
+# has no trigger of its own and cannot call itself, so the caller has to be a
+# separate file. Like `release.yml` and `self-checks.yml`, this one runs here
+# and is not part of the `@v1` surface. No consumer should reference it.
+#
+# ⚠️ A LOCAL PATH, for the reason `self-checks.yml` sets out at length: the
+# file that runs is the one in the tree under review, so a change to the
+# published workflow is exercised by the diff that makes it rather than by
+# the last release.
+#
+# THIS IS THE REPOSITORY WHERE A STALE PIN COSTS THE MOST. Twenty-three
+# third-party actions across sixty-four call sites are published from here and
+# executed by every repository pinned to `@v1`, so this has both the most
+# update traffic to keep moving and the shortest path from a stale revision to
+# somebody else's pipeline.
+#
+# The author check lives in the called workflow, keyed to the pull request
+# author rather than the actor, so nothing here needs to repeat it.
+#
+# ---
+
+name: '🦾 Automate Dependabot'
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  dependabot:
+    permissions:
+      contents: write # allow the squash merge once required checks pass
+      pull-requests: write # approve the pull request
+    uses: ./.github/workflows/dependabot-automerge.yml
+    secrets: inherit # zizmor: ignore[secrets-inherit] - first-party callee in this repository's own tree.
