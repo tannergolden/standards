@@ -323,3 +323,21 @@ jobs:
           print(f"\n{checked} file(s) checked, {len(problems)} problem(s).")
           sys.exit(1 if problems else 0)
           PY
+
+  codeql:
+    # The scanner this repository publishes, pointed at this repository. Its
+    # Python runs inside every consumer's CI and its workflows are the
+    # product, so this is the code in the account where a finding matters
+    # most, and it went unscanned while every consumer was covered.
+    #
+    # A local path like every other `uses:` here: the call resolves
+    # `codeql.yml` from the checked-out tree, so a change to that workflow is
+    # exercised by the diff that makes it. The actions INSIDE it still
+    # resolve their published `@v1` pins, because that is what the published
+    # file ships and a caller cannot rewrite it.
+    name: '🔓 CodeQL'
+    permissions:
+      actions: read # CodeQL resolves workflow run metadata during analysis
+      contents: read # walk the checkout to build the language matrix
+      security-events: write # upload CodeQL results to code scanning
+    uses: ./.github/workflows/codeql.yml

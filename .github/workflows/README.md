@@ -180,8 +180,11 @@ the full set, already pinned to `@v1`. No token needed.
 
 ## 🔬 Validating A Change Here
 
-This repository publishes these workflows and calls none of them on itself, so nothing here
-resolves `@v1` against its own tree.
+This repository publishes these workflows and, with one exception, calls none of them on itself,
+so nothing here resolves `@v1` against its own tree. The exception is CodeQL: `self-checks.yml`
+calls `codeql.yml` by local path, so the workflow file that runs is the one in the diff under
+review, while the actions inside it resolve their published pins exactly as they would for a
+consumer.
 
 Check a change against the working tree before it ships: `actionlint` over `.github/workflows/`,
 `shellcheck` over `scripts/`, `ruff` over the Python, and the generators under `scripts/` run with
