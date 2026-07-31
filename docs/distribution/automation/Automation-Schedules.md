@@ -36,14 +36,14 @@ with nothing to sync back here.
 
 ## 🚦 Recommended Cadence
 
-| Workflow, job                | Recommended (UTC)        | Why that slot                                              |
-| :--------------------------- | :----------------------- | :--------------------------------------------------------- |
-| `checks.yml`, weekly sweep   | Weekly, Mon 03:00        | CodeQL and the secret scan over code nothing touched       |
-| `governance.yml`             | Weekly, Mon 04:00        | Start-of-week triage, stale sweep, locking, labels         |
-| `self-checks.yml` (local)    | Weekly, Mon 04:00        | This repository's own gate, so a moving upstream is caught |
-| `release.yml`, `notes`       | Weekly, Mon 05:00        | One evolving draft, refreshed before the week opens        |
-| `maintenance.yml`, `prune`   | Weekly, Mon 06:00        | Housekeeping, after the jobs that create the runs          |
-| `lifecycle.yml`, `standards` | Weekly, Mon 07:00        | Last of the weekly sweep, and it usually does nothing      |
+| Workflow, job                | Recommended (UTC) | Why that slot                                              |
+| :--------------------------- | :---------------- | :--------------------------------------------------------- |
+| `checks.yml`, weekly sweep   | Weekly, Mon 03:00 | CodeQL and the secret scan over code nothing touched       |
+| `governance.yml`             | Weekly, Mon 04:00 | Start-of-week triage, stale sweep, locking, labels         |
+| `self-checks.yml` (local)    | Weekly, Mon 04:00 | This repository's own gate, so a moving upstream is caught |
+| `release.yml`, `notes`       | Weekly, Mon 05:00 | One evolving draft, refreshed before the week opens        |
+| `maintenance.yml`, `prune`   | Weekly, Mon 06:00 | Housekeeping, after the jobs that create the runs          |
+| `lifecycle.yml`, `standards` | Weekly, Mon 07:00 | Last of the weekly sweep, and it usually does nothing      |
 
 Everything else is **event driven** and needs no schedule:
 

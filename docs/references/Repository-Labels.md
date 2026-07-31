@@ -40,16 +40,16 @@ We utilize labels to provide instant visual context and to power our automation 
 
 Most labels arrive mechanically - know which ones are yours to set and which the machine owns (a manual change to a machine-owned label is re-asserted on the next event):
 
-| Applier                          | Labels it owns                                                                                                 |
-| :------------------------------- | :------------------------------------------------------------------------------------------------------------- |
-| **Issue forms** (at creation)    | `type: *` and `status: needs triage`; two also declare a fixed `area: *`.                                      |
-| **Path labeler** (every PR push) | `area: *` from the file paths touched, per [`config/labeler.yml`](../../config/labeler.yml).                   |
-| **Size labeler** (every PR push) | `size: *` from the changed-lines count.                                                                        |
-| **Conflict / stale sweeps**      | `status: conflict` on merge-conflict PRs; `status: stale` on long-inactive items.                              |
-| **CI failure alerts**            | `ci: failure` on the auto-opened issue when a core workflow breaks (removed on recovery).                      |
-| **Dependabot**                   | `dependencies` on its update PRs.                                                                              |
-| **Automation PR openers**        | `automated` on machine-authored PRs (the formatting sweep, the doc-index refresh) - stale-exempt, filterable.  |
-| **You (humans)**                 | `priority: *`, `risk: *`, `semver: *`, `status: needs info`, the community trio, and any triage corrections.   |
+| Applier                          | Labels it owns                                                                                                |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| **Issue forms** (at creation)    | `type: *` and `status: needs triage`; two also declare a fixed `area: *`.                                     |
+| **Path labeler** (every PR push) | `area: *` from the file paths touched, per [`config/labeler.yml`](../../config/labeler.yml).                  |
+| **Size labeler** (every PR push) | `size: *` from the changed-lines count.                                                                       |
+| **Conflict / stale sweeps**      | `status: conflict` on merge-conflict PRs; `status: stale` on long-inactive items.                             |
+| **CI failure alerts**            | `ci: failure` on the auto-opened issue when a core workflow breaks (removed on recovery).                     |
+| **Dependabot**                   | `dependencies` on its update PRs.                                                                             |
+| **Automation PR openers**        | `automated` on machine-authored PRs (the formatting sweep, the doc-index refresh) - stale-exempt, filterable. |
+| **You (humans)**                 | `priority: *`, `risk: *`, `semver: *`, `status: needs info`, the community trio, and any triage corrections.  |
 
 ---
 
