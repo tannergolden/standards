@@ -130,7 +130,7 @@ class TestTheVersionMustMoveForward:
     a version older than the current one therefore moves both backwards, and
     every repository pinned to `@v1` downgrades on its next run.
 
-    Keeping the tags (see test_release_tag_contract.py) closed the common
+    Keeping the tags (see release-tag-contract.py) closed the common
     path into this, since an already-published version is caught by the
     existing tag check. It does not close the case where the tag is absent:
     a historic cleanup, an imported repository, or a typo in a new line.

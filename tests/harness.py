@@ -18,7 +18,7 @@ class TestWorkflowStepShell:
     def test_reads_the_shell_that_actually_ships(self):
         # Asserts on the step's contract, not on how the target probe is
         # spelled: the behaviour of that probe is owned by
-        # test_ci_stage_resolution.py, which runs it rather than reading it.
+        # ci-stage-resolution.py, which runs it rather than reading it.
         shell = workflow_step_shell(".github/workflows/ci.yml", "validate", "build")
         assert "ran=true" in shell
         assert "ran=false" in shell
