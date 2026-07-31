@@ -45,11 +45,11 @@ We treat third-party code as a first-class citizen of our architecture. Our obje
 
 ## 🗓️ Managed Update Cadence
 
-| Cadence        | Update Scope               | Primary Actor               |
-| :------------- | :------------------------- | :-------------------------- |
-| **Continuous** | Critical Security Patches. | Dependabot security alerts. |
-| **Weekly**     | Minor & Patch Updates.     | Dependabot (Mon 07:00 UTC). |
-| **As Needed**  | Major Version Bumps.       | Maintainer review.          |
+| Cadence        | Update Scope               | Primary Actor                |
+| :------------- | :------------------------- | :--------------------------- |
+| **Continuous** | Critical Security Patches. | Dependabot security alerts.  |
+| **Monthly**    | Minor & Patch Updates.     | Dependabot (1st, 07:00 UTC). |
+| **As Needed**  | Major Version Bumps.       | Maintainer review.           |
 
 ---
 
@@ -79,7 +79,7 @@ Two entries cover it: the workflows directory, and the composite actions.
 updates:
   - package-ecosystem: 'github-actions'
     directory: '/'
-    schedule: { interval: 'weekly', day: 'monday', time: '07:00' }
+    schedule: { interval: 'monthly', time: '07:00', timezone: 'Etc/UTC' }
     commit-message: { prefix: 'build', include: 'scope' }
     groups:
       github-actions:
@@ -88,7 +88,7 @@ updates:
   # A glob, so a new action is covered the day it is added.
   - package-ecosystem: 'github-actions'
     directories: ['/actions/*']
-    schedule: { interval: 'weekly', day: 'monday', time: '07:00' }
+    schedule: { interval: 'monthly', time: '07:00', timezone: 'Etc/UTC' }
     commit-message: { prefix: 'build', include: 'scope' }
 ```
 

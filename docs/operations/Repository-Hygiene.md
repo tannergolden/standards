@@ -37,10 +37,10 @@ We adhere to a standardized structure so that any developer - or agent - can nav
 ```txt
 / (repo root)
 ├── .github/
-│   ├── workflows/         # 22 reusable definitions + this repository's own self-* triggers
+│   ├── workflows/         # 21 reusable definitions + release.yml and self-checks.yml, local to here
 │   ├── dependabot.yml     # Keeps every pinned action current. Read only from the owning repo
 │   └── CODEOWNERS         # Read only from the owning repo
-├── actions/               # 17 composite actions, each shipping the files it needs
+├── actions/               # 15 composite actions, each shipping the files it needs
 ├── config/                # Tool configuration read BY a tool during a run
 ├── data/                  # Rulesets and the label taxonomy, written TO a repository
 ├── docs/                  # The standards themselves, followed by link
@@ -49,7 +49,7 @@ We adhere to a standardized structure so that any developer - or agent - can nav
 ```
 
 > [!IMPORTANT]
-> **Two script homes, one rule.** `.github/scripts/` holds helpers executed only by workflows; `scripts/` holds everything a human or agent invokes (Makefile targets, `npm test`, session hooks). The split is load-bearing: anything a human or a build file invokes must keep a stable path, because those callers live in your repository and nothing updates them for you - while a helper called only by a workflow can move freely, since the workflow that calls it moves with it.
+> **One script home, two kinds of caller.** Every helper lives in `scripts/`, whether a human invokes it (Makefile targets, `npm test`, session hooks) or only a workflow does, in which case it is shipped and invoked by the composite action that wraps it. The distinction that matters is the caller rather than the folder: anything a human or a build file invokes must keep a stable path, because those callers live in your repository and nothing updates them for you - while a helper reached only through an action can move freely, since the action that ships it moves with it.
 
 ---
 
@@ -66,9 +66,6 @@ The root is deliberately minimal: everything relocatable already lives in `confi
 | `.editorconfig`                                                         | Editors search upward and stop at `root = true` - must sit at the top.                                                                                                                                                                                                |
 | `.nvmrc`                                                                | `nvm`/`fnm` and `setup-node` read it from the root by convention.                                                                                                                                                                                                     |
 | `.npmrc`                                                                | npm reads project config only from the package root.                                                                                                                                                                                                                  |
-| `_typos.toml`                                                           | The `typos` binary searches upward for root-level names only - verified empirically; it does not look inside `config/`.                                                                                                                                               |
-| `lychee.toml`                                                           | lychee auto-discovers at the working directory; moving it would strand derived repos whose copy (yours-tier) never migrates.                                                                                                                                          |
-| `.prettierignore`                                                       | Prettier auto-discovers it at the root; the invocations in `package.json` live in your repository and nothing updates them for you to pass an alternate path.                                                                                                         |
 | `profile/`                                                              | GitHub renders the account profile only from a root-level `profile/` in an owner's `.github` home repository - content for that account's `.github` home repository only; a repository generated from the template has no use for it, and `init-template` removes it. |
 
 ---

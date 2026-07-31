@@ -26,7 +26,7 @@
 #
 # EVERY SWEEP IS ONE PULL REQUEST. `groups` collapses an interval's updates
 # into a single branch, which matters here more than anywhere: this repository
-# pins twenty-four third-party actions across sixty-three call sites, and
+# pins twenty-three third-party actions across sixty-four call sites, and
 # ungrouped that arrives as a pull request per action. One week of ungrouped
 # updates put eight pull requests, eight merges and sixteen commits into
 # permanent history for what was a single sweep of the pins.

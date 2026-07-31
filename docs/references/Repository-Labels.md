@@ -48,7 +48,7 @@ Most labels arrive mechanically - know which ones are yours to set and which the
 | **Conflict / stale sweeps**      | `status: conflict` on merge-conflict PRs; `status: stale` on long-inactive items.                              |
 | **CI failure alerts**            | `ci: failure` on the auto-opened issue when a core workflow breaks (removed on recovery).                      |
 | **Dependabot**                   | `dependencies` on its update PRs.                                                                              |
-| **Automation PR openers**        | `automated` on machine-authored PRs (the licence-year roll, the doc-index refresh) - stale-exempt, filterable. |
+| **Automation PR openers**        | `automated` on machine-authored PRs (the formatting sweep, the doc-index refresh) - stale-exempt, filterable.  |
 | **You (humans)**                 | `priority: *`, `risk: *`, `semver: *`, `status: needs info`, the community trio, and any triage corrections.   |
 
 ---

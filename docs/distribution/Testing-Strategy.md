@@ -231,7 +231,7 @@ on:
   pull_request:
     branches: ['Experimental', 'Development', 'Preview', 'Release']
   schedule: # weekly link-integrity sweep only
-    - cron: '0 3 * * 0'
+    - cron: '0 3 * * 1'
   workflow_dispatch:
 ```
 

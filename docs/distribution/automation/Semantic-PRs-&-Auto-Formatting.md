@@ -38,9 +38,9 @@ This layer is composed of two primary workflows:
 
 Ensures that the title of every Pull Request matches the conventional pattern required for automated changelog generation and versioning (em dashes are rejected outright - squash titles become commits, and the Output Rules ban the character) - and, in companion jobs, that the source branch follows the naming law and every human commit carries its DCO sign-off.
 
-- **Workflow**: `.github/workflows/governance.yml` (the `pr` job, on a privileged trigger)
+- **Workflow**: `.github/workflows/semantic-pr.yml` (the `title` job, on a privileged trigger)
 - **Pattern**: `type(scope): description` (e.g., `feat(auth): add login support`)
-- **Branch naming**: a companion `branch-name` job in the same workflow enforces `<type>/<topic>` on the PR's source branch (19 accepted prefixes - see `AGENTS.md`).
+- **Branch naming**: a companion `branch-name` job in the same workflow enforces `<type>/<topic>` on the PR's source branch (18 accepted prefixes, set by the workflow's `branch-prefixes` input, plus the `agent-prefixes` compatibility list).
 - **DCO sign-off**: a companion `dco` job verifies the `Signed-off-by:` trailer mandated by CONTRIBUTING on every human-authored commit. Exemptions are per **commit**, never per PR: bot-authored commits and merge commits pass individually while the job still runs on every PR (a required check must never skip itself). The check reads commits through the API and never executes PR code, and it **fails closed**: `gh api` is the primary client with a retrying direct-HTTPS fallback, and if both clients fail the gate fails rather than passing blind.
 - **Impact**: Blocks the "Merge" button if the title, the branch name, or a missing sign-off is non-compliant.
 
@@ -50,7 +50,7 @@ Monitors the codebase for style drift and proposes corrections - without ever wr
 
 - **Workflow**: `.github/workflows/auto-format.yml` (Standalone for on-demand execution)
 - **Execution**: Runs on each push to `Development` (drift can only appear when the branch changes - zero idle runs), or on demand via `workflow_dispatch`.
-- **Remediation**: Runs Prettier repository-wide and, when drift exists, **opens a pull request** targeting `Development` (via `.github/scripts/open-fix-pr.sh`). Long-lived branches are PR-only for automation exactly as they are for humans.
+- **Remediation**: Runs Prettier repository-wide and, when drift exists, **opens a pull request** targeting `Development` (via the `open-pr` composite action). Long-lived branches are PR-only for automation exactly as they are for humans.
 - **Layered defense**: CI rejects unformatted changes via `make lint`, so drift only reaches the default branch when something bypassed a local check, or when there was no local check to bypass. A repository that wires a pre-commit hook of its own catches it a step earlier; this workflow is the safety net either way, and the only one that covers an edit made in the GitHub web editor.
 
 ---

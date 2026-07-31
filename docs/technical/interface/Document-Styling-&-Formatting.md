@@ -34,19 +34,19 @@ Our documentation is more than just text; it is a **visual engine** designed for
 ### What Is Enforced Mechanically, And What Is Not
 
 This repository has no configurable style profile and no `docs-style` checker.
-It also publishes its workflows rather than running them on itself, so the
-column below says where each rule is actually checked, and admits where the
-answer is nowhere:
+What it does have is `self-checks.yml`, which runs `make lint-docs` on every
+push and once a week, so the column below says where each rule is actually
+checked, and admits where the answer is nowhere:
 
-| Rule                             | Checked by                                                  |
-| :------------------------------- | :---------------------------------------------------------- |
-| Machined indexes match the tree  | `scripts/update-doc-indexes.py --check`, run here on demand |
-| Label reference matches registry | `scripts/update-label-docs.py --check`, run here on demand  |
-| Spelling                         | `typos`, in `ci.yml`, in consuming repositories             |
-| Links resolve                    | `lychee`, in `ci.yml`, in consuming repositories            |
-| Hidden frontmatter, comment form | Convention. Upheld by review                                |
-| Exactly four `tags`              | Convention. Upheld by review                                |
-| No `_` as a space in a filename  | Convention. Upheld by review                                |
+| Rule                             | Checked by                                                    |
+| :------------------------------- | :------------------------------------------------------------ |
+| Machined indexes match the tree  | `scripts/update-doc-indexes.py --check`, via `make lint-docs` |
+| Label reference matches registry | `scripts/update-label-docs.py --check`, via `make lint-docs`  |
+| Spelling                         | `typos`, in `ci.yml`, in consuming repositories               |
+| Links resolve                    | `lychee`, in `ci.yml`, in consuming repositories              |
+| Hidden frontmatter, comment form | Convention. Upheld by review                                  |
+| Exactly four `tags`              | Convention. Upheld by review                                  |
+| No `_` as a space in a filename  | Convention. Upheld by review                                  |
 
 Everything else in this specification - the badges, the centered headers, the
 taglines, the fully-capped titles - is **convention, followed by hand**. It is
@@ -77,7 +77,7 @@ Documentation names are **Capitalized-Kebab, always** - these are substance rule
 
 ## 🗂️ Machined Indexes
 
-Document lists that carry the `AUTO-INDEX` markers (the docs-home index and the workflow hub's category lists) are **generated, never hand-maintained** - hub tables without markers remain hand-curated, and the Distill-Lessons prompt sweeps them for drift. Content between the markers is machine-owned:
+Document lists that carry the `AUTO-INDEX` markers (the distribution hub's category lists and the glossary's index) are **generated, never hand-maintained** - lists without markers, the docs-home index and the workflow hub among them, remain hand-curated, and the Distill-Lessons prompt sweeps them for drift. Content between the markers is machine-owned:
 
 ```markdown
 <!-- AUTO-INDEX:BEGIN dir=<path under docs/> style=<list|table> -->

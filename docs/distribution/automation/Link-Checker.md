@@ -48,8 +48,8 @@ The pipeline utilizes the `lycheeverse/lychee-action` and is orchestrated within
 | :----------------- | :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Workflow**       | `.github/workflows/checks.yml` | Execution logic and reporting.                                                                                                              |
 | **Scope**          | `.`                            | Recursive scan of all files.                                                                                                                |
-| **Exclusions**     | Set in root `lychee.toml`      | Self-referential badge raw URLs, GitHub `commit`/`tree`/`blob` deep links, localhost/example hosts, Liquid placeholders, and build folders. |
-| **Failure Policy** | **Advisory** (`fail: false`)   | Findings surface in the job summary without blocking CI. Set `fail: true` in `checks.yml` to make broken links a hard gate.                 |
+| **Exclusions**     | Set in `config/lychee.toml`    | Self-referential badge raw URLs, GitHub `commit`/`tree`/`blob` deep links, localhost/example hosts, Liquid placeholders, and build folders. |
+| **Failure Policy** | **Advisory** (`fail: false`)   | Findings surface in the job summary without blocking CI. Pass `fail-on-broken-links: true` from your stub to make it a hard gate.           |
 
 ---
 
@@ -60,7 +60,7 @@ If the Link Checker job reports a failure, follow this resolution protocol:
 1. **Check Logs**: Inspect the GitHub Action output to identify the specific file and line number.
 2. **Internal Path**: If the link is a relative path, ensure the target file exists and the casing is correct.
 3. **External URL**: If a remote site is down, update the link or remove it.
-4. **False Positives**: `403`/`429` responses are already accepted globally. For a site that fails in another bot-hostile way (e.g. LinkedIn's `999`, or persistent timeouts), add an exclude pattern to the root `lychee.toml` - the workflow deliberately keeps no ignore list of its own.
+4. **False Positives**: `403`/`429` responses are already accepted globally. For a site that fails in another bot-hostile way (e.g. LinkedIn's `999`, or persistent timeouts), add an exclude pattern to `config/lychee.toml` - the workflow deliberately keeps no ignore list of its own.
 
 > [!CAUTION]
 > Do not ignore internal links. Internal relative paths must always be accurate to preserve the repository's documentation graph.

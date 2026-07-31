@@ -130,7 +130,7 @@ flowchart LR
 > **Force-push is owner-only on the integration line.** `Preview` and `Release` are force-push-immutable for everyone. On `Development` and `Experimental` force-push is blocked for everyone **except the repository owner** (the integration ruleset grants the Repository-admin role a full ruleset bypass - which, among other things, permits the force-push), which is what lets the owner normalize the generation root commit at Day 0. See [Branch Protection](../operations/Branch-Protection.md) for the two shipped rulesets.
 
 > [!NOTE]
-> **Why 0 reviews ship**: solo maintainers and automation PRs (dependency bumps, the licence-year roll) must never deadlock - CI still gates every merge. **Recommended hardening as the team grows**: raise required reviews to ≥1 (code owners for risky changes on `Preview`, release-manager approval on `Release`), require branches to be up to date with the base, and enable signed commits.
+> **Why 0 reviews ship**: solo maintainers and automation PRs (dependency bumps, the formatting sweep) must never deadlock - CI still gates every merge. **Recommended hardening as the team grows**: raise required reviews to ≥1 (code owners for risky changes on `Preview`, release-manager approval on `Release`), require branches to be up to date with the base, and enable signed commits.
 
 > [!TIP]
 > Keep local commands and CI identical to avoid "works on my machine". Whatever your project runs for lint, test and build, CI should invoke exactly that, which is why `ci.yml` takes the commands rather than assuming them.

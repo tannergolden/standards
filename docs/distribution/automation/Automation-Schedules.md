@@ -43,7 +43,6 @@ with nothing to sync back here.
 | `self-checks.yml` (local)    | Weekly, Mon 04:00        | This repository's own gate, so a moving upstream is caught |
 | `release.yml`, `notes`       | Weekly, Mon 05:00        | One evolving draft, refreshed before the week opens        |
 | `maintenance.yml`, `prune`   | Weekly, Mon 06:00        | Housekeeping, after the jobs that create the runs          |
-| `maintenance.yml`, `license` | Jan 1 and Jul 1 at 03:00 | January rolls the year, July is a verify pass              |
 | `lifecycle.yml`, `standards` | Weekly, Mon 07:00        | Last of the weekly sweep, and it usually does nothing      |
 
 Everything else is **event driven** and needs no schedule:
@@ -71,8 +70,8 @@ Everything else is **event driven** and needs no schedule:
 Every recurring cron fires at minute `00`, never a jittered minute, and each one takes a distinct
 off-peak hour. When you add or retune a schedule: keep the minute at `00`, pick an hour that
 suits the job, stagger it clear of the others, and record it above. Two crons can share a workflow
-file - each job checks `github.event.schedule` for the cron that fired, which is how
-`maintenance.yml` keeps its weekly prune apart from its biannual licence roll.
+file - each job checks `github.event.schedule` for the cron that fired, so a file carrying more
+than one schedule routes each cron to the job that asked for it.
 
 The staggering is not superstition. Several of these call the same API surface, and starting them
 together means competing for the same rate limit at the same instant.
