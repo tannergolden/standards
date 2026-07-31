@@ -112,12 +112,11 @@ thing ever copied; everything behind the `uses:` stays here.
 
 ### The fast way
 
-Generate your repository from a template - [tannergolden/path](https://github.com/tannergolden/path)
-for the public scaffold, [tannergolden/repository](https://github.com/tannergolden/repository) for
-the private one - and every trigger workflow arrives installed, grouped, and pinned to `@v1`:
-twelve files covering the checks, governance, the release chain, maintenance, and the standards
-lifecycle. The optional ones carry an `is_template` guard, so they are silent in the template and
-come alive in the repository generated from it.
+Generate your repository from the public template,
+[tannergolden/path](https://github.com/tannergolden/path), and every trigger workflow arrives
+installed, grouped, and pinned to `@v1`: twelve files covering the checks, governance, the release
+chain, maintenance, and the standards lifecycle. The optional ones carry an `is_template` guard, so
+they are silent in the template and come alive in the repository generated from it.
 
 Then run **🎯 Apply Standards** once for the label taxonomy and, when you are ready for branch
 protection, the rulesets:

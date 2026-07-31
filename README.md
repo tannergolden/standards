@@ -34,6 +34,7 @@ that points at it.
 > [!NOTE]
 > **The account's core repositories take the conventions and not the automation.**
 > [`tannergolden/.github`](https://github.com/tannergolden/.github),
+> [`tannergolden/dotfiles`](https://github.com/tannergolden/dotfiles),
 > [`tannergolden/tannergolden`](https://github.com/tannergolden/tannergolden), and
 > [`tannergolden/intelligence`](https://github.com/tannergolden/intelligence) hold no project to
 > lint, test or build, so they follow the documented standards by link without installing the gate
@@ -49,9 +50,8 @@ jobs:
 
 That stub has to live in your repository, because **GitHub only runs a workflow that is in the
 repository being pushed to**. It is the one file ever copied, and it arrives already written when
-you generate from a template: [`tannergolden/path`](https://github.com/tannergolden/path) for the
-public scaffold, [`tannergolden/repository`](https://github.com/tannergolden/repository) for the
-private one. Twelve stubs, grouped and pinned to `@v1`.
+you generate from the public template, [`tannergolden/path`](https://github.com/tannergolden/path).
+Twelve stubs, grouped and pinned to `@v1`.
 
 > [!IMPORTANT]
 > **Logic is never delivered by copying.** A trigger is not logic: it names events and nothing else,
