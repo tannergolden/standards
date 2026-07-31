@@ -97,6 +97,8 @@ jobs:
               "ruby": {".rb", ".erb", ".rake"},
               "swift": {".swift"}
           }
+          # 'actions' is also supported, detected below by path rather than
+          # extension, because its files are locations, not a suffix.
 
           found_languages = set()
 
@@ -106,11 +108,19 @@ jobs:
               skip_dirs = {".git", "node_modules", ".config", "dist", "tmp", "vendor", "third_party", ".venv", "venv", "target", "build", "out"}
               dirs[:] = [d for d in dirs if d not in skip_dirs]
 
+              # GitHub Actions is matched by path rather than extension: the
+              # extractor reads workflow files under `.github/workflows` and
+              # action metadata files (`action.yml`), and a bare `.yml` rule
+              # would claim every YAML file in the tree.
+              in_workflows = root.replace(os.sep, "/").endswith(".github/workflows")
+
               for file in files:
                   ext = os.path.splitext(file)[1]
                   for lang, extensions in mapping.items():
                       if ext in extensions:
                           found_languages.add(lang)
+                  if (in_workflows and ext in {".yml", ".yaml"}) or file in {"action.yml", "action.yaml"}:
+                      found_languages.add("actions")
 
           print(f"Detected languages: {found_languages}")
 
