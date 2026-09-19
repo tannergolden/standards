@@ -97,9 +97,6 @@ The first half is barely a rule. Git already records the person making the commi
 
 **Why the author field and not only the trailer.** `git blame`, `git shortlog` and the contributor graph all read the author. An AI in that field puts a tool where a person should be, so the history reports that nobody owns the change and offers nobody to ask about it six months later. The sign-off says the same thing from the other direction: the DCO is a certification a person makes about work they are accountable for, and a process cannot make it. Nothing about the agent's part is lost by moving it, because GitHub reads `Co-Authored-By:` and renders that contributor on the commit and in the contribution graph.
 
-> [!IMPORTANT]
-> **This repository got it wrong before the rule was written down, which is why the rule exists.** Five commits on `Development` carry `Co-Authored-By:` for an agent while being **authored** by that same agent. Each one claims the agent as an additional contributor and simultaneously records it as the only one. The trailer was right and the field was wrong, and nothing reported the contradiction because nothing reads the author field.
-
 **An agent reads the configured identity. It does not choose one.** `user.name` and `user.email` already resolve to the contributor, per repository or globally, and that resolved value is the author. Read it every time, in every repository:
 
 ```bash
