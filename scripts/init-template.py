@@ -95,6 +95,64 @@ def summary(text: str) -> None:
             handle.write(text)
 
 
+def rewrite(
+    text: str,
+    *,
+    owner: str,
+    repo: str,
+    display: str,
+    template_owner: str,
+    year: int,
+) -> str:
+    """Every identity substitution, applied to one file's text.
+
+    Pure, and at module level, so the rules can be exercised directly. They
+    used to sit inside `main()`, unreachable without a token, a network call
+    and a push - which is why the one rule both templates DOCUMENT WRONGLY,
+    the contact-link placeholder, had no test at all. A rule and its gate
+    change together; this is the gate.
+    """
+    # Targeted rules, never a blanket replace. The template owner's handle
+    # appears both as an identity to rewrite and as part of the shared
+    # standards repository path, which must survive untouched.
+    keep = f"{template_owner}/standards"
+    guard = "\x00KEEP\x00"
+
+    for old, new in (
+        # Contact links carry a placeholder because GitHub never substitutes
+        # one; this is the substitution.
+        ("OWNER/REPOSITORY", repo),
+        (f"[@{template_owner}](https://github.com/{template_owner})", f"[@{owner}](https://github.com/{owner})"),
+        (f"github: [{template_owner}]", f"github: [{owner}]"),
+    ):
+        text = text.replace(old, new)
+
+    # The licence holder is the template author's name, not a handle.
+    # The YEAR is restamped too: it is the year this repository was
+    # created, not the year the template was written. Carrying the
+    # template's year forward would put a copyright date on a generated
+    # repository that predates the work it covers, and NOTHING WOULD EVER
+    # CORRECT IT: the year is fixed at generation by design, and no
+    # workflow rolls it afterwards. This substitution is the only chance
+    # to get it right.
+    # A lambda, not a replacement string: a display name is arbitrary user
+    # input and `\1` in it would be read as a backreference.
+    text = re.sub(
+        r"Copyright \(c\) \d{4}(?:\s*[-\u2013]\s*\d{4})?\s+Tanner Golden",
+        lambda _: f"Copyright (c) {year} {display}",
+        text,
+    )
+
+    # Any remaining bare handle becomes the new owner's, EXCEPT where it
+    # is part of the shared standards path.
+    if template_owner in text:
+        text = text.replace(keep, guard)
+        text = text.replace(template_owner, owner)
+        text = text.replace(guard, keep)
+
+    return text
+
+
 def main() -> int:
     token = os.environ["GH_TOKEN"]
     repo = os.environ["REPO"]                       # owner/name
@@ -139,23 +197,10 @@ def main() -> int:
     print(f"Owner: {display} ({owner}) <{email}>")
     print(f"Repository: {repo}")
 
-    # Targeted rules, never a blanket replace. The template owner's handle
-    # appears both as an identity to rewrite and as part of the shared
-    # standards repository path, which must survive untouched.
     # UTC, explicitly: a naive local date is whatever the runner's clock
     # says, and a copyright year that flips a day early or late is exactly
     # the kind of thing nobody notices until an audit.
     this_year = datetime.datetime.now(tz=datetime.timezone.utc).year
-    keep = f"{template_owner}/standards"
-    guard = "\x00KEEP\x00"
-
-    replacements = [
-        # Contact links carry a placeholder because GitHub never substitutes
-        # one; this is the substitution.
-        ("OWNER/REPOSITORY", repo),
-        (f"[@{template_owner}](https://github.com/{template_owner})", f"[@{owner}](https://github.com/{owner})"),
-        (f"github: [{template_owner}]", f"github: [{owner}]"),
-    ]
 
     changed: list[str] = []
     for path in sorted(pathlib.Path(".").rglob("*")):
@@ -170,32 +215,14 @@ def main() -> int:
         except (UnicodeDecodeError, OSError):
             continue
 
-        text = original
-        for old, new in replacements:
-            text = text.replace(old, new)
-
-        # The licence holder is the template author's name, not a handle.
-        # The YEAR is restamped too: it is the year this repository was
-        # created, not the year the template was written. Carrying the
-        # template's year forward would put a copyright date on a generated
-        # repository that predates the work it covers, and NOTHING WOULD EVER
-        # CORRECT IT: the year is fixed at generation by design, and no
-        # workflow rolls it afterwards. This substitution is the only chance
-        # to get it right.
-        # A lambda, not a replacement string: a display name is arbitrary user
-        # input and `\1` in it would be read as a backreference.
-        text = re.sub(
-            r"Copyright \(c\) \d{4}(?:\s*[-\u2013]\s*\d{4})?\s+Tanner Golden",
-            lambda _: f"Copyright (c) {this_year} {display}",
-            text,
+        text = rewrite(
+            original,
+            owner=owner,
+            repo=repo,
+            display=display,
+            template_owner=template_owner,
+            year=this_year,
         )
-
-        # Any remaining bare handle becomes the new owner's, EXCEPT where it
-        # is part of the shared standards path.
-        if template_owner in text:
-            text = text.replace(keep, guard)
-            text = text.replace(template_owner, owner)
-            text = text.replace(guard, keep)
 
         if text != original:
             path.write_text(text, encoding="utf-8")
