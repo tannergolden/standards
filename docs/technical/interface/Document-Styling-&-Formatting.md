@@ -183,49 +183,118 @@ To ensure the repository template remains portable and new documentation does no
 
 ### Global Parameters
 
-> [!NOTE]
-> **Self-hosted where it matters.** A badge served from `img.shields.io` is a third-party request on every page view, and a dependency on someone else's uptime for your README to render. Committed SVGs avoid both. This repository publishes no badge renderer, so the parameters below are the **specification vocabulary**: read them as the shape a badge should take, whether you generate it or hand-write it.
+> [!IMPORTANT]
+> **Badges are drawn, not fetched.** A badge served from `img.shields.io` is a
+> third-party request on every page view, and a dependency on someone else's
+> uptime for your README to render. Committed SVGs avoid both. The renderer
+> this specification describes is published as
+> [tannergolden/emblems](https://github.com/tannergolden/emblems): a
+> repository pins `uses: tannergolden/emblems@v1`, keeps a small data file,
+> and commits the SVGs it draws. Called, never copied, like every other
+> standard here.
 
-All shields.io links **MUST** include the following query parameters:
+**Everything the kit can draw is approved for use.** Any style, any icon and
+any color token published in the emblems registries may be used in any
+document on this account. There is no shorter approved list to consult and no
+permission to ask for: if the kit renders it, it is in the vocabulary.
 
-**1. Static Identifiers (Standard)**
+| Vocabulary       | Count | Definitive source                                               |
+| :--------------- | ----: | :--------------------------------------------------------------- |
+| **Styles**       |     6 | `STYLES` in `src/badge-kit.py`                                   |
+| **Icons**        |    64 | `ICONS` in `src/badge-kit.py`, or `badge-kit.py --icons`         |
+| **Color tokens** |    64 | `PALETTE` in `src/badge-kit.py`, or `badge-kit.py --palette`     |
 
-- `style=for-the-badge` (Enforces **BOLD CAPS** text)
-- `labelColor=000000` (**Black** background for high contrast)
-- `logoColor=white`
+Those counts are the ones published at the time of writing, and they are the
+weaker statement. **The registries are the source of truth**, so a token or
+glyph added to emblems is approved here the moment it ships, without this
+document changing. A table copied into prose only goes stale, which is why the
+kit exposes `--icons` and `--palette` and why the numbers above carry a link
+rather than a list.
 
-**2. Dynamic Health Metrics (Live Data)**
+[The gallery](https://github.com/tannergolden/emblems/blob/Development/docs/Gallery.md)
+draws every one of them, grouped and captioned with its own name, so pick by
+eye and copy the name.
 
-- `style=for-the-badge` (Enforces **BOLD CAPS** text)
-- `labelColor=C0A062` (**Metallic Gold** background for live status)
-- `logoColor=white`
+Three constraints survive that freedom, and only three. Each is semantic
+rather than decorative, which is why it is a rule and not a preference:
+
+1. **Documentation headers keep `style: for-the-badge`.** The header matrix
+   above is a fixed visual language, and a header in another style breaks the
+   uniformity that makes these documents scannable. The other five styles
+   exist for surfaces outside that matrix: body rows, dashboards, generated
+   reports, tables of many badges.
+2. **A gold label obeys the traffic-light rule** (below). A dynamic-health
+   badge uses color to carry a status, so its message color is not free.
+3. **The four header slots keep their colors** where a header carries the
+   conventional set: Role is pink, Context is purple, License is yellow. Those
+   are identity, not decoration, and a reader learns them once across every
+   repository.
+
+Anything outside those three is yours to choose.
+
+#### Hand-written and third-party badges
+
+Where a badge is not drawn by the kit, it must still take the shape the kit
+would give it, so the two sit together in one row:
+
+- `style=for-the-badge` in a document header.
+- `labelColor=000000` for a static badge, `labelColor=C0A062` for a
+  dynamic-health one.
+- `logoColor=white`.
+
+A shields.io hotlink is the discouraged case rather than the forbidden one,
+and `emblems` will localize an existing one into a committed SVG for you,
+keeping its label, message, color and style.
+
+### Linking Strategy
+
+- **Root `README.md`**: relative paths resolve in the views it is read in, so
+  a badge there may be referenced relatively.
+- **Every other document**: use the absolute raw URL pinned to the default
+  branch. GitHub only rewrites relative image paths in its main blob views;
+  the pull-request rich diff, the security-policy tab and client-side
+  navigation leave them unresolved, so a relative badge renders broken exactly
+  where community-health files are most often read.
+- **Link targets** stay relative (`./`, `../../LICENSE`), so a badge's
+  destination survives a clone or a rename.
 
 ### Official Color Palette
 
-Use these specific Hexadecimal codes to denote the nature of the badge content.
+Seven tokens carry a fixed meaning. Use these where the badge is saying one of
+these things, so the same idea reads the same way in every repository:
 
-| Usage Context              | Hexadecimal Code | Color Name         | Meaning                                                             |
-| :------------------------- | :--------------- | :----------------- | :------------------------------------------------------------------ |
-| **Navigation / Standard**  | `**3366FF**`     | **Electric Blue**  | General documentation, status, or informational links.              |
-| **Roles / Specifications** | `**FE5196**`     | **Hot Pink**       | Defining the "Type" of document (e.g., Guide, Specification, Rule). |
-| **Security / Critical**    | `**D73A49**`     | **Alert Red**      | Security policies, hardened statuses, or warnings.                  |
-| **Context / Technology**   | `**9C27B0**`     | **Deep Purple**    | Technical domains, AI context, or specific technologies.            |
-| **License / Legal**        | `**F1E05A**`     | **Warning Yellow** | Licensing, legal disclaimers, or compliance.                        |
-| **Success / Active**       | `**2EA043**`     | **Success Green**  | Active maintenance status or passing builds.                        |
-| **Dynamic Health**         | `**C0A062**`     | **Metallic Gold**  | **REQUIRED** for live metrics (Builds, Commits, Version).           |
+| Usage Context              | Token     | Hexadecimal Code | Meaning                                                             |
+| :------------------------- | :-------- | :--------------- | :------------------------------------------------------------------ |
+| **Navigation / Standard**  | `blue`    | `3366FF`         | General documentation, status, or informational links.              |
+| **Roles / Specifications** | `pink`    | `FE5196`         | Defining the "Type" of document (e.g., Guide, Specification, Rule). |
+| **Security / Critical**    | `red`     | `D73A49`         | Security policies, hardened statuses, or warnings.                  |
+| **Context / Technology**   | `purple`  | `9C27B0`         | Technical domains, AI context, or specific technologies.            |
+| **License / Legal**        | `yellow`  | `F1E05A`         | Licensing, legal disclaimers, or compliance.                        |
+| **Success / Active**       | `green`   | `2EA043`         | Active maintenance status or passing builds.                        |
+| **Dynamic Health**         | `gold`    | `C0A062`         | **REQUIRED** as the label of a live metric.                         |
 
-The self-hosted Badge Kit ships a full designed palette - a rainbow plus the popular colors, all tuned to one saturation/lightness family so any two synergize - and a raw `#RRGGBB` works anywhere a token does. A **static** badge (black label) may use any of them.
+**The other 57 carry no mandated meaning and are free.** They are tuned to one
+saturation and lightness family, and each was checked against every other
+token so no two read as the same color, which is what lets any two sit
+together without clashing. A raw `#RRGGBB` works anywhere a token does, so the
+space of badges is unbounded rather than capped at a list.
 
 ### Badge Health Colors (Traffic-Light Rule)
 
-A **dynamic-health** badge (the metallic-gold label) uses color to represent a **status**, so its message color is restricted to the **traffic-light triad** - never an arbitrary hue:
+A **dynamic-health** badge (the metallic-gold label) uses color to represent a
+**status**, so its message color is restricted to the **traffic-light triad**,
+never an arbitrary hue:
 
 - 🟢 **`green` (`2EA043`)** - healthy: passing, active, fresh, high score.
 - 🟡 **`yellow` (`F1E05A`)** - degraded: aging, partial, mid score.
 - 🔴 **`red` (`D73A49`)** - failing: broken, stale, low score.
 - ⚪ **`slate` (`57606A`)** - reserved for an explicit "no status yet" (unknown / not measured), which does not represent a status.
 
-Nothing checks this automatically; it holds because it is written down. Static badges are unconstrained - only status signals are, so green, yellow and red read the same everywhere they appear.
+**This one is enforced mechanically.** `emblems` rejects any other hue on a
+gold label at render time, resolving the label whether it was written as the
+token `gold` or as the raw hex `C0A062`, so a status badge cannot be drawn in
+a color that means nothing. Static badges stay unconstrained: only status
+signals are, so green, yellow and red read the same everywhere they appear.
 
 ### Badge Composition, Where Badges Are Used
 
