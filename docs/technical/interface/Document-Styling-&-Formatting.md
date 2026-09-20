@@ -198,11 +198,11 @@ any color token published in the emblems registries may be used in any
 document on this account. There is no shorter approved list to consult and no
 permission to ask for: if the kit renders it, it is in the vocabulary.
 
-| Vocabulary       | Count | Definitive source                                               |
-| :--------------- | ----: | :--------------------------------------------------------------- |
-| **Styles**       |     6 | `STYLES` in `src/badge-kit.py`                                   |
-| **Icons**        |    64 | `ICONS` in `src/badge-kit.py`, or `badge-kit.py --icons`         |
-| **Color tokens** |    64 | `PALETTE` in `src/badge-kit.py`, or `badge-kit.py --palette`     |
+| Vocabulary       | Count | Definitive source                                            |
+| :--------------- | ----: | :----------------------------------------------------------- |
+| **Styles**       |     6 | `STYLES` in `src/badge-kit.py`                               |
+| **Icons**        |    64 | `ICONS` in `src/badge-kit.py`, or `badge-kit.py --icons`     |
+| **Color tokens** |    64 | `PALETTE` in `src/badge-kit.py`, or `badge-kit.py --palette` |
 
 Those counts are the ones published at the time of writing, and they are the
 weaker statement. **The registries are the source of truth**, so a token or
@@ -263,15 +263,15 @@ keeping its label, message, color and style.
 Seven tokens carry a fixed meaning. Use these where the badge is saying one of
 these things, so the same idea reads the same way in every repository:
 
-| Usage Context              | Token     | Hexadecimal Code | Meaning                                                             |
-| :------------------------- | :-------- | :--------------- | :------------------------------------------------------------------ |
-| **Navigation / Standard**  | `blue`    | `3366FF`         | General documentation, status, or informational links.              |
-| **Roles / Specifications** | `pink`    | `FE5196`         | Defining the "Type" of document (e.g., Guide, Specification, Rule). |
-| **Security / Critical**    | `red`     | `D73A49`         | Security policies, hardened statuses, or warnings.                  |
-| **Context / Technology**   | `purple`  | `9C27B0`         | Technical domains, AI context, or specific technologies.            |
-| **License / Legal**        | `yellow`  | `F1E05A`         | Licensing, legal disclaimers, or compliance.                        |
-| **Success / Active**       | `green`   | `2EA043`         | Active maintenance status or passing builds.                        |
-| **Dynamic Health**         | `gold`    | `C0A062`         | **REQUIRED** as the label of a live metric.                         |
+| Usage Context              | Token    | Hexadecimal Code | Meaning                                                             |
+| :------------------------- | :------- | :--------------- | :------------------------------------------------------------------ |
+| **Navigation / Standard**  | `blue`   | `3366FF`         | General documentation, status, or informational links.              |
+| **Roles / Specifications** | `pink`   | `FE5196`         | Defining the "Type" of document (e.g., Guide, Specification, Rule). |
+| **Security / Critical**    | `red`    | `D73A49`         | Security policies, hardened statuses, or warnings.                  |
+| **Context / Technology**   | `purple` | `9C27B0`         | Technical domains, AI context, or specific technologies.            |
+| **License / Legal**        | `yellow` | `F1E05A`         | Licensing, legal disclaimers, or compliance.                        |
+| **Success / Active**       | `green`  | `2EA043`         | Active maintenance status or passing builds.                        |
+| **Dynamic Health**         | `gold`   | `C0A062`         | **REQUIRED** as the label of a live metric.                         |
 
 **The other 57 carry no mandated meaning and are free.** They are tuned to one
 saturation and lightness family, and each was checked against every other
