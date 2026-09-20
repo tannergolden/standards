@@ -64,6 +64,14 @@ jobs:
       - name: '🔍 Validate Version'
         id: check
         env:
+          # `gh api` reads the published releases below to prove this version
+          # moves forward. Without a token it runs unauthenticated, the read
+          # fails, and the guard's fail-safe branch aborts every release: the
+          # check cannot tell "no token" from "cannot reach the API", and
+          # refuses rather than assuming. That is the right behaviour for the
+          # guard and the wrong outcome for the workflow, so the token belongs
+          # here.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.version }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
