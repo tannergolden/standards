@@ -32,7 +32,8 @@ DATA_README = ROOT / "data/README.md"
 APPLY = ".github/workflows/apply-standards.yml"
 
 # Local to this repository, not published, so not part of the inventory.
-NOT_PUBLISHED = {"release.yml", "self-checks.yml"}
+# (`release.yml` used to be here; it is callable now, and listed.)
+NOT_PUBLISHED = {"self-checks.yml"}
 
 
 class TestEveryPublishedWorkflowIsListed:

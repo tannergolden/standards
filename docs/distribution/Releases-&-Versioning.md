@@ -166,6 +166,12 @@ Three behaviours are worth knowing before you wire it up:
 
 PyPI additionally supports **Trusted Publishing**: configure it once on PyPI and drop `PYPI_API_TOKEN` entirely - the job exchanges the run's OIDC identity for a token that lives minutes, so the repository stores no publishing credential at all.
 
+### 4. `release.yml` - Cut Release, For A Repository Consumed By Tag
+
+An action, a reusable workflow or a kit is not installed; it is pinned, and the pin is a **moving major tag**: `@v1` follows every release in the line, so a fix reaches every consumer on their next run with nobody editing a workflow. `release-publish.yml` cannot produce that tag - its information-rich `vX.Y.Z-branch.<stamp>` is right for a deliverable that is downloaded and wrong for one that is resolved - so a repository consumed by tag calls **`release.yml`** from a stub of its own instead. One dispatch names `vX.Y.Z`; the run refuses a commit that is not already on the default branch and a version that does not move forward, proves the candidate with the files a consumer resolves (`required-files`) and the check that shows it works (`check-command`), then tags the immutable version, force-moves the major, publishes the release with generated notes, and prunes the pages it superseded. Tags are lightweight, so what GitHub verifies is the commit, and version tags are never deleted: a full-version pin keeps resolving forever.
+
+Called, never copied: the guards are the point, and a copy stops receiving them. The stub is a dozen lines, shown in the [workflow inventory](../../.github/workflows/README.md#pruning-and-release).
+
 Containers build **one architecture by default and any number natively**. Set `container-platforms: 'linux/amd64,linux/arm64'` and each architecture is built on a runner that _is_ that architecture, then combined into a single manifest list - so `docker pull` resolves correctly on Apple Silicon and Graviton without the image ever being emulated. The conventional alternative, QEMU emulation in one job, is both slow enough to time real builds out and an extra image to trust inside a job holding a registry credential. A single-architecture build skips the fan-out entirely and pushes exactly the tags you asked for.
 
 ---

@@ -1,9 +1,15 @@
-# --- This Repository's Own Release ---
+# --- Cut Release: this repository's own, and any repository consumed by tag ---
 #
 # 🏷️ Cut Release
 #
-# Purpose: publishes a version of these standards and moves the major tag
-# that consumers pin.
+# Purpose: publishes a version and moves the major tag that consumers pin.
+# Dispatched here, it releases these standards. Called from another
+# repository's stub, it releases that repository the same way: any project
+# whose deliverable is a tag (an action, a reusable workflow, a kit) needs
+# exactly this, and the shared publisher cannot give it, because that one
+# computes an information-rich tag with git-cliff and never writes a moving
+# major. Called, never copied: the guards below are the reason, and a copy
+# stops receiving them.
 #
 # ⚠️ THIS IS THE MOST CONSEQUENTIAL WORKFLOW HERE. Moving `v1` changes what
 # every repository pinned to `@v1` executes, on their next run, without
@@ -35,6 +41,36 @@ on:
         required: false
         type: boolean
         default: true
+  # The same run, from a stub in the repository being released. The stub's
+  # dispatch form carries version and move-major; the two inputs below are
+  # what that repository knows about itself and this file cannot.
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version to publish, as vX.Y.Z'
+        required: true
+        type: string
+      move-major:
+        description: 'Also move the major tag (vX) to this release'
+        required: false
+        type: boolean
+        default: true
+      required-files:
+        description: >-
+          Files a consumer resolves at the tag, space-separated: the action,
+          the reusable workflow, the kit. A release is refused if any is
+          missing at this commit, rather than discovered by a consumer's run.
+        required: false
+        type: string
+        default: ''
+      check-command:
+        description: >-
+          A command that proves the release candidate at this commit, run
+          from the repository root: a self-test, a golden hash, `make check`.
+          Empty runs nothing.
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: ${{ github.workflow }}
@@ -140,8 +176,11 @@ jobs:
 
       # Actions resolve `uses:` against the ref they are called at, so every
       # action a workflow names must exist at the tag being cut. Checked
-      # here rather than discovered by a consumer's failing run.
+      # here rather than discovered by a consumer's failing run. This one is
+      # about these standards' own action tree, so it runs only here; a
+      # calling repository names what it ships through required-files.
       - name: '🔗 Verify Internal References Resolve'
+        if: ${{ github.repository == 'tannergolden/standards' }}
         run: |
           set -euo pipefail
           missing=0
@@ -155,6 +194,31 @@ jobs:
                    | sed -E 's|tannergolden/standards/||; s|@$||' | sort -u)
           [ "$missing" -eq 0 ] || exit 1
           echo "Every referenced action exists at this commit."
+
+      # What the calling repository promises its consumers, proven at the
+      # commit about to become the tag: the files a `uses:` resolves, and
+      # the check that shows the code works. A stub passes both; a dispatch
+      # here passes neither, and the step says so and moves on.
+      - name: '🧪 Verify The Release Candidate'
+        env:
+          REQUIRED_FILES: ${{ inputs.required-files }}
+          CHECK_COMMAND: ${{ inputs.check-command }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for f in $REQUIRED_FILES; do
+            if [ ! -f "$f" ]; then
+              echo "::error title=Release::${f} does not exist at this commit, but a consumer resolves it at the tag."
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+          if [ -n "$CHECK_COMMAND" ]; then
+            echo "Running the release candidate's check: $CHECK_COMMAND"
+            bash -eo pipefail -c "$CHECK_COMMAND"
+          else
+            echo "No check-command given; nothing beyond the file list to prove."
+          fi
 
       # ⚠️ THE TAGS HERE ARE LIGHTWEIGHT, DELIBERATELY. A lightweight tag is a
       # ref and nothing else: no tag object, so no tagger, no message, and
@@ -210,6 +274,8 @@ jobs:
             if [ "$MOVE_MAJOR" = "true" ]; then
               echo "| \`$MAJOR\` | Now points here. Every consumer pinned to it runs this next. |"
             fi
+            echo ""
+            echo "Consumers pin \`${GITHUB_REPOSITORY}@${MAJOR}\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
   # After the release publishes and the major tag moves, the release PAGES
@@ -236,12 +302,16 @@ jobs:
   # Neither is acceptable, and only one line had to change to end both.
   #
   # A superseded release PAGE is clutter. Its tag is a contract.
+  #
+  # Named in full rather than as `./`: a local path resolves against the
+  # repository whose workflow started the run, and when a stub elsewhere
+  # calls this file that is not this repository.
   prune:
     name: '🧹 Prune Superseded Releases'
     needs: release
     permissions:
       contents: write # deleting release pages requires write
-    uses: ./.github/workflows/prune-releases.yml
+    uses: tannergolden/standards/.github/workflows/prune-releases.yml@v1
     with:
       keep: 1
       delete-tags: false
