@@ -41,6 +41,14 @@ class TestTheCallMatchesTheDispatch:
         step = next(s for s in doc["jobs"]["release"]["steps"] if s.get("name") == "🔗 Verify Internal References Resolve")
         assert "github.repository == 'tannergolden/standards'" in step["if"]
 
+    def test_no_top_level_concurrency_so_a_call_can_start(self):
+        """A called workflow with top-level `concurrency` fails at startup,
+        with no job and no log: the first two consumer cuts died that way.
+        The group lives on the release job instead."""
+        doc = load_yaml(RELEASE)
+        assert "concurrency" not in doc
+        assert doc["jobs"]["release"]["concurrency"]["cancel-in-progress"] is False
+
     def test_the_prune_is_named_in_full_so_a_call_from_elsewhere_resolves_it(self):
         prune = load_yaml(RELEASE)["jobs"]["prune"]
         assert prune["uses"].startswith("tannergolden/standards/.github/workflows/prune-releases.yml@")
