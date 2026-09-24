@@ -72,15 +72,17 @@ on:
         type: string
         default: ''
 
-concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: false
-
 permissions: {}
 
 jobs:
   release:
     name: '🏷️ Publish Version & Move Major Tag'
+    # One release at a time. Declared on the job rather than the workflow:
+    # a called workflow carries no top-level concurrency of its own, and the
+    # calling stub's is the caller's to set.
+    concurrency:
+      group: ${{ github.workflow }}-release
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
