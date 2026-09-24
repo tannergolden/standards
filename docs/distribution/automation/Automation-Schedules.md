@@ -22,10 +22,11 @@ _Staggered, off-peak, and yours to change._
 
 ## ⚠️ The Schedule Is Not Set Here
 
-Every workflow **published** here is **reusable**: it declares `on: workflow_call` and nothing else,
-so it carries no cron of its own and cannot fire on its own. Two files in that directory are local to
-this repository rather than published - `release.yml`, which is dispatch-only, and `self-checks.yml`,
-which carries the one cron that actually fires here and is listed below with the rest.
+Every workflow **published** here is **reusable**: it declares `on: workflow_call`, so it carries
+no cron of its own and cannot fire on its own. (`release.yml` also keeps the `workflow_dispatch` this
+repository cuts its own versions with; that is a button, not a schedule.) One file in that directory
+is local to this repository rather than published - `self-checks.yml`, which carries the one cron
+that actually fires here and is listed below with the rest.
 
 **The `schedule:` block lives in your stub, in your repository.** That is the only place GitHub
 looks. The table below is the recommended cadence that the template repositories' stubs and the example

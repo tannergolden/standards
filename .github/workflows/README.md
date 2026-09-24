@@ -85,22 +85,61 @@ labels, settings and rulesets through the API and never touches your tree. See
 
 ### Pruning and release
 
-| Workflow              | Does                                                                                                                       |
-| :-------------------- | :------------------------------------------------------------------------------------------------------------------------- |
-| `prune.yml`           | Scheduled sweep: superseded deployments and old workflow runs                                                              |
-| `prune-drafts.yml`    | Deletes every draft release. Dispatch only, deliberately separate                                                          |
-| `prune-releases.yml`  | ⚠️ Deletes PUBLISHED releases a newer one supersedes. `dry-run` defaults true; `delete-tags` breaks every full-version pin |
-| `prune-runs.yml`      | Deletes old workflow runs, with a day window and a recent-commit window                                                    |
-| `release-notes.yml`   | Maintains one evolving draft release per branch                                                                            |
-| `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM                                                                 |
-| `publish-package.yml` | Publishes to npm, PyPI, crates.io, or any OCI registry. Each opt-in. Containers go multi-arch natively                     |
-| `preview-deploy.yml`  | Builds and deploys to a preview environment                                                                                |
+| Workflow              | Does                                                                                                                        |
+| :-------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| `prune.yml`           | Scheduled sweep: superseded deployments and old workflow runs                                                               |
+| `prune-drafts.yml`    | Deletes every draft release. Dispatch only, deliberately separate                                                           |
+| `prune-releases.yml`  | ⚠️ Deletes PUBLISHED releases a newer one supersedes. `dry-run` defaults true; `delete-tags` breaks every full-version pin  |
+| `prune-runs.yml`      | Deletes old workflow runs, with a day window and a recent-commit window                                                     |
+| `release-notes.yml`   | Maintains one evolving draft release per branch                                                                             |
+| `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM                                                                  |
+| `release.yml`         | ⚠️ Cuts `vX.Y.Z` and force-moves the `vX` every consumer pins. For a repository consumed by tag; refuses an unmerged commit |
+| `publish-package.yml` | Publishes to npm, PyPI, crates.io, or any OCI registry. Each opt-in. Containers go multi-arch natively                      |
+| `preview-deploy.yml`  | Builds and deploys to a preview environment                                                                                 |
 
 > [!IMPORTANT]
 > **`release-publish.yml` and `publish-package.yml` do different jobs.** The first cuts a
 > GitHub Release with a tarball attached, which is the whole deliverable for a project consumed by
 > tag. The second pushes to the registry people actually install from. A library needs both; a
 > repository whose deliverable is a tag needs only the first.
+
+> [!IMPORTANT]
+> **`release.yml` is for a repository that other repositories pin by tag**: an action, a reusable
+> workflow, a kit. `release-publish.yml` computes an information-rich tag and never writes a moving
+> major, so it cannot produce the `@v1` a stub resolves. This one does: an immutable `vX.Y.Z`, the
+> `vX` force-moved onto it, the release page, and the superseded pages pruned, in one run. It refuses
+> a commit that is not on the default branch and a version that does not move forward, then proves
+> the candidate with the files and the check the stub names:
+>
+> ```yaml
+> # .github/workflows/cut-release.yml
+> name: '🏷️ Cut Release'
+> on:
+>   workflow_dispatch:
+>     inputs:
+>       version:
+>         description: 'Version to publish, as vX.Y.Z'
+>         required: true
+>         type: string
+>       move-major:
+>         description: 'Also move the major tag (vX) to this release'
+>         type: boolean
+>         default: true
+> permissions: {}
+> jobs:
+>   release:
+>     permissions:
+>       contents: write # create tags, publish the release, prune superseded pages
+>     uses: tannergolden/standards/.github/workflows/release.yml@v1
+>     with:
+>       version: ${{ inputs.version }}
+>       move-major: ${{ inputs.move-major }}
+>       required-files: 'action.yml src/kit.py'
+>       check-command: 'make check'
+> ```
+>
+> The file is called `cut-release.yml` in the calling repository because `release.yml` there is
+> already the stub for the notes, publish, package and prune chain.
 
 ---
 

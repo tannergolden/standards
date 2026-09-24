@@ -6,7 +6,7 @@ It opens with "Every workflow in this repository is reusable: it declares
 `on: workflow_call` and nothing else, so it carries no cron of its own and
 cannot fire on its own". `self-checks.yml` declares `push`, `pull_request`,
 `schedule` and `workflow_dispatch`, and its `0 4 * * 1` is the only cron
-that actually fires in this repository. `release.yml` is dispatch-only.
+that actually fires in this repository. `release.yml` has no schedule.
 `docs/README.md` bills this page as "Every cron, in one table", and the one
 real cron was the one missing from it.
 
