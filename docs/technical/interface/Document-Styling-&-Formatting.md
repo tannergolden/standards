@@ -188,13 +188,13 @@ To ensure the repository template remains portable and new documentation does no
 > third-party request on every page view, and a dependency on someone else's
 > uptime for your README to render. Committed SVGs avoid both. The renderer
 > this specification describes is published as
-> [tannergolden/emblems](https://github.com/tannergolden/emblems): a
-> repository pins `uses: tannergolden/emblems@v1`, keeps a small data file,
+> [tannergolden/badges](https://github.com/tannergolden/badges): a
+> repository pins `uses: tannergolden/badges@v1`, keeps a small data file,
 > and commits the SVGs it draws. Called, never copied, like every other
 > standard here.
 
 **Everything the kit can draw is approved for use.** Any style, any icon and
-any color token published in the emblems registries may be used in any
+any color token published in the badges registries may be used in any
 document on this account. There is no shorter approved list to consult and no
 permission to ask for: if the kit renders it, it is in the vocabulary.
 
@@ -206,12 +206,12 @@ permission to ask for: if the kit renders it, it is in the vocabulary.
 
 Those counts are the ones published at the time of writing, and they are the
 weaker statement. **The registries are the source of truth**, so a token or
-glyph added to emblems is approved here the moment it ships, without this
+glyph added to badges is approved here the moment it ships, without this
 document changing. A table copied into prose only goes stale, which is why the
 kit exposes `--icons` and `--palette` and why the numbers above carry a link
 rather than a list.
 
-[The gallery](https://github.com/tannergolden/emblems/blob/Development/docs/Gallery.md)
+[The gallery](https://github.com/tannergolden/badges/blob/Development/docs/Gallery.md)
 draws every one of them, grouped and captioned with its own name, so pick by
 eye and copy the name.
 
@@ -243,7 +243,7 @@ would give it, so the two sit together in one row:
 - `logoColor=white`.
 
 A shields.io hotlink is the discouraged case rather than the forbidden one,
-and `emblems` will localize an existing one into a committed SVG for you,
+and `badges` will localize an existing one into a committed SVG for you,
 keeping its label, message, color and style.
 
 ### Linking Strategy
@@ -290,7 +290,7 @@ never an arbitrary hue:
 - 🔴 **`red` (`D73A49`)** - failing: broken, stale, low score.
 - ⚪ **`slate` (`57606A`)** - reserved for an explicit "no status yet" (unknown / not measured), which does not represent a status.
 
-**This one is enforced mechanically.** `emblems` rejects any other hue on a
+**This one is enforced mechanically.** `badges` rejects any other hue on a
 gold label at render time, resolving the label whether it was written as the
 token `gold` or as the raw hex `C0A062`, so a status badge cannot be drawn in
 a color that means nothing. Static badges stay unconstrained: only status
