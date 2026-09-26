@@ -75,7 +75,7 @@ class TestOnlyTheOwnedNamespaceIsDeleted:
         assert result.returncode == 0, result
         assert deleted == set(), f"{tag} was deleted by a prune that does not own it"
 
-    def test_another_branchs_draft_is_left_alone(self, run_shell, fake_gh, tmp_path):
+    def test_another_branches_draft_is_left_alone(self, run_shell, fake_gh, tmp_path):
         result, deleted = prune(run_shell, fake_gh, tmp_path, ["v1.4.0-develop.next"])
         assert result.returncode == 0, result
         assert deleted == set(), "a draft belonging to another branch was deleted"

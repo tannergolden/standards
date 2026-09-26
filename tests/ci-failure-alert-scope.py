@@ -64,7 +64,7 @@ class TestTheBranchFilterIsUnchanged:
     def test_still_filters_on_the_head_branch(self):
         assert "github.event.workflow_run.head_branch" in alert_condition()
 
-    def test_still_defaults_to_the_repositorys_own_default_branch(self):
+    def test_still_defaults_to_the_repositories_own_default_branch(self):
         assert "github.event.repository.default_branch" in alert_condition()
 
     def test_branches_input_still_defaults_to_empty(self):
