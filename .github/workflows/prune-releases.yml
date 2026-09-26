@@ -17,18 +17,20 @@
 #                     notes, and the notes are the only changelog there is.
 #
 # ⚠️ DELETING A RELEASE DOES NOT DELETE ITS TAG unless you ask. A release is
-# a page; a tag is a contract. `vX.Y.Z` is documented in `release.yml` as
-# immutable, and anything pinned to it keeps resolving after its release page
-# is gone. Leave `delete-tags` false wherever consumers pin a full version.
-#
-# Turn it on only where they pin the MOVING MAJOR instead, which is how this
-# repository is consumed: `@v1` is the pin, so a superseded `v1.2.0` has
-# nothing resolving to it and its tag is just clutter.
+# a page; a tag is what a stub resolves. With `delete-tags` on, EVERY plain
+# `vX.Y.Z` tag that no kept release stands on goes too: the tags behind the
+# deleted pages, and any left with no page by an earlier prune or a deletion
+# by hand. That is how the repositories on this account are consumed: `@v1`
+# is the pin, a repository carries the major and the one version it points
+# at, and everything older is clutter. Leave `delete-tags` off only where
+# consumers pin a full version; nothing on this account does.
 #
 # ⚠️ A BARE MAJOR TAG IS NEVER DELETED, whatever `delete-tags` says. `v1` is
 # the pointer every consumer resolves; deleting it breaks every one of them
 # at once. It carries no release, so the prune should never see it, and the
-# guard below means a stray release attached to one cannot take it out.
+# guard below means a stray release attached to one cannot take it out. Nor
+# is any tag that is not a plain `vX.Y.Z`: a prerelease, or the stamped tag
+# `release-publish.yml` cuts, was never this prune's to remove.
 #
 # The release list is snapshotted in full before anything is deleted.
 # Deleting while pagination is still fetching shifts the pages underneath
@@ -85,7 +87,11 @@ on:
         type: boolean
         default: false
       delete-tags:
-        description: 'Also delete the tag behind each deleted release. Breaks every pin to that version.'
+        description: >-
+          Also delete every plain vX.Y.Z tag no kept release stands on: the
+          tags behind the deleted releases, and any an earlier prune left
+          behind with no page. A bare major is never deleted. Breaks every
+          pin to a full version.
         required: false
         type: boolean
         default: false
@@ -104,7 +110,7 @@ jobs:
         uses: tannergolden/standards/actions/harden@v1
         with:
           egress-policy: audit
-          notice: '🧹 Prune Releases: deletes published releases that a newer one supersedes. Tags are kept unless delete-tags is on; a bare major tag is kept regardless.'
+          notice: '🧹 Prune Releases: deletes published releases that a newer one supersedes, and with delete-tags every version tag no kept release stands on. A bare major tag is kept regardless.'
 
       - name: '🧹 Prune'
         env:
@@ -149,9 +155,31 @@ jobs:
 
           jq -r --argjson keep "$KEEP" '.[:$keep][] | "  KEEP    \(.tag_name)  (\(.published_at))"' <<<"$ordered"
           jq -r '.[] | "  DELETE  \(.tag_name)  (\(.published_at))"' <<<"$doomed"
+
+          # With delete-tags on, the sweep: every plain vX.Y.Z tag that no
+          # kept release stands on. The doomed releases' own tags go with
+          # their pages below; this catches the ones with no page left, which
+          # an earlier prune without delete-tags, or a deletion by hand, left
+          # behind. A bare major never matches the pattern, and neither does
+          # a prerelease or a stamped tag, so none of those is ever swept.
+          #
+          # The refs are read in one call before anything is deleted, and a
+          # failure to read them fails the run: an empty sweep must mean
+          # there was nothing to sweep, never that the question went unasked.
+          orphans=""
+          if [ "$DELETE_TAGS" = "true" ]; then
+            kept="$(jq -r --argjson keep "$KEEP" '.[:$keep][].tag_name' <<<"$ordered")"
+            paged="$(jq -r '.[].tag_name' <<<"$doomed")"
+            refs="$(gh api --paginate "repos/${REPO}/git/matching-refs/tags/v" --jq '.[].ref')"
+            versions="$(printf '%s\n' "$refs" | sed 's|^refs/tags/||' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+            orphans="$(comm -23 <(printf '%s\n' "$versions" | sort -u) <(printf '%s\n%s\n' "$kept" "$paged" | sort -u) | sed '/^$/d')"
+            while read -r tag; do
+              [ -n "$tag" ] && echo "  DELETE  ${tag}  (tag with no release page)"
+            done <<<"$orphans"
+          fi
           echo
 
-          if [ "$count" -eq 0 ]; then
+          if [ "$count" -eq 0 ] && [ -z "$orphans" ]; then
             echo "Nothing to prune."
             exit 0
           fi
@@ -166,6 +194,7 @@ jobs:
           fi
 
           while read -r tag; do
+            [ -n "$tag" ] || continue
             args=(--yes)
             if [ "$DELETE_TAGS" = "true" ]; then
               # A bare major is the moving pointer consumers pin, not a
@@ -180,5 +209,13 @@ jobs:
             gh release delete "$tag" --repo "$REPO" "${args[@]}"
           done < <(jq -r '.[].tag_name' <<<"$doomed")
 
+          swept=0
+          while read -r tag; do
+            [ -n "$tag" ] || continue
+            echo "Deleting tag ${tag}, which no kept release stands on"
+            gh api -X DELETE "repos/${REPO}/git/refs/tags/${tag}"
+            swept=$((swept + 1))
+          done <<<"$orphans"
+
           echo
-          echo "Deleted ${count} release(s)."
+          echo "Deleted ${count} release(s) and ${swept} tag(s) with no release page."

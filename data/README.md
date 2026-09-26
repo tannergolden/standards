@@ -31,13 +31,13 @@ That is also the line between this folder and `config/`. Anything **written to**
 here; anything **read by** a tool during a run lives in `config/`. The labeler rules are read by the
 labeler action at run time, so they are configuration, not state.
 
-| File                                         | Applied to                                                            |
-| :------------------------------------------- | :-------------------------------------------------------------------- |
-| `rulesets/protect-integration-branches.json` | Your default branch, plus `Experimental`/`Development`                |
-| `rulesets/protect-promotion-branches.json`   | `Preview` and `Release`                                               |
-| `rulesets/protect-release-tags.json`         | Full version tags, making published releases immutable                |
-| `labels.yml`                                 | The label taxonomy, create-or-update, never pruning                   |
-| `repository-settings.json`                   | Merge strategy, workflow-token permissions, and the security features |
+| File                                         | Applied to                                                              |
+| :------------------------------------------- | :---------------------------------------------------------------------- |
+| `rulesets/protect-integration-branches.json` | Your default branch, plus `Experimental`/`Development`                  |
+| `rulesets/protect-promotion-branches.json`   | `Preview` and `Release`                                                 |
+| `rulesets/protect-release-tags.json`         | Full version tags: never moved while they exist, pruned when superseded |
+| `labels.yml`                                 | The label taxonomy, create-or-update, never pruning                     |
+| `repository-settings.json`                   | Merge strategy, workflow-token permissions, and the security features   |
 
 > [!NOTE]
 > **These do not assume your branch names.** The first ruleset targets `~DEFAULT_BRANCH`, a ref
@@ -77,15 +77,18 @@ forever, which is why the job ids are fixed here rather than left to each reposi
 
 ---
 
-## 🏷️ Version Tags Stay Movable
+## 🏷️ Version Tags Are Never Moved, Only Pruned
 
-The tag ruleset protects `refs/tags/v*.*.*`, meaning full versions such as `v1.4.2`, and
-deliberately leaves bare major tags such as `v1` unprotected.
+The tag ruleset protects `refs/tags/v*.*.*`, meaning full versions such as `v1.4.2`, against being
+re-pointed, with `update` and `non_fast_forward` rules and no `deletion` rule, and deliberately
+leaves bare major tags such as `v1` unprotected.
 
-That is not an oversight. A moving major tag is the entire mechanism behind pinning `@v1`: it has to
+Neither is an oversight. A moving major tag is the entire mechanism behind pinning `@v1`: it has to
 be re-pointed at each release, and a ruleset that made it immutable would break the pin it exists to
-serve. Immutability belongs to the exact version underneath it, which is the ref anyone who wants
-exactness pins instead.
+serve. A full version is never re-pointed while it exists, so what `v1.4.2` resolved yesterday it
+resolves today, but it does not exist for long: `release.yml` prunes every version but the one the
+major points at, page and tag, after each release, and a `deletion` rule would refuse that prune.
+Anyone who wants exactness for good pins a commit SHA, which nothing here deletes.
 
 ---
 

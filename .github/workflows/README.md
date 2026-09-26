@@ -26,8 +26,9 @@ _Your repository holds triggers. The logic lives here._
 Nothing here assumes your language, your branch names, or your account. Five things are worth
 knowing before the first stub.
 
-**1. Pin a tag.** `@v1` moves with each release in the v1 line and is the normal choice. `@v1.4.2` is
-immutable. Never pin `@Development`.
+**1. Pin a tag.** `@v1` moves with each release in the v1 line and is the normal choice. A version
+pin such as `@v1.9.0` lasts until the next release prunes it; a commit SHA is the immutable pin.
+Never pin `@Development`.
 
 **2. Three job ids are fixed.** A called workflow reports its checks as `<your job id> / <job name>`,
 so branch protection depends on the id you write in your stub. If you apply the published rulesets,
@@ -85,17 +86,17 @@ labels, settings and rulesets through the API and never touches your tree. See
 
 ### Pruning and release
 
-| Workflow              | Does                                                                                                                        |
-| :-------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
-| `prune.yml`           | Scheduled sweep: superseded deployments and old workflow runs                                                               |
-| `prune-drafts.yml`    | Deletes every draft release. Dispatch only, deliberately separate                                                           |
-| `prune-releases.yml`  | ⚠️ Deletes PUBLISHED releases a newer one supersedes. `dry-run` defaults true; `delete-tags` breaks every full-version pin  |
-| `prune-runs.yml`      | Deletes old workflow runs, with a day window and a recent-commit window                                                     |
-| `release-notes.yml`   | Maintains one evolving draft release per branch                                                                             |
-| `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM                                                                  |
-| `release.yml`         | ⚠️ Cuts `vX.Y.Z` and force-moves the `vX` every consumer pins. For a repository consumed by tag; refuses an unmerged commit |
-| `publish-package.yml` | Publishes to npm, PyPI, crates.io, or any OCI registry. Each opt-in. Containers go multi-arch natively                      |
-| `preview-deploy.yml`  | Builds and deploys to a preview environment                                                                                 |
+| Workflow              | Does                                                                                                                                 |
+| :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
+| `prune.yml`           | Scheduled sweep: superseded deployments and old workflow runs                                                                        |
+| `prune-drafts.yml`    | Deletes every draft release. Dispatch only, deliberately separate                                                                    |
+| `prune-releases.yml`  | ⚠️ Deletes PUBLISHED releases a newer one supersedes. `dry-run` defaults true; `delete-tags` sweeps every superseded version tag     |
+| `prune-runs.yml`      | Deletes old workflow runs, with a day window and a recent-commit window                                                              |
+| `release-notes.yml`   | Maintains one evolving draft release per branch                                                                                      |
+| `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM                                                                           |
+| `release.yml`         | ⚠️ Cuts `vX.Y.Z`, force-moves the `vX` every consumer pins, and prunes every older release, page and tag. Refuses an unmerged commit |
+| `publish-package.yml` | Publishes to npm, PyPI, crates.io, or any OCI registry. Each opt-in. Containers go multi-arch natively                               |
+| `preview-deploy.yml`  | Builds and deploys to a preview environment                                                                                          |
 
 > [!IMPORTANT]
 > **`release-publish.yml` and `publish-package.yml` do different jobs.** The first cuts a
@@ -106,8 +107,9 @@ labels, settings and rulesets through the API and never touches your tree. See
 > [!IMPORTANT]
 > **`release.yml` is for a repository that other repositories pin by tag**: an action, a reusable
 > workflow, a kit. `release-publish.yml` computes an information-rich tag and never writes a moving
-> major, so it cannot produce the `@v1` a stub resolves. This one does: an immutable `vX.Y.Z`, the
-> `vX` force-moved onto it, the release page, and the superseded pages pruned, in one run. It refuses
+> major, so it cannot produce the `@v1` a stub resolves. This one does: the `vX.Y.Z` just cut, the
+> `vX` force-moved onto it, the release page, and every superseded release pruned, page and tag, in
+> one run. It refuses
 > a commit that is not on the default branch and a version that does not move forward, then proves
 > the candidate with the files and the check the stub names:
 >

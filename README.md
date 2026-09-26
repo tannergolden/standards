@@ -96,11 +96,12 @@ reference that can test a change **to** an action.
 **Pin a tag, never a branch.** Nothing published here executes in your repository until you move
 the pin.
 
-| Pin            | Meaning                                           |
-| :------------- | :------------------------------------------------ |
-| `@v1`          | Moving major tag. The normal choice               |
-| `@v1.4.2`      | Immutable release. For anyone who wants exactness |
-| `@Development` | Never pin this. It is the development line        |
+| Pin            | Meaning                                                              |
+| :------------- | :------------------------------------------------------------------- |
+| `@v1`          | Moving major tag. The normal choice                                  |
+| `@v1.9.0`      | The release just cut. Pruned, tag and page, when the next one is cut |
+| `@<commit>`    | Immutable. For anyone who wants exactness                            |
+| `@Development` | Never pin this. It is the development line                           |
 
 **Nothing here assumes your project.** Not your language, not your branch names, not your account.
 CI runs the command you give it, or a Makefile target of that name, and fails outright if neither
@@ -117,9 +118,9 @@ stub. Those ids are fixed in [`data/README.md`](data/README.md), along with what
 changes.
 
 > [!NOTE]
-> Workflows here reference their own composite actions at the **major** tag. Pinning `@v1.4.2` freezes
-> the workflow logic exactly, while the actions it calls track the `v1` line. If you need every layer
-> frozen, pin a commit SHA.
+> Workflows here reference their own composite actions at the **major** tag. A version pin freezes
+> the workflow logic for as long as its tag lasts, while the actions it calls track the `v1` line. If
+> you need every layer frozen, and frozen for good, pin a commit SHA.
 
 Follow the documentation the same way: **link to it, do not copy it**. A standard duplicated into
 your repository is a standard that starts going stale immediately.

@@ -17,7 +17,11 @@
 # change to every consumer at once.
 #
 # TWO TAGS, TWO CONTRACTS:
-#   vX.Y.Z  immutable. Cut once, never moved. For anyone who wants exactness.
+#   vX.Y.Z  the version just cut. Never moved while it exists, and pruned,
+#           page and tag, when the next version supersedes it, so a
+#           repository carries the major and the one version it points at
+#           and nothing older. For exactness pin a commit SHA, which nothing
+#           here deletes.
 #   vX      moving. Re-pointed at each release in that major line. The
 #           normal pin, and the reason a fix reaches everyone.
 #
@@ -153,10 +157,10 @@ jobs:
           # backwards, and every repository pinned to `@v1` DOWNGRADES on
           # its next run.
           #
-          # Keeping version tags closed the common path in, since an
-          # already-published version is caught by the check above. It does
-          # not cover a version whose tag is absent: a historic cleanup, an
-          # imported repository, or a mistyped line.
+          # The tag check above catches only the version that still has its
+          # tag, the latest, since the prune below removes every older one.
+          # This check covers the rest: an older version whose tag is gone,
+          # an imported repository, or a mistyped line.
           #
           # `sort -V` orders numerically, so v1.10.0 is correctly newer than
           # v1.9.0. A string comparison gets that backwards.
@@ -252,7 +256,7 @@ jobs:
 
           git tag "$VERSION"
           git push "$REMOTE" "$VERSION"
-          echo "Published immutable tag $VERSION."
+          echo "Published tag $VERSION."
 
           if [ "$MOVE_MAJOR" = "true" ]; then
             # Force-moved by design: this IS the moving major tag, and
@@ -272,7 +276,7 @@ jobs:
             echo ""
             echo "| Tag | Meaning |"
             echo "| :--- | :--- |"
-            echo "| \`$VERSION\` | Immutable. Pin this for exactness. |"
+            echo "| \`$VERSION\` | This release. Pruned when the next one is cut; pin a commit SHA for exactness. |"
             if [ "$MOVE_MAJOR" = "true" ]; then
               echo "| \`$MAJOR\` | Now points here. Every consumer pinned to it runs this next. |"
             fi
@@ -280,30 +284,34 @@ jobs:
             echo "Consumers pin \`${GITHUB_REPOSITORY}@${MAJOR}\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # After the release publishes and the major tag moves, the release PAGES
-  # it superseded come down. This lives INSIDE Cut Release rather than on a
-  # release-event listener so the whole chain is one run: cut, move, prune.
+  # After the release publishes and the major tag moves, the releases it
+  # superseded come down, page and tag. This lives INSIDE Cut Release rather
+  # than on a release-event listener so the whole chain is one run: cut,
+  # move, prune.
   #
-  # ⚠️ THE TAG STAYS. `delete-tags` used to be true here, on the reasoning
-  # that every stub pins `@v1` so nothing resolves a `vX.Y.Z`. That reasoning
-  # contradicted three other files and lost.
+  # ⚠️ THE TAG GOES WITH THE PAGE. Two tags survive a release: the bare
+  # major, which is the pin every stub resolves, and the version just cut,
+  # which it points at. Everything older is pruned, including tags an
+  # earlier prune left behind with no page, so a repository consumed by tag
+  # never carries more than those two. Three other files say the same
+  # thing, and tests/release-tag-contract.py holds all four to it:
   #
-  #   README.md               offers `@v1.4.2` as a supported pin, described
-  #                           as "Immutable release. For anyone who wants
-  #                           exactness". Deleting it breaks whoever took
-  #                           that advice, on their next run, with no signal.
-  #   data/README.md          says the tag ruleset makes published releases
-  #                           immutable, and that immutability is what an
-  #                           exact pin buys.
-  #   protect-release-tags    enforces it: `refs/tags/v*.*.*`, a `deletion`
-  #                           rule, `enforcement: active`, no bypass actors.
+  #   README.md               offers a version pin as a pin for the moment,
+  #                           pruned at the next release, and a commit SHA
+  #                           as the one for exactness.
+  #   data/README.md          says a version tag is never moved while it
+  #                           exists, and is pruned when superseded.
+  #   protect-release-tags    enforces exactly that: `refs/tags/v*.*.*` with
+  #                           `update` and `non_fast_forward` rules and no
+  #                           `deletion` rule, so this prune runs without a
+  #                           bypass while a version can still never be
+  #                           re-pointed.
   #
-  # With that ruleset applied the delete is refused outright and the prune
-  # job fails on every release, since `prune-releases.yml` runs under
-  # `set -euo pipefail`. Without it, the exact pin quietly stops resolving.
-  # Neither is acceptable, and only one line had to change to end both.
-  #
-  # A superseded release PAGE is clutter. Its tag is a contract.
+  # This once read the other way, keeping every version tag as an immutable
+  # pin, and the ruleset carried a `deletion` rule that would have refused
+  # this very prune. Nothing on this account pins a full version, so a tag
+  # nothing resolves is clutter, and the release history reads as one line:
+  # the major, and the version it stands on.
   #
   # Named in full rather than as `./`: a local path resolves against the
   # repository whose workflow started the run, and when a stub elsewhere
@@ -312,9 +320,9 @@ jobs:
     name: '🧹 Prune Superseded Releases'
     needs: release
     permissions:
-      contents: write # deleting release pages requires write
+      contents: write # deleting release pages and their tags requires write
     uses: tannergolden/standards/.github/workflows/prune-releases.yml@v1
     with:
       keep: 1
-      delete-tags: false
+      delete-tags: true
       dry-run: false
