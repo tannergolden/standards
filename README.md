@@ -34,7 +34,6 @@ that points at it.
 > [!NOTE]
 > **The account's core repositories take the conventions and not the automation.**
 > [`tannergolden/.github`](https://github.com/tannergolden/.github),
-> [`tannergolden/dotfiles`](https://github.com/tannergolden/dotfiles),
 > [`tannergolden/tannergolden`](https://github.com/tannergolden/tannergolden), and
 > [`tannergolden/intelligence`](https://github.com/tannergolden/intelligence) hold no project to
 > lint, test or build, so they follow the documented standards by link without installing the gate
