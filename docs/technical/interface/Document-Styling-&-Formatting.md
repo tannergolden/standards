@@ -44,6 +44,7 @@ checked, and admits where the answer is nowhere:
 | Label reference matches registry | `scripts/update-label-docs.py --check`, via `make lint-docs`  |
 | Spelling                         | `typos`, in `ci.yml`, in consuming repositories               |
 | Links resolve                    | `lychee`, in `ci.yml`, in consuming repositories              |
+| A drawn block matches its data   | Each kit's check mode, in consuming repositories              |
 | Hidden frontmatter, comment form | Convention. Upheld by review                                  |
 | Exactly four `tags`              | Convention. Upheld by review                                  |
 | No `_` as a space in a filename  | Convention. Upheld by review                                  |
@@ -168,6 +169,16 @@ _[Tagline in italics.]_
 > uneven stack, and reads as a paragraph the eye skips on its way to the content.
 > Say what the document is in a single line; the document itself says the rest.
 
+> [!NOTE]
+> **A drawn header satisfies this matrix.** A root `README.md` may open with
+> the block [`tannergolden/banners`](https://github.com/tannergolden/banners)
+> draws between `<!-- banners:header:start -->` and its end marker, in place
+> of the typed masthead. The block carries the lint suppression and the top
+> anchor itself, and the sheet letters the title, the description and the
+> tagline from what GitHub knows about the repository, with its figures ruled
+> along the foot. Every rule above about what those three say still binds;
+> only the medium changes. [Drawn Pages](#-drawn-pages) says how.
+
 ---
 
 ## 🎨 Badge Visual Standards
@@ -213,7 +224,9 @@ rather than a list.
 
 [The gallery](https://github.com/tannergolden/badges/blob/Development/docs/Gallery.md)
 draws every one of them, grouped and captioned with its own name, so pick by
-eye and copy the name.
+eye and copy the name. A page drawn by the banners carries the styles'
+**blueprint twins**, plates lettered in the same eleven prints the sheets are
+drawn in; [Drawn Pages](#-drawn-pages) says how the kits fit together.
 
 Three constraints survive that freedom, and only three. Each is semantic
 rather than decorative, which is why it is a rule and not a preference:
@@ -338,6 +351,76 @@ this specification correctly.
 3. **Gold label for live data**: A dynamic health badge uses the **Metallic Gold** (`C0A062`) label color to distinguish live data and posture from static navigation links, and their message color is bound by the traffic-light rule above.
 4. **Repository Context**: A live badge's link points to the actual Actions or Security tab of the repository; a posture badge links to the same relative root target the file's static badges use.
 5. **Ordering (below static, always)**: Dynamic health badges MUST sit on their **own row, below** the static badges, separated by a blank line. A single row must never mix the two kinds: the static identity row (status, role, context, license) comes first, the health row follows on the next row. This holds anywhere both kinds appear together, in the root header and every community health file alike. Blank-line-separated rows are independent, so a static **call-to-action** row (docs-site link, use-this-template) may follow the health row - the no-mixing rule binds within each row. Nothing checks this automatically.
+
+---
+
+## 🖼️ Drawn Pages
+
+Four repositories on this account draw the parts of a README that used to be
+typed. Each measures the repository or the profile it sits in, over GitHub's
+API and git, on a schedule, and commits what it drew as SVGs. Nothing is
+fetched when the page is viewed, so a drawn page is up exactly as long as its
+repository is, and nothing on it goes stale by hand. They are consumed the way
+every other standard here is: a stub in the consuming repository pins `@v1`,
+the drawing happens in the kit's own repository, and a fix lands once.
+
+| Repository                                                          | Draws                                                                                                                                                                                    | On the page                                                                                                                                                                |
+| :------------------------------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`tannergolden/banners`](https://github.com/tannergolden/banners)   | The header and the footer, as sheets from one set of engineering drawings, and the **elements** for the body: a schematic, instruments, milestones, a roster, a certificate and placards | `<!-- banners:header:start -->` at the top, `<!-- banners:footer:start -->` at the foot, and one `<!-- elements:<id>:start -->` pair per element, each with its end marker |
+| [`tannergolden/badges`](https://github.com/tannergolden/badges)     | The badges, from one data file, in six styles and their blueprint twins                                                                                                                  | Rows under the header, referenced from `assets/badges/` as the section above describes                                                                                     |
+| [`tannergolden/trophies`](https://github.com/tannergolden/trophies) | The case: eight tiered trophies, a level card, a next-up card and one hundred achievements, in five styles                                                                               | Between `<!-- trophies:start -->` and `<!-- trophies:end -->`, wherever the case belongs                                                                                   |
+| [`tannergolden/markdown`](https://github.com/tannergolden/markdown) | Nothing itself. One reusable workflow that calls the three kits from one stub, each at its own hour                                                                                      | `.github/workflows/markdown.yml` in the consuming repository, the stub that names the three slots                                                                          |
+
+### One Page, One Set Of Drawings
+
+Every kit draws on the same drafting paper, in the same **eleven prints**
+(blueprint by default, or any of the spectrum from redprint to pinkprint, the
+Van Dyke brownprint and the blackprint), lettered with the same outlines, so
+a page drawn by all of them reads as one set of drawings. `rainbowprint`
+draws each update in the next colour of the spectrum: the banners' lock
+remembers where the page is, and the elements and the badges' blueprint
+plates follow it, so the whole page changes colour together.
+
+The rules in this specification bind a drawn page as they bind a typed one.
+The drawing changes the medium and nothing else:
+
+| Rule above          | On a drawn page                                                                                                                                                                                                                                                                                                                             |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Header matrix       | The banners header block carries `<!-- markdownlint-disable MD041 -->` and `<a name="top"></a>`. The sheet letters the title (the repository's name), the description (its description on GitHub) and the tagline (`motto` in `.github/banners.yml`), and rules the release, stars, forks, open issues, language and licence along the foot |
+| Badges              | The identity row sits under the header block, static before dynamic, exactly as above. A page drawn in a print carries **blueprint plates** in that print, and the sheet's figures already show the live state, so a health row is redundant there                                                                                          |
+| Footer              | The banners footer block is the footer. `closing` in `.github/banners.yml` is the Document Summary Phrase, unique to the page as always, and the whole sheet links to `#top`, with up to four link buttons under it                                                                                                                         |
+| Alt text            | Every image the kits write carries alt text built from what it shows. Never edit it: the next run writes it again                                                                                                                                                                                                                           |
+| Exactly four `tags` | The frontmatter stays the author's. No kit touches it                                                                                                                                                                                                                                                                                       |
+
+### Machine-Owned Blocks
+
+Everything between a kit's markers is **machine-owned**, the way the
+`AUTO-INDEX` blocks above are: never edit inside them by hand. Change the
+kit's data file (`.github/banners.yml`, `.github/badges.yml`,
+`.github/trophies.yml`, `.github/elements.yml`) and the next run redraws.
+Move a pair of markers anywhere on the page and later runs rewrite only what
+is between them. Each kit keeps a lock beside its data file, remembers what
+it last measured, and commits only when something it shows has moved, as a
+`chore(<kit>)` commit authored by the kit's author and committed by
+`github-actions[bot]`.
+
+Each kit also has a **check mode**, which redraws from the lock and fails
+when a committed file or a README block differs from what the data says,
+with no token and nothing written. A hand edit inside a block, or a data file
+changed without a redraw, is caught on the pull request. The umbrella's
+[check stub](https://github.com/tannergolden/markdown/blob/Development/examples/stub-check.yml)
+runs every kit the page names at once.
+
+### The Umbrella
+
+[`tannergolden/markdown`](https://github.com/tannergolden/markdown) is the
+one stub for the whole page. It names a cron for each generator repository,
+**on the hour and eight hours apart**: at 00:00 the banners, then the
+elements; at 08:00 the badges; at 16:00 the trophies. On a schedule it runs
+the kit whose cron fired and no other, so a repository is committed to at
+most once per slot and a quiet slot commits nothing; a manual run draws
+everything, one kit after another. The four repositories' own READMEs are the
+live examples, and the umbrella's page is drawn by all four.
 
 ---
 
@@ -537,6 +620,11 @@ Every document should conclude with a centered footer providing navigation and a
 
 **Contextual Uniqueness Rule:**
 The **Document Summary Phrase** (bolded in the footer) must be unique to the document. It acts as the "closing argument" or mantra for that specific file. Do not use generic phrases like "End of file" or reuse the same footer across the repository.
+
+> [!NOTE]
+> On a drawn page the footer is the banners footer block, and `closing` in
+> `.github/banners.yml` is its summary phrase, unique to the page as above.
+> See [Drawn Pages](#-drawn-pages).
 
 ---
 
