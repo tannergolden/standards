@@ -19,6 +19,10 @@ extend-exclude = [
   ".cursorrules",
   ".windsurfrules",
   "LICENSE",
+  # A drawn SVG is glyph outlines, coordinates and hashed ids, not prose,
+  # and a hex id can spell a two-letter word: "p33ba0b" reads as "ba".
+  # What the drawing says comes from a data file, which is checked.
+  "*.svg",
 ]
 
 [default.extend-words]
