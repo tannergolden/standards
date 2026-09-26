@@ -26,7 +26,7 @@ _The diff already records what changed. Only the author can record why._
 - Keep commits **small and single-purpose**, with a clear `type(scope): subject`.
 - Encode **what, why, testing and impact**, so release notes and audits are effortless.
 
-Two rules below are **stricter than the Conventional Commits specification**, deliberately, and both are enforced mechanically: the scope is required, and the body is required. A third sits outside that specification altogether, because it governs **who** a commit is by rather than what it says, and it is a convention rather than a gate. Everything else follows the specification as written.
+Two rules below are **stricter than the Conventional Commits specification**, deliberately, and both are enforced mechanically: the scope is required, and the body is required. Two more sit outside that specification altogether, because they govern **who** a commit is by and **whether it is signed** rather than what it says, and both are conventions rather than gates. Everything else follows the specification as written.
 
 ---
 
@@ -45,6 +45,7 @@ Two rules below are **stricter than the Conventional Commits specification**, de
 - **Subject**: a brief summary in lowercase, imperative mood. It may begin with an emoji.
 - **Body**: **REQUIRED, on every commit, without exception.** One blank line after the subject, wrapped at 72 characters. Full sentences explaining **why** this change, and why this way rather than the obvious alternative.
 - **Author**: whoever is writing the commit. An AI is the one exception, recorded as a co-author and never as the author, under **Who The Commit Is By** below.
+- **Signature**: every commit is signed, so it lands **Verified** on GitHub. The one exception is a commit `github-actions[bot]` made, under **Every Commit Is Verified** below.
 - **Punctuation**: never an em dash (U+2014), in a subject or a body. Use a comma, a colon, parentheses, or a spaced hyphen. The rule is mechanical, encoded in `config/commitlint.config.js`.
 
 ---
@@ -141,6 +142,33 @@ git commit -s --author='Ada Lovelace <00000000+ada@users.noreply.github.com>'
 
 ---
 
+### 🔏 Every Commit Is Verified
+
+**Every commit that lands is Verified on GitHub. The one exception is a commit whose committer is `github-actions[bot]`.**
+
+Verified is GitHub's word for a signature it checked: the commit was signed, and the key that signed it is registered as a **signing key** on the account the committer's address belongs to. Anything else fails the rule. **Unverified** covers a commit that was never signed and one signed with a key GitHub does not know, and the two look identical to everyone reading the history, which is who this rule is for: a Verified badge says the person named made this change, and an unbroken run of them says nobody else did.
+
+| Commit                             | Verified                                                                                                                                                                                                                                                                 |
+| :--------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Written by a contributor, locally  | Yes. `commit.gpgsign true` signs every commit with the registered key, and nothing further is typed                                                                                                                                                                      |
+| Made in GitHub's web interface     | Yes. GitHub signs it                                                                                                                                                                                                                                                     |
+| Made by an agent in a session      | Yes. The environment signs what it pushes with a key registered on the agent's own account. With vigilant mode on the contributor's account it reads **Partially verified**, since the signer is the committer and not the author the commit names, and that is expected |
+| Committed by `github-actions[bot]` | **No, and not expected to be.** The kits' refresh commits, the formatting sweep, the calibration: every commit a workflow makes                                                                                                                                          |
+
+**Why the bot is the exception.** A workflow could only sign with a private key kept in repository secrets, readable by anything that runs there, and a leaked signing key forges commits as its owner everywhere: the reasoning that keeps the release tags lightweight in `release.yml`. So the drawing kits (banners, badges, trophies and the elements) and every other workflow that commits do so unsigned, authored by the kit's author and committed by the bot, and those commits show Unverified by design. The exemption is by the **committer** field alone. A commit an agent pushes names the contributor as author and the agent as committer, and it is held to the rule like any other.
+
+**`unknown_key` is the common failure, not `unsigned`.** A key registered on GitHub for authentication only, or a key signing on one machine that was registered from another, produces a signed commit that GitHub shows as Unverified with the reason `unknown_key`. Nothing local warns about it, since git signed the commit exactly as asked, and the badge is visible only on GitHub. Register the **public** half under Settings, SSH and GPG keys, as a **Signing key**; every commit that key already signed turns Verified the moment the key is known, with no rewrite. [🙋 What You Do By Hand](../introduction/What-You-Do-By-Hand.md) has the configuration and [🌿 Git Commands](../library/Git-Commands.md#-verified-commit-identity-signing) the walkthrough.
+
+Check any commit from the command line:
+
+```bash
+gh api repos/OWNER/REPO/commits/SHA --jq '.commit.verification | {verified, reason}'
+```
+
+`{"verified": true, "reason": "valid"}` is the only passing answer. `unsigned` and `unknown_key` are the two reasons this page names; the rest are rarer and all mean the same thing, that the commit is not Verified.
+
+---
+
 ### 🎭 Emoji Mapping
 
 Not enforced, and encouraged. One emoji after the colon reads well in a long log:
@@ -169,9 +197,10 @@ Not enforced, and encouraged. One emoji after the colon reads well in a long log
 1. **Stage** what belongs in this commit, not everything you touched today.
 2. **Write the message**: `type(scope): subject`, a blank line, then the body.
 3. **Credit whoever contributed**: a `Co-Authored-By:` trailer per additional contributor, an AI included, and only where they contributed to this commit. An AI never takes the author field, and checks what `user.name` resolves to before its first commit.
-4. **Sign off**: `git commit -s` adds the `Signed-off-by` trailer. The required **✍️ DCO Sign-Off** check blocks the merge without it. Forgot? `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` for a whole branch.
-5. **Push**: `git push -u origin HEAD`.
-6. **Open a pull request** into `Development`.
+4. **Sign**: with `commit.gpgsign true` set once, every commit is signed as it is made and lands Verified, under **Every Commit Is Verified** above. Nothing to type per commit.
+5. **Sign off**: `git commit -s` adds the `Signed-off-by` trailer. The required **✍️ DCO Sign-Off** check blocks the merge without it. Forgot? `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` for a whole branch.
+6. **Push**: `git push -u origin HEAD`.
+7. **Open a pull request** into `Development`.
 
 > [!NOTE]
 > **The rulesets have your back, not a local hook.** Nothing here installs a git hook, so this protocol is enforced where it cannot be bypassed: the branch rulesets refuse a direct push to a protected branch, and `semantic-pr.yml` re-checks every commit message and sign-off on the pull request itself. A local hook you can disable with `--no-verify` is a convenience, not a control.
@@ -246,6 +275,7 @@ same expiry that already applies.
 - **Local, optional**: `config/commitlint.config.js` encodes the same rules for anyone running commitlint in a Node toolchain. It is not required, and nothing in CI depends on it. The CI gate reads commits through the GitHub API instead, because the workflow runs on `pull_request_target` and installing packages from the pull request's own manifest would hand an elevated token to whoever opened it.
 - **Changelogs**: `release-notes.yml` parses the resulting history with git-cliff to draft notes automatically.
 - **Authorship: nowhere.** `scripts/commit-check.py` reads the message and never the author field, so the rule above is a convention rather than a gate. It is stated here because the failure it prevents is invisible: a commit authored by an agent looks correct in every log that shows only the subject, and the contradiction is visible only to somebody who thinks to run `git log --format='%an'`.
+- **Verification: nowhere mechanically.** The shipped rulesets carry no **Require signed commits** rule, and it cannot be switched on as this standard is written: a ruleset refuses an unsigned push whoever made it, so it would refuse every refresh the kits commit to `Development` as `github-actions[bot]`, and a ruleset exempts an actor from all of its rules or from none. Until that changes the rule is upheld the way authorship is, by the badge on the commit and by anyone who looks. `git log --format='%h %cn %G?'` prints `N` beside a commit that carries no signature at all; whether GitHub accepts a signature is a question only GitHub answers, which is why the check above goes through its API.
 
 > [!IMPORTANT]
 > **One rule set, three encodings.** The type list is written out in `scripts/commit-check.py`, in `config/commitlint.config.js`, and as the `commit-types` default in `semantic-pr.yml`. Changing one without the others produces a rule nobody enforces, or a message that passes one gate and fails another. This repository publishes its workflows rather than running them on itself, so nothing catches that automatically: run `python3 scripts/check-type-parity.py` before touching any of the three.
@@ -259,6 +289,7 @@ same expiry that already applies.
 - Keep the subject imperative and present tense: "add", "fix", "remove".
 - Write the **why** in the body. It is required, not encouraged.
 - Credit an AI that contributed with a `Co-Authored-By:` trailer.
+- Sign every commit. It lands Verified, or the history says nothing about who made it.
 - Mark **BREAKING CHANGE** explicitly in a footer.
 
 **Do not**
@@ -268,21 +299,25 @@ same expiry that already applies.
 - Let an AI author a commit. It is always a co-author, never the author.
 - Add a `Co-Authored-By:` trailer for an AI that did not contribute to this commit.
 - Use an em dash anywhere in the message. The gate rejects it.
+- Push a commit that shows Unverified, unless `github-actions[bot]` committed it. A signature GitHub cannot check is no signature.
 - Paste secrets, tokens or personal data into a message. History is forever, and a rewrite is not a redaction.
 
 ---
 
 ### 🆘 Troubleshooting
 
-| Symptom                               | Likely cause                                                                    | Fix                                                                                                                                                                   |
-| :------------------------------------ | :------------------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Message check fails on a pull request | Wrong type or format                                                            | Adjust to `type(scope): subject`; the type list is above                                                                                                              |
-| Rejected for a missing scope          | Scope omitted                                                                   | This standard requires it. `docs:` becomes `docs(readme):`                                                                                                            |
-| Subject too long or noisy             | Detail in the wrong place                                                       | Keep the subject under 72 characters and move the detail into the body                                                                                                |
-| Missing breaking-change notice        | Impact not stated                                                               | Add a `BREAKING CHANGE:` footer with details                                                                                                                          |
-| DCO check fails                       | No sign-off trailer                                                             | `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}`                                                                                              |
-| The log shows an agent as the author  | The resolved identity is the tool, usually from a global config the harness set | Set `user.name` and `user.email` to the contributor, then `git commit --amend --reset-author`. Already pushed? Leave it and fix the identity, or rewrite deliberately |
-| Em dash rejected                      | Character in the message                                                        | Replace with a comma, a colon, parentheses, or a spaced hyphen                                                                                                        |
+| Symptom                                | Likely cause                                                                    | Fix                                                                                                                                                                   |
+| :------------------------------------- | :------------------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Message check fails on a pull request  | Wrong type or format                                                            | Adjust to `type(scope): subject`; the type list is above                                                                                                              |
+| Rejected for a missing scope           | Scope omitted                                                                   | This standard requires it. `docs:` becomes `docs(readme):`                                                                                                            |
+| Subject too long or noisy              | Detail in the wrong place                                                       | Keep the subject under 72 characters and move the detail into the body                                                                                                |
+| Missing breaking-change notice         | Impact not stated                                                               | Add a `BREAKING CHANGE:` footer with details                                                                                                                          |
+| DCO check fails                        | No sign-off trailer                                                             | `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}`                                                                                              |
+| The log shows an agent as the author   | The resolved identity is the tool, usually from a global config the harness set | Set `user.name` and `user.email` to the contributor, then `git commit --amend --reset-author`. Already pushed? Leave it and fix the identity, or rewrite deliberately |
+| Em dash rejected                       | Character in the message                                                        | Replace with a comma, a colon, parentheses, or a spaced hyphen                                                                                                        |
+| Commit shows Unverified, `unsigned`    | Signing is off in this clone                                                    | `git config --global commit.gpgsign true`, then `git commit --amend --no-edit -S`, or `git rebase --exec 'git commit --amend --no-edit -S' @{upstream}` for a branch  |
+| Commit shows Unverified, `unknown_key` | The key that signed it is not registered on GitHub as a signing key             | Add the public key under Settings, SSH and GPG keys, as a Signing key. No rewrite: every commit it signed turns Verified                                              |
+| Commit shows Partially verified        | Author and committer differ, and the author has vigilant mode on                | Expected for a commit an agent made in the contributor's name. Nothing to fix                                                                                         |
 
 ---
 
