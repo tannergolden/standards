@@ -34,6 +34,7 @@ This is that list, in the order you meet it. If a step is not here, you should n
 | :------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Choose the visibility** | The toggle is on the generate form and defaults to public. It cannot be changed later without consequences - and the private template ships a proprietary licence, which does not belong on a public repository. |
 | **Choose the name**       | It becomes the licence holder line, the documentation footers, and the initial commit subject.                                                                                                                   |
+| **Write the description** | It becomes the About line on GitHub and the line a drawn header letters under the title. Keep it to [about 150 characters](../technical/interface/Document-Styling-&-Formatting.md#the-repository-description).  |
 
 > [!WARNING]
 > **Visibility is the one irreversible-feeling choice.** Generating the private template into a public repository publishes an "all rights reserved" licence to the world. Check the toggle before you click.

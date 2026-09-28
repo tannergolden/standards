@@ -176,8 +176,11 @@ _[Tagline in italics.]_
 > of the typed masthead. The block carries the lint suppression and the top
 > anchor itself, and the sheet letters the title, the description and the
 > tagline from what GitHub knows about the repository, with its figures ruled
-> along the foot. Every rule above about what those three say still binds;
-> only the medium changes. [Drawn Pages](#-drawn-pages) says how.
+> along the foot. Every rule above about what those three say still binds,
+> except the description's length: the sheet's description is the
+> repository's description on GitHub, and that runs to
+> [about 150 characters over two lines](#the-repository-description).
+> [Drawn Pages](#-drawn-pages) says how.
 
 ---
 
@@ -382,7 +385,9 @@ remembers where the page is, and the elements and the badges' blueprint
 plates follow it, so the whole page changes colour together.
 
 The rules in this specification bind a drawn page as they bind a typed one.
-The drawing changes the medium and nothing else:
+Apart from the description's length, which
+[has a rule of its own](#the-repository-description), the drawing changes the
+medium and nothing else:
 
 | Rule above          | On a drawn page                                                                                                                                                                                                                                                                                                                             |
 | :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -391,6 +396,23 @@ The drawing changes the medium and nothing else:
 | Footer              | The banners footer block is the footer. `closing` in `.github/banners.yml` is the Document Summary Phrase, unique to the page as always, and the whole sheet links to `#top`, with up to four link buttons under it                                                                                                                         |
 | Alt text            | Every image the kits write carries alt text built from what it shows. Never edit it: the next run writes it again                                                                                                                                                                                                                           |
 | Exactly four `tags` | The frontmatter stays the author's. No kit touches it                                                                                                                                                                                                                                                                                       |
+
+### The Repository Description
+
+A repository's description on GitHub is the line the sheet letters under its
+title, and the line GitHub shows wherever it lists the repository. **Keep it
+to about 150 characters, in one sentence, and never past 160.** The sheet
+sets the description on at most two lines, split evenly, and the kit cuts one
+longer than 160 characters at a word and ends it with an ellipsis. About 150
+fills both lines at full size and stays clear of the cut, so the description
+is always drawn whole.
+
+That makes it the one exception to the header matrix. A typed masthead holds
+its description to a single line of about 90 characters, because a masthead
+that wraps reads as a paragraph. The sheet allows two lines and balances
+them, so a repository gets the room to say what it does and how. The rule
+binds every repository, drawn header or not: the description is written by
+hand, and it is the same line wherever GitHub shows it.
 
 ### Machine-Owned Blocks
 
