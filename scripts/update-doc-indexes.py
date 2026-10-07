@@ -65,8 +65,10 @@ cannot describe itself (an image, a folder with no README) keeps the
 description already in its row, so it is written once, by hand, and survives
 every regeneration; until then it reads `-`. `fields=name,on` adds a column
 for each: `name` is a YAML `name:` or a Markdown title, `on` is a workflow's
-triggers. Non-ASCII text is emitted as HTML hex entities, so every cell is
-the width the formatter measures.
+triggers. Any other key is read from a Markdown entry's frontmatter, which
+is how a folder of decision records logs each one's status, date and
+evidence (`fields=status,date,evidence`). Non-ASCII text is emitted as HTML
+hex entities, so every cell is the width the formatter measures.
 
 Modes: --write regenerates every block in place; --check (the
 `make lint-docs` gate) fails when any block is stale, naming the file
@@ -256,8 +258,10 @@ def render_records(opts, base, recursive, exclude, exclude_dirs, host, host_dir)
 # Directories never listed, whether or not git is there to say so.
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv"}
 
-# The header each `fields=` key gets, between the entry and its purpose.
+# The header each `fields=` key gets, between the entry and its purpose. Any
+# other key is a frontmatter key, headed by its own name.
 FIELD_HEADERS = {"name": "Name", "on": "Triggers"}
+FIELD_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*$")
 
 # A line that only draws a rule (`# =====`, `# --- Reusable Workflow ---`).
 RULE = re.compile(r"^(?:[=\-#*_~+]{3,}|-{2,3}\s.*\s-{2,3})$")
@@ -539,18 +543,19 @@ def workflow_triggers(text: str) -> str:
 
 
 def field(path: str, key: str) -> str:
-    """A `fields=` column for one entry: `name` or `on`."""
+    """A `fields=` column for one entry: `name`, `on`, or a frontmatter key."""
     if os.path.isdir(path):
         return ""
     text = read_text(path)
     suffix = os.path.splitext(path)[1].lower()
+    markdown = suffix in (".md", ".markdown")
     if key == "name":
-        if suffix in (".md", ".markdown"):
+        if markdown:
             return front_value(text, "title")
         return top_level(text, "name") if suffix in (".yml", ".yaml") else ""
-    if key == "on" and suffix in (".yml", ".yaml"):
-        return workflow_triggers(text)
-    return ""
+    if key == "on":
+        return workflow_triggers(text) if suffix in (".yml", ".yaml") else ""
+    return front_value(text, key) if markdown else ""
 
 
 def cell(text: str) -> str:
@@ -582,11 +587,11 @@ def carried(current) -> dict:
 def render_log(opts, base, exclude, host, current):
     """One row per entry directly inside `base`: folders first, then files."""
     fields = [f for f in opts.get("fields", "").split(",") if f]
-    unknown = [f for f in fields if f not in FIELD_HEADERS]
-    if unknown:
-        sys.exit(f"AUTO-INDEX log in {host}: unknown field(s) {unknown} - known: {sorted(FIELD_HEADERS)}")
+    unusable = [f for f in fields if not FIELD_KEY.match(f)]
+    if unusable:
+        sys.exit(f"AUTO-INDEX log in {host}: field(s) {unusable} cannot be a frontmatter key.")
     headers = [h for h in opts.get("headers", "").split(",") if h] or (
-        ["Entry"] + [FIELD_HEADERS[f] for f in fields] + ["Purpose"]
+        ["Entry"] + [FIELD_HEADERS.get(f, capitalized(f)) for f in fields] + ["Purpose"]
     )
     if len(headers) != len(fields) + 2:
         sys.exit(

@@ -123,11 +123,11 @@ We utilize **Husky** to ensure that code hygiene is enforced before it ever reac
 
 ## 🔄 Ongoing Maintenance Schedule
 
-| Cadence      | Action                                       | Responsibility                                          |
-| :----------- | :------------------------------------------- | :------------------------------------------------------ |
-| **On merge** | Delete merged head branches.                 | GitHub setting: **Automatically delete head branches**. |
-| **Weekly**   | Triage open issues and label staleness.      | Automated (`governance.yml`).                           |
-| **Monthly**  | Prune unused artifacts and update ADR index. | Maintainer.                                             |
+| Cadence      | Action                                  | Responsibility                                          |
+| :----------- | :-------------------------------------- | :------------------------------------------------------ |
+| **On merge** | Delete merged head branches.            | GitHub setting: **Automatically delete head branches**. |
+| **Weekly**   | Triage open issues and label staleness. | Automated (`governance.yml`).                           |
+| **Monthly**  | Prune unused artifacts.                 | Maintainer.                                             |
 
 ---
 

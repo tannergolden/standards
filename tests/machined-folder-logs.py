@@ -279,10 +279,38 @@ class TestFieldsAddColumns:
     def test_inline_triggers(self, on, expected):
         assert indexes.workflow_triggers(f"name: x\n{on}jobs: {{}}\n") == expected
 
-    def test_an_unknown_field_is_refused(self, tmp_path, monkeypatch):
+    def test_any_other_field_is_read_from_frontmatter(self, tmp_path, monkeypatch):
+        # How a folder of decision records doubles as their index: the log
+        # carries each record's status, date and evidence beside its purpose.
+        write(
+            tmp_path / "ADR-0001-Use-Postgres.md",
+            "<!--\ntitle: 'ADR'\ndescription: 'Use Postgres for every service.'\n"
+            "status: 'Accepted'\ndate: '2026-01-02'\nevidence: '[Report](https://example.com/r.md)'\n-->\n",
+        )
+        write(tmp_path / "flow.svg", "<svg/>\n")
+        readme = write(
+            tmp_path / "README.md",
+            "<!-- AUTO-INDEX:BEGIN dir=. style=log fields=status,date,evidence -->\n<!-- AUTO-INDEX:END -->\n",
+        )
+        monkeypatch.chdir(tmp_path)
+        indexes.process("README.md", write=True)
+        lines = block(readme.read_text(encoding="utf-8")).splitlines()
+        header = next(ln for ln in lines if ln.startswith("| Entry"))
+        assert [c.strip() for c in header.strip("|").split("|")] == ["Entry", "Status", "Date", "Evidence", "Purpose"]
+        record = next(ln for ln in lines if "ADR-0001" in ln)
+        assert [c.strip() for c in record.strip("|").split("|")][1:] == [
+            "Accepted",
+            "2026-01-02",
+            "[Report](https://example.com/r.md)",
+            "Use Postgres for every service.",
+        ]
+        image = next(ln for ln in lines if "flow.svg" in ln)
+        assert [c.strip() for c in image.strip("|").split("|")][1:4] == ["-", "-", "-"], "no frontmatter, no value"
+
+    def test_a_field_that_cannot_be_a_key_is_refused(self, tmp_path, monkeypatch):
         write(
             tmp_path / "README.md",
-            "<!-- AUTO-INDEX:BEGIN dir=. style=log fields=colour -->\n<!-- AUTO-INDEX:END -->\n",
+            "<!-- AUTO-INDEX:BEGIN dir=. style=log fields=a/b -->\n<!-- AUTO-INDEX:END -->\n",
         )
         monkeypatch.chdir(tmp_path)
         with pytest.raises(SystemExit):

@@ -78,7 +78,7 @@ Documentation names are **Capitalized-Kebab, always** - these are substance rule
 
 ## 🗂️ Machined Indexes
 
-Lists that carry the `AUTO-INDEX` markers are **generated, never hand-maintained**: the distribution hub's category lists and the glossary's index here, and in a repository generated from the templates, every folder's file log and the decision register. Lists without markers, the docs-home index and the workflow hub among them, remain hand-curated, and the Distill-Lessons prompt sweeps them for drift. Content between the markers is machine-owned:
+Lists that carry the `AUTO-INDEX` markers are **generated, never hand-maintained**: the distribution hub's category lists and the glossary's index here, and in a repository generated from the templates, every folder's file log, which in `docs/adrs/` doubles as the decision index. Lists without markers, the docs-home index and the workflow hub among them, remain hand-curated, and the Distill-Lessons prompt sweeps them for drift. Content between the markers is machine-owned:
 
 ```markdown
 <!-- AUTO-INDEX:BEGIN dir=<path> style=<list|table|records|log> -->
@@ -94,7 +94,7 @@ Lists that carry the `AUTO-INDEX` markers are **generated, never hand-maintained
 | `records` | A tracking table of a record shelf: one column per `fields=` key, read from each record's frontmatter       |
 | `log`     | A **folder log**: every file and folder directly inside `dir`, folders first, each with its own description |
 
-A folder log describes each entry by what the entry says about itself: a folder by its README's frontmatter description, a document by its own, a script by its docstring, a form by its `description:`, and anything else by its leading comment. An entry that cannot carry a description, such as an image, keeps the one written in its row, and that cell is the only text inside the markers a person ever writes. `fields=name,on` adds a column for a YAML file's `name:` and for a workflow's triggers.
+A folder log describes each entry by what the entry says about itself: a folder by its README's frontmatter description, a document by its own, a script by its docstring, a form by its `description:`, and anything else by its leading comment. An entry that cannot carry a description, such as an image, keeps the one written in its row, and that cell is the only text inside the markers a person ever writes. `fields=name,on` adds a column for a YAML file's `name:` and for a workflow's triggers, and any other key a column read from each document's frontmatter: `fields=status,date,evidence` is how a folder of decision records logs each one's status, date and evidence.
 
 `scripts/update-doc-indexes.py` regenerates every block from the tree. Run `python3 scripts/update-doc-indexes.py --write` after adding, renaming, or removing a doc, and `--check` to fail on a stale index, so an index need never silently disagree with the tree. `--tree` widens the search from `docs/` to every Markdown file in the repository, which is how a consuming repository runs it: the templates ship an `auto-index.yml` stub that calls the reusable `auto-index.yml` here after every push to the default branch, and that workflow proposes whatever changed as one evolving pull request. Never edit between the markers by hand - edit the surrounding prose freely.
 
