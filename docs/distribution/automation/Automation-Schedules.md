@@ -51,6 +51,7 @@ Everything else is **event driven** and needs no schedule:
 | Trigger                      | Workflows                                                     |
 | :--------------------------- | :------------------------------------------------------------ |
 | Push and pull request        | `checks.yml`, `auto-format.yml`, `verify-stubs.yml`           |
+| Push to the default branch   | `auto-index.yml`, which proposes its result as a pull request |
 | Pull request, issue, comment | `governance.yml`; `dependabot-automerge.yml` on PRs only      |
 | Another workflow finishing   | `ci-failure-alert.yml`                                        |
 | Release published            | `release.yml` - the `publish` and `prune-releases` jobs       |
@@ -82,7 +83,7 @@ together means competing for the same rate limit at the same instant.
 ## 🛡️ Nothing Scheduled Pushes To A Protected Branch
 
 Workflows that produce changes propose them as a pull request and merge through the same gates as a
-human change. That covers `auto-format.yml`.
+human change. That covers `auto-format.yml` and `auto-index.yml`.
 `release-notes.yml` is the one exception in form rather than principle: it maintains a single
 evolving **draft** release, which publishes nothing until somebody presses publish.
 

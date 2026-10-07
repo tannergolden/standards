@@ -77,6 +77,7 @@ labels, settings and rulesets through the API and never touches your tree. See
 | :------------------------- | :--------------------------------------------------------------------------------- |
 | `governance.yml`           | Welcomes newcomers, labels pull requests, ages out and locks threads, syncs labels |
 | `auto-format.yml`          | Repairs formatting drift as a pull request. Any formatter                          |
+| `auto-index.yml`           | Regenerates every machined index, folder logs included, as a pull request          |
 | `issue-ops.yml`            | `/assign`, `/unassign`, `/label` slash commands                                    |
 | `ci-failure-alert.yml`     | Opens an issue when a watched workflow fails, closes it on recovery                |
 | `dependabot-automerge.yml` | Approves and queues patch and minor updates. Majors need a human                   |
@@ -155,9 +156,10 @@ thing ever copied; everything behind the `uses:` stays here.
 
 Generate your repository from the public template,
 [tannergolden/path](https://github.com/tannergolden/path), and every trigger workflow arrives
-installed, grouped, and pinned to `@v1`: twelve files covering the checks, governance, the release
-chain, maintenance, and the standards lifecycle. The optional ones carry an `is_template` guard, so
-they are silent in the template and come alive in the repository generated from it.
+installed, grouped, and pinned to `@v1`: thirteen files covering the checks, governance, the release
+chain, maintenance, the standards lifecycle, and the machined indexes. The optional ones carry an
+`is_template` guard, so they are silent in the template and come alive in the repository generated
+from it.
 
 Then run **🎯 Apply Standards** once for the label taxonomy and, when you are ready for branch
 protection, the rulesets:

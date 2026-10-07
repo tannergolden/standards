@@ -61,6 +61,7 @@ only describes jobs is a workflow.
 | `prune-deployments`   | script                    | Deletes superseded deployments, keeping the current successful one            |
 | `prune-workflow-runs` | script                    | Deletes old runs, keeping recent history and anything in flight               |
 | `apply-settings`      | script                    | Brings a repository's settings in line with the published set                 |
+| `update-indexes`      | script                    | Regenerates, or checks, every machined index in a repository                  |
 
 ---
 

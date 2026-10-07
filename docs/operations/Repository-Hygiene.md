@@ -37,10 +37,10 @@ We adhere to a standardized structure so that any developer - or agent - can nav
 ```txt
 / (repo root)
 ├── .github/
-│   ├── workflows/         # 21 reusable definitions + release.yml and self-checks.yml, local to here
+│   ├── workflows/         # 22 reusable definitions + release.yml and self-checks.yml, local to here
 │   ├── dependabot.yml     # Keeps every pinned action current. Read only from the owning repo
 │   └── CODEOWNERS         # Read only from the owning repo
-├── actions/               # 15 composite actions, each shipping the files it needs
+├── actions/               # 16 composite actions, each shipping the files it needs
 ├── config/                # Tool configuration read BY a tool during a run
 ├── data/                  # Rulesets and the label taxonomy, written TO a repository
 ├── docs/                  # The standards themselves, followed by link

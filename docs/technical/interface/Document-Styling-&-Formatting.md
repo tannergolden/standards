@@ -38,16 +38,16 @@ What it does have is `self-checks.yml`, which runs `make lint-docs` on every
 push and once a week, so the column below says where each rule is actually
 checked, and admits where the answer is nowhere:
 
-| Rule                             | Checked by                                                    |
-| :------------------------------- | :------------------------------------------------------------ |
-| Machined indexes match the tree  | `scripts/update-doc-indexes.py --check`, via `make lint-docs` |
-| Label reference matches registry | `scripts/update-label-docs.py --check`, via `make lint-docs`  |
-| Spelling                         | `typos`, in `ci.yml`, in consuming repositories               |
-| Links resolve                    | `lychee`, in `ci.yml`, in consuming repositories              |
-| A drawn block matches its data   | Each kit's check mode, in consuming repositories              |
-| Hidden frontmatter, comment form | Convention. Upheld by review                                  |
-| Exactly four `tags`              | Convention. Upheld by review                                  |
-| No `_` as a space in a filename  | Convention. Upheld by review                                  |
+| Rule                             | Checked by                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------- |
+| Machined indexes match the tree  | `scripts/update-doc-indexes.py`, via `make lint-docs` and `auto-index.yml` |
+| Label reference matches registry | `scripts/update-label-docs.py --check`, via `make lint-docs`               |
+| Spelling                         | `typos`, in `ci.yml`, in consuming repositories                            |
+| Links resolve                    | `lychee`, in `ci.yml`, in consuming repositories                           |
+| A drawn block matches its data   | Each kit's check mode, in consuming repositories                           |
+| Hidden frontmatter, comment form | Convention. Upheld by review                                               |
+| Exactly four `tags`              | Convention. Upheld by review                                               |
+| No `_` as a space in a filename  | Convention. Upheld by review                                               |
 
 Everything else in this specification - the badges, the centered headers, the
 taglines, the fully-capped titles - is **convention, followed by hand**. It is
@@ -78,14 +78,25 @@ Documentation names are **Capitalized-Kebab, always** - these are substance rule
 
 ## 🗂️ Machined Indexes
 
-Document lists that carry the `AUTO-INDEX` markers (the distribution hub's category lists and the glossary's index) are **generated, never hand-maintained** - lists without markers, the docs-home index and the workflow hub among them, remain hand-curated, and the Distill-Lessons prompt sweeps them for drift. Content between the markers is machine-owned:
+Lists that carry the `AUTO-INDEX` markers are **generated, never hand-maintained**: the distribution hub's category lists and the glossary's index here, and in a repository generated from the templates, every folder's file log and the decision register. Lists without markers, the docs-home index and the workflow hub among them, remain hand-curated, and the Distill-Lessons prompt sweeps them for drift. Content between the markers is machine-owned:
 
 ```markdown
-<!-- AUTO-INDEX:BEGIN dir=<path under docs/> style=<list|table> -->
+<!-- AUTO-INDEX:BEGIN dir=<path> style=<list|table|records|log> -->
 <!-- AUTO-INDEX:END -->
 ```
 
-`scripts/update-doc-indexes.py` regenerates every block from the tree plus each document's own frontmatter (title emoji as hex entities, description as the table blurb). Run `python3 scripts/update-doc-indexes.py --write` after adding, renaming, or removing a doc, and `--check` to fail on a stale index, so an index need never silently disagree with the tree. Never edit between the markers by hand - edit the surrounding prose freely.
+`dir=` is a path under `docs/`, or, written as `.`, `./sub` or `../sibling`, a path from the folder the block sits in: the form that keeps working wherever the file is copied, and in a repository with no `docs/` at all. `exclude=` takes file names or glob patterns.
+
+| Style     | Draws                                                                                                       |
+| :-------- | :---------------------------------------------------------------------------------------------------------- |
+| `list`    | A bullet list of the documents in `dir`, labelled from their filenames, the title's emoji as a hex entity   |
+| `table`   | The same documents as a numbered table, each with its frontmatter description                               |
+| `records` | A tracking table of a record shelf: one column per `fields=` key, read from each record's frontmatter       |
+| `log`     | A **folder log**: every file and folder directly inside `dir`, folders first, each with its own description |
+
+A folder log describes each entry by what the entry says about itself: a folder by its README's frontmatter description, a document by its own, a script by its docstring, a form by its `description:`, and anything else by its leading comment. An entry that cannot carry a description, such as an image, keeps the one written in its row, and that cell is the only text inside the markers a person ever writes. `fields=name,on` adds a column for a YAML file's `name:` and for a workflow's triggers.
+
+`scripts/update-doc-indexes.py` regenerates every block from the tree. Run `python3 scripts/update-doc-indexes.py --write` after adding, renaming, or removing a doc, and `--check` to fail on a stale index, so an index need never silently disagree with the tree. `--tree` widens the search from `docs/` to every Markdown file in the repository, which is how a consuming repository runs it: the templates ship an `auto-index.yml` stub that calls the reusable `auto-index.yml` here after every push to the default branch, and that workflow proposes whatever changed as one evolving pull request. Never edit between the markers by hand - edit the surrounding prose freely.
 
 ---
 

@@ -1,0 +1,66 @@
+# --- Composite Action ---
+#
+# 🗂️ Update Machined Indexes
+#
+# Purpose: regenerates every AUTO-INDEX block in the checked-out repository,
+# or checks that none is stale: each folder's README log, a record shelf's
+# register, a docs hub's lists. What a block shows is decided by the block;
+# the grammar is the styling spec's Machined Indexes section.
+#
+# The generator travels with this action, which is the only reason a
+# reusable workflow can run it at all: that workflow's checkout resolves to
+# the calling repository, and the calling repository does not carry the
+# script.
+#
+# WHOLE-REPOSITORY MODE. A block counts wherever it sits, so a README beside
+# the files it logs is found as surely as a docs hub. A run that finds no
+# block anywhere FAILS, because a check that inspected nothing must not
+# report a pass.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/update-indexes@v1
+#     with:
+#       mode: write
+#
+# ---
+
+name: '🗂️ Update Machined Indexes'
+description: 'Regenerates, or checks, every machined index in a repository: folder logs, record registers and document lists.'
+
+inputs:
+  mode:
+    description: >-
+      `write` regenerates every stale block in place and changes nothing
+      else; `check` fails when any block is stale and writes nothing.
+    required: false
+    default: 'write'
+
+outputs:
+  updated:
+    description: 'How many files the write mode changed. Always 0 in check mode.'
+    value: ${{ steps.index.outputs.updated }}
+
+runs:
+  using: composite
+  steps:
+    - name: '🗂️ Regenerate the machined indexes'
+      id: index
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+      run: |
+        set -euo pipefail
+        case "$MODE" in
+          write|check) ;;
+          *)
+            echo "::error title=Machined indexes::mode must be 'write' or 'check', not '${MODE}'."
+            exit 1
+            ;;
+        esac
+        log="$(mktemp)"
+        python3 "${GITHUB_ACTION_PATH}/../../scripts/update-doc-indexes.py" --tree "--${MODE}" | tee "$log"
+        # The generator names each file it rewrote on a line of its own, so
+        # the count is of files changed rather than of blocks visited.
+        updated="$(grep -c '^📝 ' "$log" || true)"
+        echo "updated=${updated:-0}" >> "$GITHUB_OUTPUT"

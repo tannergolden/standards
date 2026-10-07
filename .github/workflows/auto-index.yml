@@ -1,0 +1,179 @@
+# --- Reusable Workflow ---
+#
+# 🗂️ Machined Indexes
+#
+# Purpose: keeps every machined index in a repository current - each
+# folder's README log, a record register, a docs hub's lists - and proposes
+# what changed as a pull request, never as a push to a long-lived branch.
+#
+# An index regenerated from the tree cannot disagree with it, but only if
+# something regenerates it. Left to people, a folder log goes stale the first
+# time a file lands without its row, and nothing notices: a log that omits a
+# file reads exactly like a complete one. So this runs after every push and
+# no-ops when every index already matches the tree.
+#
+# WHAT IT REGENERATES IS DECIDED BY THE REPOSITORY, NOT BY THIS WORKFLOW.
+# Every `<!-- AUTO-INDEX:BEGIN ... -->` block in every Markdown file is
+# redrawn by `scripts/update-doc-indexes.py --tree`, shipped with the
+# `update-indexes` action. A repository with no block anywhere fails here on
+# purpose, because a run that indexed nothing must not report a pass.
+#
+# ⚠️ THE DEFAULT GITHUB_TOKEN CANNOT PUSH ANY FILE UNDER .github/workflows/,
+# the README there included. Without a BOT_ACCESS_TOKEN, a regenerated log in
+# that folder is reverted rather than pushed, and the pull request says
+# which, so every other index still lands.
+#
+# Called, not triggered. A consuming repository adds a stub:
+#
+#   name: '🗂️ Machined Indexes'
+#   on:
+#     push:
+#     workflow_dispatch:
+#   concurrency:
+#     # Only the newest tree needs indexing, so superseding an in-flight
+#     # run is correct here, unlike a required check.
+#     group: ${{ github.workflow }}-${{ github.ref }}
+#     cancel-in-progress: true
+#   permissions: {}
+#   jobs:
+#     index:
+#       if: ${{ github.event_name != 'push' || github.ref_name == github.event.repository.default_branch }}
+#       permissions:
+#         contents: write # push the regenerated topic branch (PR-only flow)
+#         pull-requests: write # open or update the index pull request
+#       uses: tannergolden/standards/.github/workflows/auto-index.yml@v1
+#       secrets: inherit
+#
+# ---
+
+name: '🗂️ Machined Indexes'
+
+on:
+  workflow_call:
+    inputs:
+      base:
+        description: >-
+          Branch the pull request targets. Empty uses the repository's own
+          default branch.
+        required: false
+        type: string
+        default: ''
+      automerge:
+        description: 'Merge once required checks pass. Still gated on green CI.'
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      BOT_ACCESS_TOKEN:
+        description: >-
+          Optional PAT with repo and workflow scopes. Without it, a
+          regenerated log under .github/workflows/ is reverted rather than
+          pushed, because the default token cannot write there.
+        required: false
+
+permissions: {}
+
+jobs:
+  index:
+    name: '🗂️ Regenerate Indexes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # push the regenerated topic branch (PR-only flow)
+      pull-requests: write # open or update the index pull request
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🗂️ Machined Indexes: regenerates every AUTO-INDEX block and proposes the result as a pull request.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🗂️ Regenerate the machined indexes'
+        id: index
+        uses: tannergolden/standards/actions/update-indexes@v1
+        with:
+          mode: write
+
+      # The default GITHUB_TOKEN can never push files under
+      # .github/workflows/, not even to a topic branch, and a README there is
+      # no exception. Rather than fail the push, put that folder back and say
+      # so in the pull request body, so the rest of the indexes still land.
+      - name: '🔐 Resolve Workflow-File Policy'
+        id: policy
+        if: ${{ steps.index.outputs.updated != '0' }}
+        env:
+          HAVE_PAT: ${{ secrets.BOT_ACCESS_TOKEN != '' }}
+        run: |
+          set -euo pipefail
+          NOTE=""
+          if [ "$HAVE_PAT" != "true" ]; then
+            SKIPPED=$(git status --porcelain -- .github/workflows | awk '{print $2}' | tr '\n' ' ')
+            if [ -n "$SKIPPED" ]; then
+              git checkout -- .github/workflows/ 2>/dev/null || true
+              NOTE="> [!WARNING]
+          > An index under \`.github/workflows/\` was left as it was, because no \`BOT_ACCESS_TOKEN\` secret is configured and \`GITHUB_TOKEN\` cannot push files in that folder. Skipped: \`$SKIPPED\`. Regenerate it in a commit of your own, or add a PAT with \`repo\` and \`workflow\` scopes as \`BOT_ACCESS_TOKEN\`."
+            fi
+          fi
+          {
+            echo "note<<NOTE_EOF"
+            echo "$NOTE"
+            echo "NOTE_EOF"
+          } >> "$GITHUB_OUTPUT"
+          # Counted after any revert, so the commit title reports what
+          # actually ships rather than what the generator touched.
+          echo "count=$(git status --porcelain | wc -l | tr -d ' ')" >> "$GITHUB_OUTPUT"
+
+      - name: '🚀 Propose the indexes as a pull request'
+        if: ${{ steps.index.outputs.updated != '0' }}
+        uses: tannergolden/standards/actions/open-pr@v1
+        with:
+          token: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: 'docs/auto-index'
+          base: ${{ inputs.base }}
+          automerge: ${{ inputs.automerge }}
+          commit-title: 'docs(index): 🗂️ regenerate ${{ steps.policy.outputs.count }} machined index file(s)'
+          commit-body: |
+            Automated pass of the machined-index generator. Every AUTO-INDEX
+            block was redrawn from the tree and each entry's own description,
+            and long-lived branches are PR-only, so the result arrives here
+            rather than as a direct push.
+          pr-title: 'docs(index): 🗂️ regenerate the machined indexes'
+          pr-body: |
+            ### 🗂️ Machined Indexes
+
+            A file was added, removed, renamed or re-described since these
+            indexes were last drawn, so they were regenerated from the tree.
+            Nothing between the markers is written by hand: change an entry's
+            own description and the next run carries it here.
+
+            ${{ steps.policy.outputs.note }}
+
+            > [!NOTE]
+            > If required checks stay pending, this pull request was opened
+            > with the default `GITHUB_TOKEN`, which cannot trigger
+            > workflows. Re-run the checks by hand, or configure a
+            > `BOT_ACCESS_TOKEN` secret so automation pull requests run CI
+            > on their own.
+
+      - name: '📝 Report Failure (Indexes)'
+        if: ${{ failure() }}
+        env:
+          INDEX_CONCLUSION: ${{ steps.index.conclusion }}
+        run: |
+          if [ "$INDEX_CONCLUSION" = "failure" ]; then
+            echo "::error title=Machined indexes::The generator failed. The step above names the block or file it could not draw."
+          else
+            echo "::error title=Machined indexes::Index delivery failed after the generator ran: the workflow-file policy step, or pull request delivery. See the failing step above."
+          fi
+          {
+            echo "### 🗂️ Machined indexes failed"
+            echo ""
+            echo "1. **No block:** this repository has no \`AUTO-INDEX\` block anywhere. Add one, or delete the stub that calls this workflow."
+            echo "2. **A malformed block:** an unknown \`style\` or \`fields\` value, a \`dir\` that does not exist, or a block opened and never closed."
+            echo "3. **Delivery:** a push or pull-request failure; check token scopes and branch protection on \`docs/auto-index\`."
+          } >> "$GITHUB_STEP_SUMMARY"

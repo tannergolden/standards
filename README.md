@@ -50,7 +50,7 @@ jobs:
 That stub has to live in your repository, because **GitHub only runs a workflow that is in the
 repository being pushed to**. It is the one file ever copied, and it arrives already written when
 you generate from the public template, [`tannergolden/path`](https://github.com/tannergolden/path).
-Twelve stubs, grouped and pinned to `@v1`.
+Thirteen stubs, grouped and pinned to `@v1`.
 
 > [!IMPORTANT]
 > **Logic is never delivered by copying.** A trigger is not logic: it names events and nothing else,
@@ -64,8 +64,8 @@ Twelve stubs, grouped and pinned to `@v1`.
 
 | Path                                                | Purpose                                                                                                                             |
 | :-------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
-| [`.github/workflows/`](.github/workflows/README.md) | 21 reusable workflows, called with `uses:` at the job level, plus two local to this repository: `release.yml` and `self-checks.yml` |
-| [`actions/`](actions/README.md)                     | 15 composite actions, called with `uses:` at the step level                                                                         |
+| [`.github/workflows/`](.github/workflows/README.md) | 22 reusable workflows, called with `uses:` at the job level, plus two local to this repository: `release.yml` and `self-checks.yml` |
+| [`actions/`](actions/README.md)                     | 16 composite actions, called with `uses:` at the step level                                                                         |
 | [`data/`](data/README.md)                           | Rulesets and the label taxonomy, written **to** a repository                                                                        |
 | `config/`                                           | Linter and tooling configuration, read **by** a tool during a run                                                                   |
 | `docs/`                                             | The standards themselves, followed by link. Start at the standards index                                                            |
