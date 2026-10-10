@@ -38,6 +38,7 @@ WRITERS = [
     ".github/workflows/prune-drafts.yml",
     ".github/workflows/prune-releases.yml",
     ".github/workflows/prune-runs.yml",
+    ".github/workflows/template-sync.yml",
 ]
 
 

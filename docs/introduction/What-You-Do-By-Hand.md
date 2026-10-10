@@ -107,11 +107,12 @@ Then register the **public** half on GitHub as a **Signing key** (Settings → S
 
 ## 6️⃣ The Rest of the First Five Minutes
 
-| Step                                             | Notes                                                                                                                                                       |
-| :----------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Confirm `CODEOWNERS`**                         | The public template ships every rule commented out, because a rule naming an owner without write access is a GitHub error. Uncomment and name a real owner. |
-| **Replace the README**                           | It describes the template, not your project.                                                                                                                |
-| **Keep the account `.github` repository public** | Only for private repositories: GitHub will not serve inherited community health files from a private `.github`.                                             |
+| Step                                             | Notes                                                                                                                                                                                                                           |
+| :----------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Confirm `CODEOWNERS`**                         | The public template ships every rule commented out, because a rule naming an owner without write access is a GitHub error. Uncomment and name a real owner.                                                                     |
+| **Replace the README**                           | It describes the template, not your project.                                                                                                                                                                                    |
+| **Keep the account `.github` repository public** | Only for private repositories: GitHub will not serve inherited community health files from a private `.github`.                                                                                                                 |
+| **Add a `BOT_ACCESS_TOKEN`**                     | So 🔄 Template Sync can update the stubs under `.github/workflows/`, and fetch a private template. Without it those files wait, named in an issue. See [🔄 Template Sync](../distribution/automation/Template-Sync.md#-tokens). |
 
 Optional hardening you may want later - environment protection, approval for all external forks, an action allowlist - is listed with the reasoning in [⚙️ Repository Settings → Deliberately Manual](../operations/Repository-Settings.md).
 
@@ -124,6 +125,7 @@ Reach for these and you are fighting the automation, not using it:
 - **Editing a workflow stub's `permissions:` or `uses:` ref.** The ceiling is verified against the release; changing it usually breaks the run at startup, with no log.
 - **Copying a standard into your repository.** Follow it by link, or it goes stale the moment you paste it.
 - **Updating the licence year.** It is the year of generation, and it stays there.
+- **Copying the template's fixes over by hand, or editing `.github/template-sync.lock`.** Run 🔄 Template Sync when you want them: it carries every fix as a pull request; to keep a file as yours, put a `#` in front of it in `.github/template-sync`.
 - **Applying rulesets or settings through the GitHub UI.** Dispatch the workflow so the repository and the published set agree.
 
 ---

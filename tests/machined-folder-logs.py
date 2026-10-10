@@ -188,6 +188,14 @@ class TestEachEntryDescribesItself:
         path = write(tmp_path / ".markdownlint.json", '{\n  "//": "Repository-wide rules. More.",\n  "MD013": false\n}\n')
         assert indexes.describe(str(path)) == "Repository-wide rules. More."
 
+    def test_a_json_lock_reads_its_slash_slash_key(self, tmp_path):
+        path = write(tmp_path / "template-sync.lock", '{\n  "//": "Where each file was synced from.",\n  "format": 1\n}\n')
+        assert indexes.describe(str(path)) == "Where each file was synced from."
+
+    def test_a_lock_that_is_not_json_says_nothing(self, tmp_path):
+        path = write(tmp_path / "poetry.lock", "[[package]]\nname = 'x'\n")
+        assert indexes.describe(str(path)) == ""
+
     def test_a_plain_text_file_named_in_capitals_uses_its_first_line(self, tmp_path):
         path = write(tmp_path / "LICENSE", "MIT License\n\nCopyright (c) 2026\n")
         assert indexes.describe(str(path)) == "MIT License"

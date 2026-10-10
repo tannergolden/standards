@@ -49,8 +49,10 @@ jobs:
 
 That stub has to live in your repository, because **GitHub only runs a workflow that is in the
 repository being pushed to**. It is the one file ever copied, and it arrives already written when
-you generate from the public template, [`tannergolden/path`](https://github.com/tannergolden/path).
-Thirteen stubs, grouped and pinned to `@v1`.
+you generate from the public template, [`tannergolden/path`](https://github.com/tannergolden/path):
+fifteen stubs, grouped and pinned to `@v1`. After that, whenever you run it, **🔄 Template Sync**
+brings them up to date with the template as a pull request, merged with whatever you changed - see
+[Template Sync](docs/distribution/automation/Template-Sync.md).
 
 > [!IMPORTANT]
 > **Logic is never delivered by copying.** A trigger is not logic: it names events and nothing else,
@@ -62,14 +64,14 @@ Thirteen stubs, grouped and pinned to `@v1`.
 
 ## 📦 What's Inside
 
-| Path                                                | Purpose                                                                                                                             |
-| :-------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
-| [`.github/workflows/`](.github/workflows/README.md) | 22 reusable workflows, called with `uses:` at the job level, plus two local to this repository: `release.yml` and `self-checks.yml` |
-| [`actions/`](actions/README.md)                     | 16 composite actions, called with `uses:` at the step level                                                                         |
-| [`data/`](data/README.md)                           | Rulesets and the label taxonomy, written **to** a repository                                                                        |
-| `config/`                                           | Linter and tooling configuration, read **by** a tool during a run                                                                   |
-| `docs/`                                             | The standards themselves, followed by link. Start at the standards index                                                            |
-| `scripts/`                                          | Helpers the actions above ship and invoke                                                                                           |
+| Path                                                | Purpose                                                                                                                                     |
+| :-------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`.github/workflows/`](.github/workflows/README.md) | 24 reusable workflows, called with `uses:` at the job level, plus two local to this repository: `self-checks.yml` and `self-dependabot.yml` |
+| [`actions/`](actions/README.md)                     | 17 composite actions, called with `uses:` at the step level                                                                                 |
+| [`data/`](data/README.md)                           | Rulesets and the label taxonomy, written **to** a repository                                                                                |
+| `config/`                                           | Linter and tooling configuration, read **by** a tool during a run                                                                           |
+| `docs/`                                             | The standards themselves, followed by link. Start at the standards index                                                                    |
+| `scripts/`                                          | Helpers the actions above ship and invoke                                                                                                   |
 
 The two `uses:` mechanisms are not interchangeable, and the difference decides where a thing lives.
 A **reusable workflow** is checked out against the **calling** repository, so it can operate on your

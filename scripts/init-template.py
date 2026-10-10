@@ -41,6 +41,7 @@
 from __future__ import annotations
 
 import datetime
+import importlib.util
 import json
 import os
 import pathlib
@@ -180,6 +181,66 @@ def rewrite(
     return text
 
 
+def considered(path: pathlib.PurePath) -> bool:
+    """Whether initialisation looks inside a file at all."""
+    if any(part in SKIP_DIRS for part in path.parts):
+        return False
+    return path.suffix in TEXT_SUFFIXES or path.name in TEXT_NAMES
+
+
+def initialised(
+    path: str,
+    data: bytes,
+    *,
+    owner: str,
+    repo: str,
+    display: str,
+    template_owner: str,
+    year: int,
+) -> bytes:
+    """What initialisation leaves in one file: `data` itself, or its rewrite.
+
+    `main()` runs exactly this for every file, and template sync runs it to
+    reproduce what init did to a file months ago. One function, so the two
+    can never disagree about a single byte: a file that read as unchanged
+    to init but as changed to the sync would look like the owner's own edit,
+    and be merged as one.
+
+    ⚠️ THE NEWLINES ARE PART OF THE CONTRACT. Init reads with universal
+    newlines and writes only when the text changed, so a CRLF file whose
+    identity was rewritten comes out LF, and one with nothing to rewrite
+    keeps every byte.
+    """
+    if not considered(pathlib.PurePosixPath(path)):
+        return data
+    try:
+        original = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data
+    original = original.replace("\r\n", "\n").replace("\r", "\n")
+    text = rewrite(
+        original,
+        owner=owner,
+        repo=repo,
+        display=display,
+        template_owner=template_owner,
+        year=year,
+    )
+    return text.encode("utf-8") if text != original else data
+
+
+def _template_sync():
+    """template-sync.py, beside this script. Loaded on use: it imports this file too."""
+    path = pathlib.Path(__file__).with_name("template-sync.py")
+    spec = importlib.util.spec_from_file_location("template_sync", path)
+    module = importlib.util.module_from_spec(spec)
+    # Registered BEFORE it runs, as importlib's own recipe does: its
+    # dataclasses resolve their string annotations through sys.modules.
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def main() -> int:
     token = os.environ["GH_TOKEN"]
     repo = os.environ["REPO"]                       # owner/name
@@ -231,18 +292,15 @@ def main() -> int:
 
     changed: list[str] = []
     for path in sorted(pathlib.Path(".").rglob("*")):
-        if not path.is_file():
-            continue
-        if any(part in SKIP_DIRS for part in path.parts):
-            continue
-        if path.suffix not in TEXT_SUFFIXES and path.name not in TEXT_NAMES:
+        if not path.is_file() or not considered(path):
             continue
         try:
-            original = path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
+            original = path.read_bytes()
+        except OSError:
             continue
 
-        text = rewrite(
+        data = initialised(
+            path.as_posix(),
             original,
             owner=owner,
             repo=repo,
@@ -251,13 +309,29 @@ def main() -> int:
             year=this_year,
         )
 
-        if text != original:
-            path.write_text(text, encoding="utf-8")
+        if data != original:
+            path.write_bytes(data)
             changed.append(str(path))
 
     sentinel.unlink()
     changed.append(str(sentinel))
     print(f"Rewrote {len(changed) - 1} file(s); removed {sentinel}.")
+
+    # ⚠️ TEMPLATE SYNC'S BASELINE IS RECORDED HERE OR NOWHERE. The commit
+    # GitHub generated is the template's tree byte for byte, and the amend
+    # below replaces it, so this is the last moment its blobs are known
+    # exactly. The lock records them, with the identity just stamped, and
+    # every later sync measures the owner's edits against it. Written after
+    # the rewrite above, so its own contents are never rewritten.
+    if pathlib.Path(".github/template-sync").is_file():
+        sync = _template_sync()
+        lock = sync.generation_lock(
+            pathlib.Path("."),
+            template=generated_from,
+            identity=sync.Identity(owner, repo, display, this_year),
+        )
+        pathlib.Path(sync.LOCK_PATH).write_text(sync.dump_lock(lock), encoding="utf-8")
+        print(f"Recorded the template's {len(lock.files)} file(s) in {sync.LOCK_PATH}.")
 
     run("git", "config", "user.name", display)
     run("git", "config", "user.email", email)

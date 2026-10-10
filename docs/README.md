@@ -60,6 +60,7 @@ What each workflow does, and when it runs.
 | [Triage & Labeling](distribution/automation/Triage-&-Labeling.md)                           | Automated triage, sizing, and labels |
 | [Link Checker](distribution/automation/Link-Checker.md)                                     | Scheduled link-integrity checks      |
 | [Contributor Onboarding](distribution/automation/Contributor-Onboarding.md)                 | The first-time contributor flow      |
+| [Template Sync](distribution/automation/Template-Sync.md)                                   | A template's fixes, kept current     |
 
 ---
 

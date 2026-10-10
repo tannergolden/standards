@@ -1,0 +1,250 @@
+# --- Reusable Workflow ---
+#
+# 🔄 Template Sync
+#
+# Purpose: keeps a repository generated from a template current with it, as
+# one evolving pull request, and keeps the template itself honest about what
+# it ships.
+#
+# "Use this template" hands over a copy and forgets it. Every fix the
+# template gets afterwards - a stub, a repository script, a seeded document -
+# stays in the template unless something carries it over. This carries it:
+# per file, merged with whatever the owner changed, in the owner's identity,
+# and only for the paths `.github/template-sync` says are kept current.
+#
+# TWO JOBS, ONE STUB, SPLIT BY `is_template`:
+#   check  in the template: every file it ships must be named in its list, so
+#          nothing new reaches a generated repository unannounced.
+#   sync   in a generated repository: fetch the template at the major it
+#          follows, merge, and propose the result as a pull request.
+#
+# ⚠️ A SYNC RUNS ONLY WHEN THE OWNER ASKS FOR ONE. The stub gives the sync job
+# `workflow_dispatch` and nothing else - no schedule - so a repository whose
+# owner never runs it is never offered a change, let alone given one. The
+# template's fixes wait, released and tagged, until somebody wants them.
+#
+# ⚠️ A BOT_ACCESS_TOKEN IS WHAT LETS IT UPDATE WORKFLOWS. The default
+# GITHUB_TOKEN cannot push anything under .github/workflows/, and the stubs
+# there are most of what a template changes. Without the secret those files
+# are held back, recorded as waiting, and named in the pull request and in
+# the waiting-files issue - never dropped. The same secret must be able to
+# READ the template when the template is private.
+#
+# ⚠️ A CONFLICT TOUCHES NOTHING, AND IS NEVER FORGOTTEN. The owner's file is
+# left exactly as it was, its baseline does not move, and one issue stays
+# open naming it until it is settled. Merging a sync pull request with a
+# conflict still in it is safe and expected: the change is offered again on
+# every run until it lands or the file is switched off.
+#
+# Called, not triggered. A template ships this stub:
+#
+#   name: '🔄 Template Sync'
+#   on:
+#     push:
+#     pull_request:
+#     workflow_dispatch:
+#   concurrency:
+#     group: ${{ github.workflow }}-${{ github.ref }}
+#     cancel-in-progress: false
+#   permissions: {}
+#   jobs:
+#     sync:
+#       if: ${{ (github.event.repository.is_template && (github.event_name != 'push' || github.ref_name == github.event.repository.default_branch)) || (!github.event.repository.is_template && github.event_name == 'workflow_dispatch') }}
+#       permissions:
+#         contents: write # push the sync branch (PR-only flow)
+#         issues: write # keep the waiting-files issue current
+#         pull-requests: write # open or update the sync pull request
+#       uses: tannergolden/standards/.github/workflows/template-sync.yml@v1
+#       secrets: inherit
+#
+# ---
+
+name: '🔄 Template Sync'
+
+on:
+  workflow_call:
+    inputs:
+      template:
+        description: >-
+          The template, as owner/repo. Empty reads it from the lock, then from
+          GitHub's record of what the repository was generated from.
+        required: false
+        type: string
+        default: ''
+      ref:
+        description: 'The template tag to follow. The moving major is the normal choice.'
+        required: false
+        type: string
+        default: 'v1'
+      automerge:
+        description: >-
+          Merge the pull request once required checks pass - and only when
+          nothing in it waits on the owner. Still gated on green CI.
+        required: false
+        type: boolean
+        default: false
+      base:
+        description: "Branch the pull request targets. Empty uses the repository's own default branch."
+        required: false
+        type: string
+        default: ''
+    secrets:
+      BOT_ACCESS_TOKEN:
+        description: >-
+          Optional PAT with repo and workflow scopes. Without it, files under
+          .github/workflows/ are held back and the pull request opened cannot
+          trigger CI. It must be able to read the template when the template
+          is private.
+        required: false
+
+permissions: {}
+
+jobs:
+  check:
+    name: '🔄 Check The Sync List'
+    if: ${{ github.event.repository.is_template }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # read the template's own files and list
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: '🔄 Template Sync: checking that the sync list names every file this template ships.'
+
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: '🔄 Check the list'
+        uses: tannergolden/standards/actions/template-sync@v1
+        with:
+          mode: check
+
+  sync:
+    name: '🔄 Sync With The Template'
+    if: ${{ !github.event.repository.is_template }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # push the sync branch (PR-only flow)
+      issues: write # keep the waiting-files issue current
+      pull-requests: write # open or update the sync pull request
+    steps:
+      - name: '🛡️ Harden Runner'
+        uses: tannergolden/standards/actions/harden@v1
+        with:
+          egress-policy: audit
+          notice: "🔄 Template Sync: bringing the template's latest release into this repository as a pull request."
+
+      # Full history: a repository that never got a lock has its baseline
+      # recovered from its first commit.
+      - name: '📂 Checkout Calling Repository'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: '🔎 Resolve The Template'
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TEMPLATE: ${{ inputs.template }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          template="$INPUT_TEMPLATE"
+          # A lock that does not parse is left for the engine to refuse, with
+          # a sentence naming what is wrong - not a traceback here.
+          if [ -z "$template" ] && [ -f .github/template-sync.lock ]; then
+            template="$(python3 -c 'import json; print(json.load(open(".github/template-sync.lock")).get("template") or "")' 2>/dev/null || true)"
+          fi
+          if [ -z "$template" ]; then
+            template="$(gh api "repos/${REPO}" --jq '.template_repository.full_name // empty' 2>/dev/null || true)"
+          fi
+          if [ -z "$template" ]; then
+            echo "::error title=Template sync::No template is named: not in the stub, not in .github/template-sync.lock, and GitHub records none for this repository. Pass \`template:\` in the stub."
+            exit 1
+          fi
+          name="$(gh api "users/${OWNER}" --jq '.name // empty' 2>/dev/null || true)"
+          {
+            echo "template=${template}"
+            echo "name=${name}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Syncing from ${template}."
+
+      # A bare clone with every tag, outside the working tree, so no part of
+      # it can be committed here. The token rides in a header for this one
+      # command and is never written to any git config.
+      - name: '📥 Fetch The Template'
+        env:
+          TOKEN: ${{ secrets.BOT_ACCESS_TOKEN || github.token }}
+          TEMPLATE: ${{ steps.resolve.outputs.template }}
+        run: |
+          set -euo pipefail
+          auth="$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"
+          if ! git -c "http.extraheader=AUTHORIZATION: basic ${auth}" clone --bare --quiet \
+              "https://github.com/${TEMPLATE}.git" "${RUNNER_TEMP}/template.git"; then
+            echo "::error title=Template sync::Could not fetch ${TEMPLATE}. A private template needs a BOT_ACCESS_TOKEN secret that can read it; a BOT_ACCESS_TOKEN that has expired fails here for a public one too."
+            exit 1
+          fi
+
+      - name: '🔐 Resolve Workflow-File Policy'
+        id: policy
+        env:
+          HAVE_PAT: ${{ secrets.BOT_ACCESS_TOKEN != '' }}
+        run: echo "workflow-files=${HAVE_PAT}" >> "$GITHUB_OUTPUT"
+
+      - name: '🔄 Sync'
+        id: sync
+        uses: tannergolden/standards/actions/template-sync@v1
+        with:
+          mode: run
+          template-dir: ${{ runner.temp }}/template.git
+          template: ${{ steps.resolve.outputs.template }}
+          ref: ${{ inputs.ref }}
+          workflow-files: ${{ steps.policy.outputs.workflow-files }}
+          name: ${{ steps.resolve.outputs.name }}
+
+      - name: '🚀 Propose The Sync As A Pull Request'
+        if: ${{ steps.sync.outputs.changed == 'true' }}
+        uses: tannergolden/standards/actions/open-pr@v1
+        with:
+          token: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: 'chore/template-sync'
+          base: ${{ inputs.base }}
+          automerge: ${{ inputs.automerge && steps.sync.outputs.clean == 'true' }}
+          commit-title: ${{ steps.sync.outputs.commit-title }}
+          commit-body: |
+            Automated pass of Template Sync. Each file the template changed was
+            merged with this repository's own changes, in this repository's
+            identity, and only where .github/template-sync keeps it current.
+            A file that could not merge was left untouched and is named in the
+            pull request; its baseline did not move, so it is offered again.
+          pr-title: ${{ steps.sync.outputs.pr-title }}
+          pr-body: ${{ steps.sync.outputs.report }}
+
+      - name: '📌 Keep What Waits In View'
+        if: ${{ success() }}
+        uses: tannergolden/standards/actions/template-sync@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          mode: track
+          version: ${{ steps.sync.outputs.version }}
+
+      - name: '📝 Report Failure'
+        if: ${{ failure() }}
+        run: |
+          echo "::error title=Template sync::The sync did not complete. The failing step above names the cause."
+          {
+            echo "### 🔄 Template Sync failed"
+            echo ""
+            echo "1. **The template could not be fetched:** a private template needs a \`BOT_ACCESS_TOKEN\` that can read it."
+            echo "2. **The lock was refused:** \`.github/template-sync.lock\` is written by the sync alone; restore it from history."
+            echo "3. **Delivery:** a push or pull-request failure on \`chore/template-sync\`; check the token and branch protection."
+          } >> "$GITHUB_STEP_SUMMARY"

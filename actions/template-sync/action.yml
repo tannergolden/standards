@@ -1,0 +1,141 @@
+# --- Composite Action ---
+#
+# 🔄 Template Sync
+#
+# Purpose: keeps a repository generated from a template current with it, and
+# keeps a template honest about what it ships.
+#
+#   run    syncs the checked-out repository from a clone of its template:
+#          an identity-aware three-way merge per file, each file with its
+#          own baseline in .github/template-sync.lock, every owner's choice
+#          in .github/template-sync respected. Leaves the result in the
+#          working tree for a pull request; never commits.
+#   check  in a template, fails when .github/template-sync does not name
+#          every file the template ships.
+#   track  keeps one issue open while files wait on the owner, and closes
+#          it when none do.
+#
+# With `map`, run and track serve a repository DEFINED as a delta of its
+# template rather than generated from it: the mapping, written from that
+# repository's own contract, says what syncs and where it lives.
+#
+# The engine travels with this action, which is the only reason a reusable
+# workflow can run it at all: that workflow's checkout resolves to the calling
+# repository, which does not carry the script.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/actions/template-sync@v1
+#     with:
+#       mode: run
+#       template-dir: ${{ runner.temp }}/template.git
+#
+# ---
+
+name: '🔄 Template Sync'
+description: "Syncs a generated repository's scaffold from its template, checks a template's sync list, or tracks what waits on the owner."
+
+inputs:
+  mode:
+    description: "`run` syncs this repository, `check` checks a template's list, `track` keeps the waiting-files issue current."
+    required: false
+    default: 'run'
+  template-dir:
+    description: 'A clone of the template, bare or not, with its tags. Needed for `run`.'
+    required: false
+    default: ''
+  template:
+    description: 'The template as owner/repo. Empty takes it from the lock.'
+    required: false
+    default: ''
+  ref:
+    description: 'The template tag, or branch, to follow.'
+    required: false
+    default: 'v1'
+  workflow-files:
+    description: >-
+      Whether the token pushing the result can write .github/workflows/.
+      `false` holds those files back, keeps them waiting, and says so.
+    required: false
+    default: 'true'
+  name:
+    description: "The owner's display name. Used only to recover a lock that was never written."
+    required: false
+    default: ''
+  repository:
+    description: 'This repository, as owner/repo. Used by `track`.'
+    required: false
+    default: ${{ github.repository }}
+  version:
+    description: 'The template version just synced. Used by `track` when it closes the issue.'
+    required: false
+    default: ''
+  map:
+    description: >-
+      A mapping file, for a repository defined as a delta of its template
+      rather than generated from it. Empty for a generated repository.
+    required: false
+    default: ''
+
+outputs:
+  changed:
+    description: '`true` when the working tree now holds something to propose.'
+    value: ${{ steps.sync.outputs.changed }}
+  clean:
+    description: '`true` when nothing waits on the owner: no conflict, nothing held for a token.'
+    value: ${{ steps.sync.outputs.clean }}
+  pending:
+    description: 'How many files wait on the owner.'
+    value: ${{ steps.sync.outputs.pending }}
+  version:
+    description: 'The template version synced to, such as v1.4.0.'
+    value: ${{ steps.sync.outputs.version }}
+  pr-title:
+    description: 'A Conventional Commit title for the pull request.'
+    value: ${{ steps.sync.outputs.pr-title }}
+  commit-title:
+    description: "A Conventional Commit title for the commit, with this run's file count."
+    value: ${{ steps.sync.outputs.commit-title }}
+  report:
+    description: 'The pull request body: what changed, what waits, and why.'
+    value: ${{ steps.sync.outputs.report }}
+
+runs:
+  using: composite
+  steps:
+    - name: '🔄 Template sync'
+      id: sync
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        TEMPLATE_DIR: ${{ inputs.template-dir }}
+        TEMPLATE: ${{ inputs.template }}
+        REF: ${{ inputs.ref }}
+        WORKFLOW_FILES: ${{ inputs.workflow-files }}
+        OWNER_NAME: ${{ inputs.name }}
+        REPOSITORY: ${{ inputs.repository }}
+        VERSION: ${{ inputs.version }}
+        MAP: ${{ inputs.map }}
+      run: |
+        set -euo pipefail
+        script="${GITHUB_ACTION_PATH}/../../scripts/template-sync.py"
+        case "$MODE" in
+          run)
+            if [ -z "$TEMPLATE_DIR" ]; then
+              echo "::error title=Template sync::\`template-dir\` is empty. \`run\` needs a clone of the template to sync from."
+              exit 1
+            fi
+            python3 "$script" run --template-dir "$TEMPLATE_DIR" --template "$TEMPLATE" --ref "$REF" \
+              --workflow-files "$WORKFLOW_FILES" --name "$OWNER_NAME" --map "$MAP"
+            ;;
+          check)
+            python3 "$script" check
+            ;;
+          track)
+            python3 "$script" track --repository "$REPOSITORY" --version "$VERSION" --map "$MAP"
+            ;;
+          *)
+            echo "::error title=Template sync::mode must be 'run', 'check' or 'track', not '${MODE}'."
+            exit 1
+            ;;
+        esac

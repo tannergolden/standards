@@ -463,7 +463,9 @@ def describe(path: str) -> str:
         return leading_comment(text, "#", name)
     if suffix in (".yml", ".yaml"):
         return top_level(text, "description") or form_markdown(text) or leading_comment(text, "#", name)
-    if suffix in (".json", ".jsonc", ".json5"):
+    # A machine-written lock is JSON under another name, and says what it is
+    # the only way JSON can: a "//" key.
+    if suffix in (".json", ".jsonc", ".json5") or (suffix == ".lock" and text.lstrip().startswith("{")):
         comment = leading_comment(text, "//", name)
         if comment:
             return comment

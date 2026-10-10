@@ -65,7 +65,7 @@ The logic for our triage system resides in these infrastructure files:
 - **Issues**: Labeled by the **issue forms themselves** at creation (each form declares its labels, e.g. `type: bug` + `status: needs triage`); the workflow's issue events serve the first-time-contributor welcome, not labeling.
 
 > [!TIP]
-> Labeler-managed labels are **re-asserted on every push**: the path labeler runs with `sync-labels: true`, so a manual override of an `area:` label (or a size label) is reverted on the next `synchronize` event. To override durably, adjust the path map in `config/labeler.yml` (fork it via `.template-sync-ignore` if you restructure), or use labels outside the managed map - those are never touched.
+> Labeler-managed labels are **re-asserted on every push**: the path labeler runs with `sync-labels: true`, so a manual override of an `area:` label (or a size label) is reverted on the next `synchronize` event. To override durably, adjust the path map in `config/labeler.yml`, or use labels outside the managed map - those are never touched.
 
 ### 🔗 See also
 

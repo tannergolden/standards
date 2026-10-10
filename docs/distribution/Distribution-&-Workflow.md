@@ -61,6 +61,7 @@ This category also includes technical deep dives into our specific automation im
 - [&#x1F44B; Contributor Onboarding](./automation/Contributor-Onboarding.md)
 - [&#x1F517; Link Checker](./automation/Link-Checker.md)
 - [&#x2728; Semantic PRs & Auto Formatting](./automation/Semantic-PRs-&-Auto-Formatting.md)
+- [&#x1F504; Template Sync](./automation/Template-Sync.md)
 - [&#x1F6A6; Triage & Labeling](./automation/Triage-&-Labeling.md)
 
 <!-- AUTO-INDEX:END -->

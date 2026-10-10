@@ -48,16 +48,24 @@ with nothing to sync back here.
 
 Everything else is **event driven** and needs no schedule:
 
-| Trigger                      | Workflows                                                     |
-| :--------------------------- | :------------------------------------------------------------ |
-| Push and pull request        | `checks.yml`, `auto-format.yml`, `verify-stubs.yml`           |
-| Push to the default branch   | `auto-index.yml`, which proposes its result as a pull request |
-| Pull request, issue, comment | `governance.yml`; `dependabot-automerge.yml` on PRs only      |
-| Another workflow finishing   | `ci-failure-alert.yml`                                        |
-| Release published            | `release.yml` - the `publish` and `prune-releases` jobs       |
-| Push to a preview branch     | `preview-deploy.yml`                                          |
-| Manual dispatch only         | `apply-standards.yml`; the `package` and `prune-drafts` tasks |
-| Repository generated         | `lifecycle.yml` - the `init` job, once                        |
+| Trigger                              | Workflows                                                        |
+| :----------------------------------- | :--------------------------------------------------------------- |
+| Push and pull request                | `checks.yml`, `auto-format.yml`, `verify-stubs.yml`              |
+| Push to the default branch           | `auto-index.yml`, which proposes its result as a pull request    |
+| Pull request, issue, comment         | `governance.yml`; `dependabot-automerge.yml` on PRs only         |
+| Another workflow finishing           | `ci-failure-alert.yml`                                           |
+| Release published                    | `release.yml` - the `publish` and `prune-releases` jobs          |
+| Push to a preview branch             | `preview-deploy.yml`                                             |
+| Manual dispatch only                 | `apply-standards.yml`; the `package` and `prune-drafts` tasks    |
+| Manual dispatch only, by choice      | `template-sync.yml` - the `sync` job, in a generated repository  |
+| Repository generated                 | `lifecycle.yml` - the `init` job, once                           |
+| Push and pull request, in a template | `template-sync.yml` - the `check` job on the template's own list |
+
+> [!NOTE]
+> **Template sync is dispatch-only on purpose, too.** Whether a repository takes its template's
+> fixes at all is its owner's decision, so nothing proposes them unasked: the owner runs
+> 🔄 Template Sync when they want them, and a repository whose owner never does is never changed.
+> Giving it a schedule would turn an offer into a pull request that waits to be refused.
 
 > [!NOTE]
 > **Draft-release deletion is dispatch-only on purpose.** It deletes releases, and a destructive

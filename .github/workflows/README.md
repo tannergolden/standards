@@ -84,6 +84,7 @@ labels, settings and rulesets through the API and never touches your tree. See
 | `apply-standards.yml`      | Writes the label taxonomy and, opt-in, the rulesets                                |
 | `init-template.yml`        | Claims a generated repository for its new owner, once, then goes inert             |
 | `standards-version.yml`    | Opens one issue when a newer major exists. Never edits a pin                       |
+| `template-sync.yml`        | Keeps a generated repository current with its template, as one pull request        |
 
 ### Pruning and release
 
@@ -156,8 +157,9 @@ thing ever copied; everything behind the `uses:` stays here.
 
 Generate your repository from the public template,
 [tannergolden/path](https://github.com/tannergolden/path), and every trigger workflow arrives
-installed, grouped, and pinned to `@v1`: thirteen files covering the checks, governance, the release
-chain, maintenance, the standards lifecycle, and the machined indexes. The optional ones carry an
+installed, grouped, and pinned to `@v1`: fifteen files covering the checks, governance, the release
+chain, maintenance, the standards lifecycle, the machined indexes, and template sync - which brings
+those files up to date afterwards, as a pull request, whenever you run it. The optional ones carry an
 `is_template` guard, so they are silent in the template and come alive in the repository generated
 from it.
 
