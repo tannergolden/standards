@@ -46,7 +46,6 @@ We believe that clear, unambiguous language is the foundation of effective engin
 ## B
 
 - **Back-merge**: Merging changes from a promotion branch (e.g., Release) back to a base branch (e.g., Development).
-- **Badge Kit**: The self-hosted generator that draws every badge into committed SVGs under `assets/badges/` - no third-party badge service, nothing to rate-limit.
 - **Breaking Change**: A backward-incompatible modification that requires a MAJOR version bump.
 - **Branch Protection**: Rules that gate pushes/merges to critical integration lines.
 
@@ -108,6 +107,7 @@ We believe that clear, unambiguous language is the foundation of effective engin
 ## M
 
 - **Machined Index**: A document list generated between `AUTO-INDEX` markers by `scripts/update-doc-indexes.py --write` and verified by the same script with `--check` - never hand-edited, so it can never disagree with the tree.
+- **Markdown Kit**: The self-hosted generator, [`tannergolden/markdown`](https://github.com/tannergolden/markdown), that draws a README's header, footer, badges, body and trophy case into committed SVGs, each part in its own folder under `assets/` - no third-party image service, nothing to rate-limit. A badge it measures, or one a workflow sets with `markdown-kit set`, is live: drawn into `assets/badges/dynamic/`, the only kind that wears the gold label. Every other badge is static, in `assets/badges/static/`.
 - **Merge**: Combining changes from one branch into another.
 - **MTTR (Mean Time to Recovery)**: A DORA metric measuring how quickly a team recovers from failures.
 

@@ -182,9 +182,9 @@ _[Tagline in italics.]_
 
 > [!NOTE]
 > **A drawn header satisfies this matrix.** A root `README.md` may open with
-> the block [`tannergolden/banners`](https://github.com/tannergolden/banners)
-> draws between `<!-- banners:header:start -->` and its end marker, in place
-> of the typed masthead. The block carries the lint suppression and the top
+> the block the [Markdown Kit](https://github.com/tannergolden/markdown) draws between
+> `<!-- markdown:header:start -->` and its end marker, in place of the typed
+> masthead. The block carries the lint suppression and the top
 > anchor itself, and the sheet letters the title, the description and the
 > tagline from what GitHub knows about the repository, with its figures ruled
 > along the foot. Every rule above about what those three say still binds,
@@ -212,35 +212,35 @@ To ensure the repository template remains portable and new documentation does no
 > **Badges are drawn, not fetched.** A badge served from `img.shields.io` is a
 > third-party request on every page view, and a dependency on someone else's
 > uptime for your README to render. Committed SVGs avoid both. The renderer
-> this specification describes is published as
-> [tannergolden/badges](https://github.com/tannergolden/badges): a
-> repository pins `uses: tannergolden/badges@v1`, keeps a small data file,
-> and commits the SVGs it draws. Called, never copied, like every other
-> standard here.
+> this specification describes is the [Markdown Kit](https://github.com/tannergolden/markdown): a
+> repository's stub calls it at `@v1`, lists its badges under `badges:` in
+> `.github/markdown.yaml`, and the kit commits the SVGs it draws, the static
+> ones into `assets/badges/static/` and the live ones into
+> `assets/badges/dynamic/`. Called, never copied, like every other standard
+> here.
 
 **Everything the kit can draw is approved for use.** Any style, any icon and
-any color token published in the badges registries may be used in any
+any color token published in the kit's registries may be used in any
 document on this account. There is no shorter approved list to consult and no
 permission to ask for: if the kit renders it, it is in the vocabulary.
 
-| Vocabulary       | Count | Definitive source                                            |
-| :--------------- | ----: | :----------------------------------------------------------- |
-| **Styles**       |     6 | `STYLES` in `src/badge-kit.py`                               |
-| **Icons**        |    64 | `ICONS` in `src/badge-kit.py`, or `badge-kit.py --icons`     |
-| **Color tokens** |    64 | `PALETTE` in `src/badge-kit.py`, or `badge-kit.py --palette` |
+| Vocabulary       | Count | Definitive source                                               |
+| :--------------- | ----: | :-------------------------------------------------------------- |
+| **Styles**       |     6 | `STYLES` in `src/domain/badges/classic.py`                      |
+| **Icons**        |    64 | `ICONS` in `src/domain/palette.py`, or `markdown-kit icons`     |
+| **Color tokens** |    64 | `PALETTE` in `src/domain/palette.py`, or `markdown-kit palette` |
 
 Those counts are the ones published at the time of writing, and they are the
 weaker statement. **The registries are the source of truth**, so a token or
-glyph added to badges is approved here the moment it ships, without this
+glyph added to the kit is approved here the moment it ships, without this
 document changing. A table copied into prose only goes stale, which is why the
-kit exposes `--icons` and `--palette` and why the numbers above carry a link
-rather than a list.
+kit prints them, `markdown-kit icons` and `markdown-kit palette`, and why the
+numbers above carry a source rather than a list.
 
-[The gallery](https://github.com/tannergolden/badges/blob/Development/docs/Gallery.md)
-draws every one of them, grouped and captioned with its own name, so pick by
-eye and copy the name. A page drawn by the banners carries the styles'
-**blueprint twins**, plates lettered in the same eleven prints the sheets are
-drawn in; [Drawn Pages](#-drawn-pages) says how the kits fit together.
+Those two commands print every icon and every token with its own name, so
+pick by name and copy it. A page drawn in a print carries the styles'
+**blueprint twins**, plates lettered in the same prints its sheets are drawn
+in; [Drawn Pages](#-drawn-pages) says how the parts fit together.
 
 Three constraints survive that freedom, and only three. Each is semantic
 rather than decorative, which is why it is a rule and not a preference:
@@ -317,11 +317,13 @@ never an arbitrary hue:
 - 🔴 **`red` (`D73A49`)** - failing: broken, stale, low score.
 - ⚪ **`slate` (`57606A`)** - reserved for an explicit "no status yet" (unknown / not measured), which does not represent a status.
 
-**This one is enforced mechanically.** `badges` rejects any other hue on a
-gold label at render time, resolving the label whether it was written as the
-token `gold` or as the raw hex `C0A062`, so a status badge cannot be drawn in
-a color that means nothing. Static badges stay unconstrained: only status
-signals are, so green, yellow and red read the same everywhere they appear.
+**This one is enforced mechanically.** The Markdown Kit rejects any other hue
+on a gold label, resolving the label whether it was written as the token
+`gold` or as the raw hex `C0A062`, so a status badge cannot be drawn in a
+color that means nothing. It refuses the gold label outright on a badge whose
+value is not measured, so gold always means live data. Static badges stay
+unconstrained: only status signals are, so green, yellow and red read the
+same everywhere they appear.
 
 ### Badge Composition, Where Badges Are Used
 
@@ -361,8 +363,8 @@ choice, not an obligation - a repository with no badges anywhere is following
 this specification correctly.
 
 1. **Root dashboard, live data**: Where the root `README.md` carries a dashboard, prefer **dynamically updating** badges (GitHub Actions build status, CodeQL analysis, last commit date) over static ones. A badge that cannot go red is decoration; the whole value of a dashboard is that it can.
-2. **Community health files, best-fit trio**: A community health file that carries dynamic-health badges conventionally carries **three**, chosen to fit that file's subject (contribution gates on `CONTRIBUTING.md`, disclosure posture on `SECURITY.md`, and so on). A file MAY reuse a live top-level badge where it best fits (for example `SECURITY.md` carrying the daily-refreshed OpenSSF Scorecard); the remaining badges are committed **posture** badges: a stable status expressed in the health palette (gold label, traffic-light color) rather than a machine-measured metric. Posture badges live under `assets/badges/static/` like the classification badges and are referenced by their absolute raw URL, so they render in every GitHub view.
-3. **Gold label for live data**: A dynamic health badge uses the **Metallic Gold** (`C0A062`) label color to distinguish live data and posture from static navigation links, and their message color is bound by the traffic-light rule above.
+2. **Community health files, best-fit trio**: A community health file that carries dynamic-health badges conventionally carries **three**, chosen to fit that file's subject (contribution gates on `CONTRIBUTING.md`, disclosure posture on `SECURITY.md`, and so on). A file MAY reuse a live top-level badge where it best fits (for example `SECURITY.md` carrying the daily-refreshed OpenSSF Scorecard); the remaining badges are committed **posture** badges: a stable status written by hand rather than a machine-measured metric. A posture badge is static: a black label, with its message in the traffic-light color that fits, never the gold label, which only a measured badge wears. Posture badges live under `assets/badges/static/` like the classification badges and are referenced by their absolute raw URL, so they render in every GitHub view.
+3. **Gold label for live data only**: A dynamic health badge uses the **Metallic Gold** (`C0A062`) label color to distinguish live data from everything static. Only a badge whose value is measured wears it: one the Markdown Kit measures, or one another workflow measures and writes with `markdown-kit set`. Its message color is bound by the traffic-light rule above.
 4. **Repository Context**: A live badge's link points to the actual Actions or Security tab of the repository; a posture badge links to the same relative root target the file's static badges use.
 5. **Ordering (below static, always)**: Dynamic health badges MUST sit on their **own row, below** the static badges, separated by a blank line. A single row must never mix the two kinds: the static identity row (status, role, context, license) comes first, the health row follows on the next row. This holds anywhere both kinds appear together, in the root header and every community health file alike. Blank-line-separated rows are independent, so a static **call-to-action** row (docs-site link, use-this-template) may follow the health row - the no-mixing rule binds within each row. Nothing checks this automatically.
 
@@ -370,43 +372,49 @@ this specification correctly.
 
 ## 🖼️ Drawn Pages
 
-Four repositories on this account draw the parts of a README that used to be
-typed. Each measures the repository or the profile it sits in, over GitHub's
-API and git, on a schedule, and commits what it drew as SVGs. Nothing is
-fetched when the page is viewed, so a drawn page is up exactly as long as its
-repository is, and nothing on it goes stale by hand. They are consumed the way
-every other standard here is: a stub in the consuming repository pins `@v1`,
-the drawing happens in the kit's own repository, and a fix lands once.
+One repository on this account draws the parts of a README that used to be
+typed: the [Markdown Kit](https://github.com/tannergolden/markdown). It measures the repository or the profile
+it sits in, over GitHub's API and git, on a schedule, and commits what it drew
+as SVGs. Nothing is fetched when the page is viewed, so a drawn page is up
+exactly as long as its repository is, and nothing on it goes stale by hand. It
+is consumed the way every other standard here is: a stub in the consuming
+repository pins `@v1`, the drawing happens in the kit's own repository, and a
+fix lands once.
 
-| Repository                                                          | Draws                                                                                                                                                                                    | On the page                                                                                                                                                                |
-| :------------------------------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`tannergolden/banners`](https://github.com/tannergolden/banners)   | The header and the footer, as sheets from one set of engineering drawings, and the **elements** for the body: a schematic, instruments, milestones, a roster, a certificate and placards | `<!-- banners:header:start -->` at the top, `<!-- banners:footer:start -->` at the foot, and one `<!-- elements:<id>:start -->` pair per element, each with its end marker |
-| [`tannergolden/badges`](https://github.com/tannergolden/badges)     | The badges, from one data file, in six styles and their blueprint twins                                                                                                                  | Rows under the header, referenced from `assets/badges/` as the section above describes                                                                                     |
-| [`tannergolden/trophies`](https://github.com/tannergolden/trophies) | The case: eight tiered trophies, a level card, a next-up card and one hundred achievements, in five styles                                                                               | Between `<!-- trophies:start -->` and `<!-- trophies:end -->`, wherever the case belongs                                                                                   |
-| [`tannergolden/markdown`](https://github.com/tannergolden/markdown) | Nothing itself. One reusable workflow that calls the three kits from one stub, each at its own hour                                                                                      | `.github/workflows/markdown.yml` in the consuming repository, the stub that names the three slots                                                                          |
+| Part         | Draws                                                                                | Into                                                 | On the page                                                                                  |
+| :----------- | :----------------------------------------------------------------------------------- | :--------------------------------------------------- | :------------------------------------------------------------------------------------------- |
+| **Banners**  | The header and the footer, and up to four link buttons under it                      | `assets/banners/`                                    | `<!-- markdown:header:start -->` at the top and `<!-- markdown:footer:start -->` at the foot |
+| **Badges**   | A row of static badges, and a row of live ones beneath it                            | `assets/badges/static/` and `assets/badges/dynamic/` | `<!-- markdown:badges:start -->`, under the header                                           |
+| **Elements** | The body: a schematic, instruments, milestones, a roster, a certificate and placards | `assets/elements/`                                   | One `<!-- markdown:element:<id>:start -->` pair per element                                  |
+| **Trophies** | The case: the tiered trophies, a level card, a next-up card and the achievements     | `assets/trophies/`                                   | `<!-- markdown:trophies:start -->`, wherever the case belongs                                |
 
-### One Page, One Set Of Drawings
+Every marker closes with its `:end` twin. **Every repository carries an
+`assets/` folder for the kit to draw into, whatever its project**: both
+templates ship one, with a folder for every kind of asset, the kit's four
+among them.
 
-Every kit draws on the same drafting paper, in the same **eleven prints**
-(blueprint by default, or any of the spectrum from redprint to pinkprint, the
-Van Dyke brownprint and the blackprint), lettered with the same outlines, so
-a page drawn by all of them reads as one set of drawings. `rainbowprint`
-draws each update in the next colour of the spectrum: the banners' lock
-remembers where the page is, and the elements and the badges' blueprint
-plates follow it, so the whole page changes colour together.
+### One Page, One Theme
+
+The page has one theme, set once in the stub or in `.github/markdown.yaml`:
+`standard` by default, one of the eleven prints (blueprint, the spectrum from
+redprint to pinkprint, the Van Dyke brownprint and the blackprint), a print of
+the repository's own, or a collection's design for the month. Every part draws
+in it, so the header, the badges and the body read as one set of drawings.
+`rainbowprint` draws each update in the next colour of the spectrum, and the
+whole page changes colour together.
 
 The rules in this specification bind a drawn page as they bind a typed one.
 Apart from the description's length, which
 [has a rule of its own](#the-repository-description), the drawing changes the
 medium and nothing else:
 
-| Rule above          | On a drawn page                                                                                                                                                                                                                                                                                                                             |
-| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Header matrix       | The banners header block carries `<!-- markdownlint-disable MD041 -->` and `<a name="top"></a>`. The sheet letters the title (the repository's name), the description (its description on GitHub) and the tagline (`motto` in `.github/banners.yml`), and rules the release, stars, forks, open issues, language and licence along the foot |
-| Badges              | The identity row sits under the header block, static before dynamic, exactly as above. A page drawn in a print carries **blueprint plates** in that print, and the sheet's figures already show the live state, so a health row is redundant there                                                                                          |
-| Footer              | The banners footer block is the footer. `closing` in `.github/banners.yml` is the Document Summary Phrase, unique to the page as always, and the whole sheet links to `#top`, with up to four link buttons under it                                                                                                                         |
-| Alt text            | Every image the kits write carries alt text built from what it shows. Never edit it: the next run writes it again                                                                                                                                                                                                                           |
-| Exactly four `tags` | The frontmatter stays the author's. No kit touches it                                                                                                                                                                                                                                                                                       |
+| Rule above          | On a drawn page                                                                                                                                                                                                                                                                                                                                        |
+| :------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header matrix       | The header block carries `<!-- markdownlint-disable MD041 -->` and `<a name="top"></a>`. The sheet letters the title (the repository's name), the description (its description on GitHub) and the tagline (`motto` under `banners:` in `.github/markdown.yaml`), and rules the release, stars, forks, open issues, language and licence along the foot |
+| Badges              | The identity row sits under the header block, static before dynamic, exactly as above. A page drawn in a print carries **blueprint plates** in that print, and the sheet's figures already show the live state, so a health row is redundant there                                                                                                     |
+| Footer              | The footer block is the footer. `closing` under `banners:` is the Document Summary Phrase, unique to the page as always, and the whole sheet links to `#top`, with up to four link buttons under it                                                                                                                                                    |
+| Alt text            | Every image the kit writes carries alt text built from what it shows. Never edit it: the next run writes it again                                                                                                                                                                                                                                      |
+| Exactly four `tags` | The frontmatter stays the author's. The kit never touches it                                                                                                                                                                                                                                                                                           |
 
 ### The Repository Description
 
@@ -427,33 +435,30 @@ hand, and it is the same line wherever GitHub shows it.
 
 ### Machine-Owned Blocks
 
-Everything between a kit's markers is **machine-owned**, the way the
-`AUTO-INDEX` blocks above are: never edit inside them by hand. Change the
-kit's data file (`.github/banners.yml`, `.github/badges.yml`,
-`.github/trophies.yml`, `.github/elements.yml`) and the next run redraws.
-Move a pair of markers anywhere on the page and later runs rewrite only what
-is between them. Each kit keeps a lock beside its data file, remembers what
-it last measured, and commits only when something it shows has moved, as a
-`chore(<kit>)` commit authored by the kit's author and committed by
-`github-actions[bot]`.
+Everything between the kit's markers is **machine-owned**, the way the
+`AUTO-INDEX` blocks above are: never edit inside them by hand. Change
+`.github/markdown.yaml` and the next run redraws. Move a pair of markers
+anywhere on the page and later runs rewrite only what is between them. The
+kit keeps a lock, `.github/markdown.lock.json`, remembers what it last
+measured, and commits only when something it shows has moved, as one
+`chore(markdown)` commit authored by the kit's author, unless the stub names
+another, and committed by `github-actions[bot]`. A file it drew and no longer draws is
+taken away in the same commit.
 
-Each kit also has a **check mode**, which redraws from the lock and fails
-when a committed file or a README block differs from what the data says,
-with no token and nothing written. A hand edit inside a block, or a data file
-changed without a redraw, is caught on the pull request. The umbrella's
-[check stub](https://github.com/tannergolden/markdown/blob/Development/examples/stub-check.yml)
-runs every kit the page names at once.
+The kit also has a **check mode**, which redraws from the lock and fails when
+a committed file or a README block differs from what the settings say, with no
+token and nothing written. A hand edit inside a block, or settings changed
+without a redraw, is caught on the pull request: the kit's README shows
+[the stub that runs it](https://github.com/tannergolden/markdown#-checking-a-page).
 
-### The Umbrella
+### One Stub, One Run, One Commit
 
-[`tannergolden/markdown`](https://github.com/tannergolden/markdown) is the
-one stub for the whole page. It names a cron for each generator repository,
-**on the hour and eight hours apart**: at 00:00 the banners, then the
-elements; at 08:00 the badges; at 16:00 the trophies. On a schedule it runs
-the kit whose cron fired and no other, so a repository is committed to at
-most once per slot and a quiet slot commits nothing; a manual run draws
-everything, one kit after another. The four repositories' own READMEs are the
-live examples, and the umbrella's page is drawn by all four.
+A repository holds one stub, `.github/workflows/markdown.yml`, which names the
+schedule and calls the kit at `@v1`. Every run measures everything, draws every
+part, writes the README's blocks and the lock, and commits once, so a run that
+GitHub delays or drops loses nothing: the next one catches up. A day on which
+nothing the page shows has moved writes nothing. The kit's own README is the
+live example.
 
 ---
 
@@ -655,8 +660,9 @@ Every document should conclude with a centered footer providing navigation and a
 The **Document Summary Phrase** (bolded in the footer) must be unique to the document. It acts as the "closing argument" or mantra for that specific file. Do not use generic phrases like "End of file" or reuse the same footer across the repository.
 
 > [!NOTE]
-> On a drawn page the footer is the banners footer block, and `closing` in
-> `.github/banners.yml` is its summary phrase, unique to the page as above.
+> On a drawn page the footer is the kit's footer block, and `closing` under
+> `banners:` in `.github/markdown.yaml` is its summary phrase, unique to the
+> page as above.
 > See [Drawn Pages](#-drawn-pages).
 
 ---
