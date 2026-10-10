@@ -12,11 +12,14 @@
 # This runs once in the generated repository and rewrites that identity to
 # the new owner's, then removes its own sentinel so it can never run again.
 #
-# ⚠️ WHAT IT DOES NOT REWRITE: references to the SHARED repositories every
-# consumer calls - `tannergolden/standards`, `tannergolden/intelligence` and
-# the Markdown Kit, `tannergolden/markdown`, whose folders the templates'
-# assets/ READMEs link. They are correct for everybody. Rewriting them to the
-# new owner would point stubs and links at repositories that do not exist.
+# ⚠️ WHAT IT DOES NOT REWRITE: a repository on the template owner's account.
+# The SHARED repositories every consumer calls - `tannergolden/standards`,
+# `tannergolden/intelligence`, and the Markdown Kit, `tannergolden/markdown`,
+# whose folders the templates' assets/ READMEs link - are the commonest, but
+# the template itself, its sibling and the account's `.github` are the same
+# kind of thing: an ADDRESS on that account. Rewriting one to the new owner
+# names a repository that does not exist. Only the handle on its own is an
+# identity.
 # The distinction is the whole reason this uses targeted rules rather than a
 # blanket find-and-replace.
 #
@@ -49,9 +52,6 @@ import urllib.request
 
 API = "https://api.github.com"
 SKIP_DIRS = {".git", "node_modules", ".venv", "vendor", "target", "dist", "build"}
-# The template owner's repositories every generated repository shares, by
-# name: a path to one survives the handle rewrite untouched.
-SHARED = ("standards", "intelligence", "markdown")
 TEXT_SUFFIXES = {
     ".md", ".yml", ".yaml", ".json", ".jsonc", ".toml", ".txt", ".cfg", ".ini",
     ".sh", ".py", ".js", ".ts",
@@ -118,10 +118,9 @@ def rewrite(
     change together; this is the gate.
     """
     # Targeted rules, never a blanket replace. The template owner's handle
-    # appears both as an identity to rewrite and as part of the shared
-    # repositories' paths, which must survive untouched.
-    kept = {f"\x00KEEP{i}\x00": f"{template_owner}/{name}" for i, name in enumerate(SHARED)}
-
+    # appears both as an identity to rewrite and as the first half of a
+    # repository address, which must survive untouched. The last rule below
+    # is where that line is drawn.
     for old, new in (
         # Contact links carry a placeholder because GitHub never substitutes
         # one; this is the substitution.
@@ -147,14 +146,36 @@ def rewrite(
         text,
     )
 
-    # Any remaining bare handle becomes the new owner's, EXCEPT where it
-    # is part of a shared repository's path.
+    # Any remaining handle becomes the new owner's, EXCEPT where it opens a
+    # repository ADDRESS: `<template owner>/<name>`, the name included.
+    #
+    # ⚠️ A LIST OF SPARED NAMES BROKE EVERY ADDRESS NOT ON IT. Only
+    # `/standards` was spared at first, then the three shared repositories;
+    # the "third route" remote pointing back at the template, and the
+    # private template's links to its public sibling and the account's
+    # `.github`, still came out naming a repository on the new owner's
+    # account that does not exist. No address in either template should
+    # follow the owner: a link meant as "this repository" carries the
+    # OWNER/REPOSITORY placeholder above, because a rewritten address would
+    # name `<owner>/<template>`, which is wrong as well.
+    #
+    # `.github` is an address like any other and survives too. Health-file
+    # inheritance is per account, as the private template's README spells
+    # out, so the link keeps naming the repository the template's files come
+    # from rather than asserting that the new owner has one.
+    #
+    # One pass, so an address is consumed whole before its name is looked
+    # at: in `<owner>/<owner>` the second handle is a repository name, not an
+    # identity. `@<owner>/<name>` is a team or a package scope - a namespace
+    # of the owner's, not a repository - so the lookbehind hands it to the
+    # identity branch.
     if template_owner in text:
-        for guard, keep in kept.items():
-            text = text.replace(keep, guard)
-        text = text.replace(template_owner, owner)
-        for guard, keep in kept.items():
-            text = text.replace(guard, keep)
+        handle = re.escape(template_owner)
+        text = re.sub(
+            rf"(?<!@)({handle}/[A-Za-z0-9._-]+)|{handle}",
+            lambda match: match.group(1) or owner,
+            text,
+        )
 
     return text
 
@@ -295,9 +316,10 @@ def main() -> int:
         "Initialisation rewrote every identity the template stamped - the\n"
         "licence holder, the documentation footers, the contact links - to this\n"
         "repository's owner, and set the licence year to the year of\n"
-        "generation, where it stays. References to the shared standards\n"
-        "repository were deliberately left alone: those are what the workflow\n"
-        "stubs call.\n"
+        "generation, where it stays. References to repositories on the\n"
+        "template's account were deliberately left alone - the shared\n"
+        "standards the workflow stubs call among them - because each belongs\n"
+        "to that account, not this one.\n"
         "\n"
         "Already wired: continuous integration, secret scanning, static\n"
         "analysis, workflow linting, governance automation, and pull request\n"

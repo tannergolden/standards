@@ -10,9 +10,12 @@
 # author's licence holder, funding target, documentation footers, and contact
 # links. This rewrites them and removes the sentinel that let it run.
 #
-# ⚠️ IT DOES NOT REWRITE THE SHARED STANDARDS PATH. `<owner>/standards` is the
-# repository every consumer calls; pointing it at the new owner would name a
-# repository that does not exist. That is why the substitution is a set of
+# ⚠️ IT DOES NOT REWRITE A REPOSITORY ADDRESS. `<owner>/standards` is the
+# repository every consumer calls, and the template itself, its sibling, the
+# agent instruction publisher and the account's `.github` are the same kind
+# of thing: a repository on the template owner's account. Pointing any of
+# them at the new owner would name a repository that does not exist; only the
+# handle on its own is an identity. That is why the substitution is a set of
 # targeted rules rather than a find-and-replace.
 #
 # Used as:
