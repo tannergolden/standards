@@ -1,0 +1,282 @@
+# SPDX-FileCopyrightText: 2026 Tanner Golden
+# SPDX-License-Identifier: MIT
+"""The edges an independent review of template sync found, each pinned where it was found.
+
+Every test here failed against the engine as it stood when the review ran,
+and each names the promise it holds: an owner's edit is never taken from
+them, a file they deleted comes back only when they ask, a choice they made
+survives the template reshaping its list, nothing a sync starts is ever
+abandoned, and a sync never goes backwards.
+"""
+
+from __future__ import annotations
+
+import os
+import subprocess
+
+import pytest
+from conftest import SYNC_ENV, TEMPLATE_LIST, load_script
+
+sync = load_script("scripts/template-sync.py")
+
+# An unchanged line between the rewritten block and the owner's setting, as in
+# any real file: git merges changes that do not touch, never ones that abut.
+CHECKS = "".join(f"step-{i}: run {i}\n" for i in range(1, 11)) + "with:\n" + "lint-command: 'validate'\n"
+REWRITTEN = "".join(f"stage-{i}: other {i}\n" for i in range(1, 11)) + "with:\n" + "lint-command: 'validate'\n"
+
+
+def lines(world) -> list[str]:
+    return world.text(".github/template-sync").splitlines()
+
+
+def relist(world, edit) -> str:
+    return edit((world.template / ".github/template-sync").read_text(encoding="utf-8"))
+
+
+class TestAnEditIsNeverTakenFromItsOwner:
+    """A rewrite and a copy look exactly like a move that left a new file behind."""
+
+    def setup_world(self, world, owner_list=None):
+        world.release("v1.0.1", {".github/workflows/checks.yml": CHECKS})
+        world.generate()
+        world.owner({".github/workflows/checks.yml": CHECKS.replace("'validate'", "'golangci-lint run'"),
+                     **({".github/template-sync": owner_list(world.text(".github/template-sync"))}
+                        if owner_list else {})})
+        world.release("v1.1.0", {
+            ".github/workflows/checks.yml": REWRITTEN,
+            ".github/workflows/nightly.yml": CHECKS,
+            ".github/template-sync": relist(world, lambda t: t.replace(
+                "/.github/workflows/checks.yml\n",
+                "/.github/workflows/checks.yml\n/.github/workflows/nightly.yml\n")),
+        })
+
+    def test_the_rewritten_file_merges_with_the_owners_edit_in_place(self, sync_world):
+        self.setup_world(sync_world)
+        result = sync_world.run_sync()
+        outcomes = sync_world.outcomes(result)
+        assert outcomes[".github/workflows/checks.yml"] == "merged"
+        assert outcomes[".github/workflows/nightly.yml"] == "added"
+        merged = sync_world.text(".github/workflows/checks.yml")
+        assert "golangci-lint run" in merged and "stage-1: other 1" in merged
+        assert sync_world.text(".github/workflows/nightly.yml") == CHECKS
+
+    def test_a_switched_off_file_holds_its_copy_off_and_says_so(self, sync_world):
+        self.setup_world(sync_world, lambda t: t.replace("\n/.github/workflows/checks.yml\n",
+                                                         "\n#/.github/workflows/checks.yml\n"))
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)[".github/workflows/nightly.yml"] == "held-off"
+        assert "#/.github/workflows/nightly.yml" in lines(sync_world)
+        assert "nightly.yml" in result.report and "take the `#` away" in result.report
+        assert not sync_world.run_sync().changed
+
+
+class TestADeletedFileComesBackOnlyWhenAsked:
+    def test_not_through_a_pattern_of_the_owners(self, sync_world):
+        sync_world.generate()
+        sync_world.owner({".github/template-sync": sync_world.text(".github/template-sync") + "/docs/**\n"})
+        sync_world.owner({"docs/guide.md": None})
+        sync_world.release("v1.1.0", {"scripts/tool.py": "print('v1.1')\n"})
+        assert sync_world.outcomes(sync_world.run_sync())["docs/guide.md"] == "owner-deleted"
+        sync_world.release("v1.2.0", {"docs/guide.md": "# Guide v1.2\n"})
+        sync_world.run_sync()
+        assert sync_world.read("docs/guide.md") is None
+
+    def test_not_through_the_templates_folder_entry(self, sync_world):
+        sync_world.release("v1.0.1", {".github/template-sync": TEMPLATE_LIST.replace("/docs/guide.md\n", "/docs/\n")})
+        sync_world.generate()
+        sync_world.owner({"docs/guide.md": None})
+        sync_world.release("v1.1.0", {"scripts/tool.py": "print('v1.1')\n"})
+        assert sync_world.outcomes(sync_world.run_sync())["docs/guide.md"] == "owner-deleted"
+        sync_world.release("v1.2.0", {"docs/guide.md": "# Guide v1.2\n"})
+        sync_world.run_sync()
+        assert sync_world.read("docs/guide.md") is None, "a negation cannot reach under a folder pattern"
+
+    def test_not_through_an_exact_rule_of_the_owners_which_is_switched_off_in_place(self, sync_world):
+        sync_world.generate()
+        sync_world.owner({".github/template-sync": sync_world.text(".github/template-sync") + "/README.md\n"})
+        sync_world.owner({"README.md": None})
+        sync_world.release("v1.1.0", {"scripts/tool.py": "print('v1.1')\n"})
+        assert sync_world.outcomes(sync_world.run_sync())["README.md"] == "owner-deleted"
+        assert lines(sync_world)[-1] == "#/README.md", "the owner's own rule is switched off where it stands"
+        sync_world.release("v1.2.0", {"README.md": "# Template v1.2\n"})
+        sync_world.run_sync()
+        assert sync_world.read("README.md") is None
+
+    def test_not_when_the_template_turns_an_opted_in_file_on_by_default(self, sync_world):
+        sync_world.generate()
+        sync_world.owner({".github/template-sync": sync_world.text(".github/template-sync").replace(
+            "#/README.md", "/README.md")})
+        sync_world.owner({"README.md": None})
+        sync_world.release("v1.1.0", {"scripts/tool.py": "print('v1.1')\n"})
+        sync_world.run_sync()
+        sync_world.release("v1.2.0", {".github/template-sync": relist(
+            sync_world, lambda t: t.replace("#/README.md", "/README.md"))})
+        sync_world.run_sync()
+        assert sync_world.read("README.md") is None
+
+    def test_but_its_own_line_switched_back_on_restores_it(self, sync_world):
+        sync_world.generate()
+        sync_world.owner({".github/template-sync": sync_world.text(".github/template-sync") + "/docs/**\n"})
+        sync_world.owner({"docs/guide.md": None})
+        sync_world.run_sync()
+        sync_world.owner({".github/template-sync": sync_world.text(".github/template-sync").replace(
+            "#/docs/guide.md", "/docs/guide.md").replace("!/docs/guide.md\n", "")})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["docs/guide.md"] == "restored"
+        assert sync_world.read("docs/guide.md") is not None
+
+
+class TestAChoiceSurvivesTheTemplateReshapingItsList:
+    def test_files_collapsed_into_a_folder_pattern(self, sync_world):
+        sync_world.generate()
+        frozen = sync_world.text("docs/guide.md")
+        sync_world.owner({".github/template-sync": sync_world.text(".github/template-sync").replace(
+            "\n/docs/guide.md\n", "\n#/docs/guide.md\n")})
+        sync_world.release("v1.1.0", {"docs/guide.md": "# Guide, rewritten\n", ".github/template-sync": relist(
+            sync_world, lambda t: t.replace("/docs/guide.md\n", "/docs/**\n"))})
+        result = sync_world.run_sync()
+        assert sync_world.text("docs/guide.md") == frozen, "a file the owner switched off was changed"
+        assert "docs/guide.md" not in sync_world.sync.matched(sync_world.text(".github/template-sync"),
+                                                             ["docs/guide.md"])
+        assert "docs/guide.md" not in {d.path for d in result.decisions if d.write is not None}
+        assert not sync_world.run_sync().changed
+
+    def test_a_folder_pattern_spelled_out_into_files(self, sync_world):
+        tlist = TEMPLATE_LIST.replace("/docs/guide.md\n", "/docs/**\n")
+        sync_world.release("v1.0.1", {".github/template-sync": tlist})
+        sync_world.generate()
+        sync_world.owner({".github/template-sync": sync_world.text(".github/template-sync").replace(
+            "\n/docs/**\n", "\n#/docs/**\n"), "docs/guide.md": "# Mine entirely\n"})
+        sync_world.release("v1.1.0", {"docs/guide.md": "# Guide v1.1\n",
+                                      ".github/template-sync": tlist.replace("/docs/**\n", "/docs/guide.md\n")})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result).get("docs/guide.md") in (None, "not-synced"), (
+            "the owner's folder switch-off must hold the file off, not merely leave it in conflict")
+        assert "!/docs/guide.md" in lines(sync_world), "the choice is written back by name"
+        assert sync_world.text("docs/guide.md") == "# Mine entirely\n"
+        assert not sync_world.run_sync().changed
+
+    def test_a_switch_on_survives_too(self, sync_world):
+        sync_world.release("v1.0.1", {".github/template-sync": TEMPLATE_LIST.replace("/docs/guide.md\n", "#/docs/guide.md\n")})
+        sync_world.generate()
+        sync_world.owner({".github/template-sync": sync_world.text(".github/template-sync").replace(
+            "#/docs/guide.md", "/docs/guide.md")})
+        sync_world.release("v1.1.0", {"docs/guide.md": "# Guide v1.1\n", ".github/template-sync": relist(
+            sync_world, lambda t: t.replace("#/docs/guide.md\n", "#/docs/**\n"))})
+        sync_world.run_sync()
+        assert sync_world.text("docs/guide.md") == "# Guide v1.1\n"
+
+
+class TestNothingASyncStartsIsAbandoned:
+    def test_a_move_blocked_by_a_file_where_its_folder_goes_completes_once_cleared(self, sync_world):
+        sync_world.generate()
+        sync_world.owner({"bin": "an owner's file named bin\n"})
+        sync_world.release("v1.1.0", {"scripts/tool.py": None, "bin/tool.py": "print('tool')\n",
+                                      ".github/template-sync": relist(
+                                          sync_world, lambda t: t.replace("/scripts/tool.py", "/bin/tool.py"))},
+                           {"bin/tool.py": "100755"})
+        assert sync_world.outcomes(sync_world.run_sync())["bin/tool.py"] == "conflict"
+        assert "/scripts/tool.py" in lines(sync_world), "the old path waits, named"
+        sync_world.owner({"bin": None})
+        sync_world.run_sync()
+        assert sync_world.read("scripts/tool.py") is None and sync_world.read("bin/tool.py") is not None
+
+    def test_switching_off_a_conflicted_move_follows_the_file(self, sync_world):
+        body = "".join(f"line {i}\n" for i in range(1, 11))
+        sync_world.release("v1.0.1", {"docs/guide.md": "# Guide\n" + body})
+        sync_world.generate()
+        sync_world.owner({"docs/guide.md": "# My own guide\n" + body})
+        sync_world.release("v1.1.0", {"docs/guide.md": None, "docs/moved/guide.md": "# Guide, revised\n" + body,
+                                      ".github/template-sync": relist(
+                                          sync_world, lambda t: t.replace("/docs/guide.md", "/docs/moved/guide.md"))})
+        sync_world.run_sync()
+        sync_world.owner({".github/template-sync": sync_world.text(".github/template-sync").replace(
+            "\n/docs/guide.md", "\n#/docs/guide.md")})
+        sync_world.run_sync()
+        assert sync_world.read("docs/moved/guide.md") is None, "the owner kept theirs; no copy arrives"
+        assert sync_world.text("docs/guide.md").startswith("# My own guide")
+
+    def test_a_removal_made_while_the_list_was_missing_still_arrives(self, sync_world):
+        sync_world.generate()
+        sync_world.owner({".github/template-sync": None})
+        sync_world.release("v1.1.0", {"scripts/tool.py": None, ".github/template-sync": relist(
+            sync_world, lambda t: t.replace("/scripts/tool.py\n", ""))})
+        sync_world.run_sync()
+        assert sync_world.read(".github/template-sync") is not None
+        assert sync_world.read("scripts/tool.py") is not None, "a restoring run syncs nothing else"
+        sync_world.release("v1.2.0", {"docs/guide.md": "# Guide v1.2\n"})
+        sync_world.run_sync()
+        assert sync_world.read("scripts/tool.py") is None
+
+    def test_an_owner_rule_written_under_the_waiting_entries_is_kept(self):
+        template = "# --- Kept current\n/a.md\n/docs/b.md\n\n# --- Your rules ---\n"
+        drawn = sync.merge_list(template, template, template, waiting=["old.md"])
+        mine = drawn.replace("/old.md\n", "/old.md\n!/docs/**\n")
+        again = sync.merge_list(template, template, mine, waiting=["old.md"])
+        assert "!/docs/**" in again.splitlines()
+        assert "docs/b.md" not in sync.matched(again, ["docs/b.md"])
+
+
+class TestASyncNeverGoesBackwards:
+    def test_a_repository_generated_ahead_of_the_release_waits_for_one(self, sync_world):
+        # "Use this template" copies the default branch, which can be ahead of v1.
+        sync_world.put(sync_world.template, {"scripts/tool.py": "print('unreleased')\n", "scripts/new.py": "x = 1\n"})
+        sync_world.commit(sync_world.template, "merged, not yet released")
+        sync_world.git(sync_world.template, "tag", "-f", "v1", "v1.0.0")
+        sync_world.repo.mkdir()
+        sync_world.git(sync_world.repo, "init", "-q", "-b", "main")
+        sync_world.git(sync_world.repo, "fetch", "-q", str(sync_world.template), "Development:refs/template/head")
+        sync_world.git(sync_world.repo, "read-tree", "refs/template/head")
+        sync_world.git(sync_world.repo, "checkout-index", "-a", "-f")
+        sync_world.put(sync_world.repo, {".github/TEMPLATE_INIT": None})
+        sync_world.commit(sync_world.repo, "Initial commit")
+        lock = sync.generation_lock(sync_world.repo, template=sync_world.TEMPLATE,
+                                    identity=sync.Identity("janedoe", "janedoe/widget", "Jane Doe", 2027))
+        sync_world.put(sync_world.repo, {sync.LOCK_PATH: sync.dump_lock(lock)})
+        sync_world.commit(sync_world.repo, "initialise")
+        with pytest.raises(sync.Skip, match="already holds a newer version"):
+            sync.run(sync_world.repo, sync_world.template, ref="v1")
+        assert sync_world.text("scripts/tool.py") == "print('unreleased')\n"
+        sync_world.release("v1.1.0", {"docs/guide.md": "# Guide v1.1\n"})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result).get("scripts/tool.py") in (None, "unchanged", "current")
+        assert sync_world.text("scripts/tool.py") == "print('unreleased')\n"
+        assert sync_world.read("scripts/new.py") is not None
+
+
+class TestTheReportFitsAPullRequest:
+    def test_a_long_report_is_cut_between_items_and_closes_nothing_open(self):
+        decisions = [sync.Decision(f"docs/file-{i:03}.md", "conflict", detail="clash",
+                                   diff="--- a\n+++ b\n" + "".join(f"+{'x' * 200} {j}\n" for j in range(60)))
+                     for i in range(40)]
+        report = sync.render_report(template="t/p", version="v1.1.0", previous="v1.0.0", decisions=decisions,
+                                    list_changed=False)
+        assert len(report) > sync.REPORT_LIMIT and "docs/file-039.md" in report, "the summary keeps everything"
+        body = sync.pr_body(report)
+        assert len(body) <= sync.REPORT_LIMIT
+        assert body.count("<details>") == body.count("</details>")
+        assert body.count("```") % 2 == 0
+        assert "step summary lists every file" in body
+
+
+class TestAPathThatCannotBeWritten:
+    def test_a_name_that_is_not_utf8_is_unsafe(self):
+        assert sync.unsafe(os.fsdecode(b"assets/caf\xe9.bin")) == "its name is not valid UTF-8"
+
+    def test_it_is_skipped_rather_than_crashing_the_lock(self, sync_world, monkeypatch):
+        name = os.fsdecode(b"assets/caf\xe9.bin")
+        sync_world.release("v1.0.1", {name: b"\x00logo", ".github/template-sync":
+                                      TEMPLATE_LIST.replace("/scripts/tool.py\n", "/scripts/tool.py\n/assets/**\n")})
+        sync_world.generate()
+        sync.dump_lock(sync_world.lock()).encode("utf-8")
+        sync_world.release("v1.1.0", {"scripts/tool.py": "print('v1.1')\n"})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result).get(name) == "unsafe"
+
+
+@pytest.fixture(autouse=True)
+def _isolated(monkeypatch):
+    for key, value in SYNC_ENV.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("GIT_TERMINAL_PROMPT", "0")
+    subprocess.run(["git", "--version"], check=True, capture_output=True)

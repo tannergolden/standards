@@ -120,6 +120,25 @@ class TestRedrawingTheList:
         newer = TEMPLATE  # still off by default
         assert "/README.md" in lines(sync.merge_list(TEMPLATE, newer, mine))
 
+    def test_a_changed_default_never_switches_on_a_line_the_owner_has_off(self):
+        # The owner switched a.md off; the template then made it off by default
+        # too, so the owner's line reads like the default - and then the
+        # template made it on again. It stays off: only off reaches an owner.
+        mine = TEMPLATE.replace("\n/a.md\n", "\n#/a.md\n")
+        base = mine  # the template's own default had become off
+        newer = TEMPLATE  # and is on again
+        assert "#/a.md" in lines(sync.merge_list(base, newer, mine))
+
+    def test_a_line_held_off_stays_off_through_a_move(self):
+        mine = TEMPLATE.replace("\n/a.md\n", "\n#/a.md\n")
+        newer = TEMPLATE.replace("/a.md\n", "/moved.md\n")
+        out = lines(sync.merge_list(mine, newer, mine, renames={"a.md": "moved.md"}))
+        assert "#/moved.md" in out and "/moved.md" not in out
+
+    def test_a_line_the_owner_has_on_still_follows_a_default_to_off(self):
+        newer = TEMPLATE.replace("\n/a.md\n", "\n#/a.md\n")
+        assert "#/a.md" in lines(sync.merge_list(TEMPLATE, newer, TEMPLATE))
+
     def test_a_disabled_path_with_its_own_line_is_switched_off(self):
         out = lines(sync.merge_list(TEMPLATE, TEMPLATE, TEMPLATE, disabled=["a.md"]))
         assert "#/a.md" in out

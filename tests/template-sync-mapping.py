@@ -428,6 +428,18 @@ class TestAMappedSync:
         assert world.outcomes(settled) == {}
         assert world.lock().pending == {}
 
+    def test_a_file_missing_here_stays_missing_when_the_template_moves_it(self, world):
+        world.here({".github/docs/templates/ADR.md": None})
+        adr = (world.public / "docs/templates/ADR.md").read_text(encoding="utf-8")
+        world.publish({"docs/templates/ADR.md": None, "docs/templates/decisions/ADR.md": adr},
+                      lambda t: t.replace("/docs/templates/ADR.md", "/docs/templates/decisions/ADR.md"))
+        first = world.run()
+        assert world.outcomes(first).get(".github/docs/templates/decisions/ADR.md") == "conflict"
+        second = world.run()
+        assert world.text(".github/docs/templates/decisions/ADR.md") is None, "a missing file was re-created"
+        assert world.outcomes(second).get(".github/docs/templates/decisions/ADR.md") == "conflict"
+        assert ".github/docs/templates/decisions/ADR.md" in world.lock().pending
+
     def test_a_move_inside_the_relocated_folder_moves_here_with_its_line(self, world):
         world.here({".github/docs/templates/ADR.md": seed("Record one decision.", PROPRIETARY) + "A private note.\n"})
         adr = (world.public / "docs/templates/ADR.md").read_text(encoding="utf-8")
@@ -451,8 +463,8 @@ class TestAMappedSync:
                       lambda t: t.replace("/docs/templates/ADR.md\n",
                                           "/docs/templates/ADR.md\n/docs/templates/decisions/ADR.md\n"))
         result = world.run()
-        assert world.outcomes(result) == {".github/docs/templates/ADR.md": "moved",
-                                          ".github/docs/templates/decisions/ADR.md": "moved-here"}
+        assert world.outcomes(result) == {".github/docs/templates/ADR.md": "updated",
+                                          ".github/docs/templates/decisions/ADR.md": "added"}
         assert world.text(".github/docs/templates/decisions/ADR.md") == seed("Record one decision.", PROPRIETARY)
         assert world.text(".github/docs/templates/ADR.md") == index.replace(MIT, PROPRIETARY)
         lines = world.text(".github/template-sync").splitlines()
@@ -524,10 +536,18 @@ class TestWhatAMappedSyncRefuses:
         with pytest.raises(sync.SyncError, match="lock --map"):
             world.run()
 
-    def test_two_template_paths_landing_on_one_stop_the_run(self, world):
-        world.publish({".github/docs/README.md": "a stray public file\n"})
-        with pytest.raises(sync.SyncError, match=re.escape("would both live at .github/docs/README.md")):
+    def test_a_template_path_where_a_folder_is_relocated_to_stops_the_run(self, world):
+        # Its origin could not be told from the relocated files' - the same
+        # place, and so the same footer swap, would apply to a file never moved.
+        world.publish({".github/docs/NOTES.md": "a stray public file\n"})
+        with pytest.raises(sync.SyncError, match="sits where the mapping relocates a folder to"):
             world.run()
+
+    def test_two_template_paths_landing_on_one_stop_the_run(self, world):
+        mapping = sync.load_mapping(json.dumps({**MAPPING, "relocate": {"docs": ".github/docs", "notes": "extra"}}))
+        world.publish({"extra/a.md": "one\n", "notes/a.md": "two\n"})
+        with pytest.raises(sync.SyncError, match=re.escape("extra/a.md in tannergolden/path sits where")):
+            sync.run(world.private, world.public, template="tannergolden/path", ref="Development", mapping=mapping)
 
     def test_a_lock_is_not_recorded_while_the_trees_disagree(self, world):
         world.here({".github/docs/templates/ADR.md": None})

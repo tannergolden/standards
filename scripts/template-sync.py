@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tanner Golden
 # SPDX-License-Identifier: MIT
 # =============================================================================
-# Template Sync - keep a generated repository's scaffold current
+# Template Sync - bring a generated repository's scaffold up to date, on request
 # =============================================================================
 # "Use this template" hands over a copy and then forgets it. The stubs, the
 # repository scripts, the seeded documents: every fix made to them in the
@@ -200,6 +200,19 @@ def version_label(repo: pathlib.Path, commit: str, ref: str) -> str:
     return f"{ref}@{commit[:7]}"
 
 
+def newer_objects(repo: pathlib.Path, commit: str) -> set[str]:
+    """Everything only the template's NEWER history holds: reachable from a ref that contains `commit`, not from it.
+
+    Divergent history - an old tag left behind by a rewrite - is not newer,
+    so a baseline found only there is not mistaken for one from the future.
+    """
+    refs = [r for r in git(repo, "for-each-ref", "--contains", commit, "--format=%(objectname)").decode().split()
+            if r != commit]
+    if not refs:
+        return set()
+    return set(git(repo, "rev-list", "--objects", "--no-object-names", *refs, "--not", commit).decode().split())
+
+
 # =============================================================================
 # Paths
 # =============================================================================
@@ -213,6 +226,10 @@ def unsafe(path: str) -> str | None:
     """
     if not path or path.startswith("/") or "\\" in path or "\0" in path:
         return "it is not a relative POSIX path"
+    try:
+        path.encode("utf-8")
+    except UnicodeEncodeError:
+        return "its name is not valid UTF-8"
     parts = path.split("/")
     if any(part in ("", ".", "..") for part in parts):
         return "it climbs out of the repository or has an empty segment"
@@ -304,6 +321,7 @@ def merge_list(
     *,
     disabled: Iterable[str] = (),
     renames: dict[str, str] | None = None,
+    carry_off: dict[str, str] | None = None,
     waiting: Iterable[str] = (),
 ) -> str:
     """Redraw the list from the template's latest, keeping every choice the owner made.
@@ -322,6 +340,10 @@ def merge_list(
     next run read them as unsynced, and the conflict - or the deletion - was
     abandoned without a word. They stay named, switched on, under
     WAITING_NOTE, until a run settles them.
+
+    `renames` carries every choice across a move; `carry_off` carries only
+    "off", for a move git could see only by its content - one that left a
+    new file at the old path, which may as well be a rewrite and a copy.
     """
     t = parse_list(target)
     b = parse_list(base)
@@ -330,6 +352,14 @@ def merge_list(
     b_defaults = b.defaults() if b else {}
 
     choices: dict[str, bool] = {}
+    # ⚠️ A LINE THE OWNER HAS OFF IS NEVER SWITCHED ON FOR THEM. A template
+    # may change its own default either way, but only "off" may reach an
+    # owner who never chose: a line off by the owner's hand and then off by
+    # the template's default too reads exactly like one following the
+    # default, and the template switching it back on restored a file the
+    # owner had deleted. Off is the safe direction - it stops writes - so
+    # that is the only one a template's default can take an owner in.
+    held_off: set[str] = set()
     rules: list[str] = []
     if d is not None:
         mine = d.defaults()
@@ -338,21 +368,23 @@ def merge_list(
             state = mine.get(key, False)
             if state != default:
                 choices[key] = state
-        for old, new in (renames or {}).items():
-            if escape(old) in choices and escape(new) not in choices:
-                choices[escape(new)] = choices[escape(old)]
+            if not state:
+                held_off.add(key)
 
         template_notes = {line.text for line in (b.body if b else []) + t.body if line.kind == "note"}
         template_notes.add(WAITING_NOTE)
         template_keys = set(b_defaults) | set(t_defaults)
         in_waiting = False
         for line in d.body:
-            # The waiting section is the engine's: redrawn below, never an owner's rule.
+            # The waiting section is the engine's - but only the exact paths
+            # it writes there. Anything else an owner put under it is a rule
+            # of theirs, kept like any other.
             if line.kind == "note" or line.kind == "blank":
                 in_waiting = line.text == WAITING_NOTE
-            if line.kind == "entry" and in_waiting:
+            if line.kind == "entry" and in_waiting and line.key.startswith("/") and literal(line.key):
                 if not line.on:
                     choices[line.key] = False  # the owner gave up on it: settled as theirs
+                    held_off.add(line.key)
                 continue
             if line.kind == "entry" and line.key not in template_keys:
                 rules.append(line.text)
@@ -360,18 +392,35 @@ def merge_list(
                 rules.append(line.text)
         rules.extend(d.rules)
 
+        # After every choice is known, the waiting section's included: a file
+        # the owner settled as theirs there carries that across its move too.
+        for old, new in (renames or {}).items():
+            if escape(old) in choices and escape(new) not in choices:
+                choices[escape(new)] = choices[escape(old)]
+            if escape(old) in held_off:
+                held_off.add(escape(new))
+        for old, new in (carry_off or {}).items():
+            if escape(old) in held_off and escape(new) not in choices:
+                choices[escape(new)] = False
+                held_off.add(escape(new))
+
     off_keys = set()
     for path in sorted(set(disabled)):
         key = escape(path)
+        # A rule of the owner's that names the file exactly is switched off
+        # where it stands: it would otherwise go on syncing - and restoring -
+        # the file they just deleted.
+        named = key in rules
+        rules = [f"#{key}" if rule == key else rule for rule in rules]
         if key in t_defaults:
             off_keys.add(key)
-        elif f"!{key}" not in rules:
+        elif not named and f"!{key}" not in rules:
             rules.append(f"!{key}")
 
     out: list[str] = []
     for line in t.body:
         if line.kind == "entry":
-            on = choices.get(line.key, line.on) and line.key not in off_keys
+            on = choices.get(line.key, line.on and line.key not in held_off) and line.key not in off_keys
             out.append(line.key if on else f"#{line.key}")
         else:
             out.append(line.text)
@@ -389,6 +438,53 @@ def merge_list(
         rules.pop()
     out.extend(rules)
     return "\n".join(out) + "\n"
+
+
+def exact_on(text: str | None) -> set[str]:
+    """The paths a list switches on by a line of their own: what an owner can only have meant."""
+    parsed = parse_list(text)
+    if parsed is None:
+        return set()
+    lines = [line for line in parsed.body if line.kind == "entry"] + [classify(rule) for rule in parsed.rules]
+    return {unescape(line.key) for line in lines
+            if line.kind == "entry" and line.on and line.key.startswith("/") and literal(line.key)}
+
+
+def honour_choices(redrawn: str, ours: str, reference: str, paths: Iterable[str],
+                   renames: dict[str, str] | None = None, *, settled: Iterable[str] = ()) -> tuple[str, set[str]]:
+    """Keep every owner's choice per PATH, whatever shape the template gave its list.
+
+    The redraw keeps choices line by line. When the template reshapes its
+    list - a pattern where it named files, or files where it had a pattern -
+    a choice made on a line that no longer exists has nowhere to stay, and
+    the redraw quietly followed the template instead: a file the owner
+    switched off was synced again. So each path is compared directly, the
+    owner's list against the one it was drawn from (`reference`), and
+    wherever the redraw would undo a choice it is written back by name under
+    "Your rules". A path git's matcher cannot rule out by name - one under a
+    folder a pattern takes whole - is returned to be held off by the run.
+
+    `settled` names paths this run switched off itself - files the owner
+    deleted - which no choice in their list as committed may switch back on.
+    """
+    wanted = sorted(set(paths) - set(settled))
+    if not wanted:
+        return redrawn, set()
+    mine = matched(ours, wanted)
+    default = matched(reference, wanted)
+    for old, new in (renames or {}).items():
+        if old in wanted and new in wanted:
+            mine = (mine - {new}) | ({new} if old in mine else set())
+            default = (default - {new}) | ({new} if old in default else set())
+    chosen_off = {p for p in wanted if p in default and p not in mine}
+    chosen_on = {p for p in wanted if p in mine and p not in default}
+    now = matched(redrawn, wanted)
+    lost_off, lost_on = sorted(chosen_off & now), sorted(chosen_on - now)
+    if not lost_off and not lost_on:
+        return redrawn, set()
+    text = redrawn.rstrip("\n") + "\n"
+    text += "".join(f"!{escape(p)}\n" for p in lost_off) + "".join(f"{escape(p)}\n" for p in lost_on)
+    return text, set(lost_off) & matched(text, lost_off)
 
 
 def section_of(lines: list[str], index: int) -> str | None:
@@ -955,7 +1051,9 @@ def decide(
         return Decision(path, "merged", write=Side(mode, merged), state=state_of(target))
     return Decision(path, "conflict", detail=(
         "You and the template changed the same lines. Your file is untouched; the template's "
-        "change is below. Apply what you want of it and the next sync stops asking."),
+        "change is below. Make those lines match it on your default branch - not on the sync "
+        "branch, which each run replaces - and the next sync stops asking. To keep yours, switch "
+        "the file off."),
         diff=udiff(path, base.data, target.data))
 
 
@@ -994,7 +1092,8 @@ def rewritten(before: bytes, after: bytes) -> bool:
     return difflib.SequenceMatcher(None, before.splitlines(), after.splitlines(), autojunk=False).ratio() < 0.5
 
 
-def template_moves(template_dir: pathlib.Path, known: dict[str, FileState], commit: str) -> dict[str, str]:
+def template_moves(template_dir: pathlib.Path, known: dict[str, FileState],
+                   commit: str) -> tuple[dict[str, str], dict[str, str]]:
     """The moves git itself sees between this repository's baselines and the target.
 
     The baselines are laid out as a tree of their own, through a throwaway
@@ -1011,17 +1110,22 @@ def template_moves(template_dir: pathlib.Path, known: dict[str, FileState], comm
     git looks. If the old content lives on somewhere new, git calls that a
     move; if it does not, nothing is found and nothing changes. Without this,
     a file the owner had deleted came back under its new name.
+
+    Such a pair is returned APART from the true moves, because content alone
+    cannot tell "moved, and a new file put in its place" from "rewritten, and
+    a copy added": it carries an owner's "off" across and nothing else, and
+    the file at the old path is never taken away from them.
     """
     entries = {p: s for p, s in known.items() if p not in NEVER and not unsafe(p)}
     if not entries:
-        return {}
+        return {}, {}
     check = git(template_dir, "cat-file", "--batch-check",
                 data=("\n".join(sorted({s.blob for s in entries.values()})) + "\n").encode()).decode()
     present = {line.split()[0] for line in check.splitlines() if not line.endswith("missing")}
     rows = b"".join(encode(f"{s.mode} {s.blob}\t{p}") + b"\0" for p, s in sorted(entries.items())
                     if s.blob in present)
     if not rows:
-        return {}
+        return {}, {}
     target = tree(template_dir, commit)
     changed = sorted(p for p, s in entries.items() if s.blob in present and p in target
                      and target[p].kind == "blob" and target[p].sha != s.blob)
@@ -1049,7 +1153,9 @@ def template_moves(template_dir: pathlib.Path, known: dict[str, FileState], comm
             i += 3
         else:
             i += 1
-    return {old: new for old, new in moves.items() if new not in NEVER and not unsafe(new)}
+    found = {old: new for old, new in moves.items() if new not in NEVER and not unsafe(new)}
+    return ({old: new for old, new in found.items() if old not in replaced},
+            {old: new for old, new in found.items() if old in replaced})
 
 
 def plan(
@@ -1062,6 +1168,7 @@ def plan(
     special: set[str] = frozenset(),
     defer: Callable[[str], bool] = lambda _p: False,
     moves: dict[str, str] | None = None,
+    replaced: dict[str, str] | None = None,
 ) -> list[Decision]:
     """Every decision for every path the template ships or shipped.
 
@@ -1074,19 +1181,26 @@ def plan(
     decisions: dict[str, Decision] = {}
     if moves is None:
         moves = renames_of(base, target)
+    for old, new in (replaced or {}).items():
+        # The old path's content lives on at a new one, and something else
+        # took its place. Only a deletion is carried across: the content the
+        # owner deleted is not re-created under its new name. Everything else
+        # is decided path by path below - the file at the old path is never
+        # taken from an owner who edited it, since this may as well be a
+        # rewrite and a copy.
+        if (new in synced and new not in ours and new not in special and old not in ours
+                and base.get(old) not in (None, MISSING)):
+            decisions[new] = Decision(new, "owner-deleted", state=FileState(target[new].sha, target[new].mode, True),
+                                      detail=f"It carries on `{old}`, which you deleted, so it is switched off "
+                                             "in .github/template-sync.")
     for old, new in moves.items():
         if old not in synced or new not in synced:
             continue
-        # A move can leave a new file at the old path: the template moved one
-        # file and put another where it was. The old path then takes the new
-        # file, in place of the one that moved, rather than being removed.
-        replaced = old in target
         if old not in ours and new not in ours and base.get(old) not in (None, MISSING):
             # The owner deleted the file while the template was moving it.
             # It was the same file, so it stays deleted under its new name
             # too, switched off there like any other deletion.
-            decisions[old] = (decide(old, None, target[old], None, synced=True, was_deleted=False)
-                              if replaced else Decision(old, "gone", state=REMOVE))
+            decisions[old] = Decision(old, "gone", state=REMOVE)
             decisions[new] = Decision(new, "owner-deleted", state=FileState(target[new].sha, target[new].mode, True),
                                       detail="You deleted this file before the template moved it here, so it "
                                              "is switched off in .github/template-sync.")
@@ -1097,14 +1211,9 @@ def plan(
                 write = result.write or Side(merge_mode(ours[old].mode, base[old].mode, target[new].mode),
                                              ours[old].data)
                 edited = ours[old].data != base[old].data
-                detail = f"The template moved this file to `{new}`" + (", and your changes came with it"
-                                                                       if edited else "")
-                if replaced:
-                    decisions[old] = Decision(old, "moved", write=target[old], state=state_of(target[old]),
-                                              pair=new, detail=f"{detail}. A new file from the template takes "
-                                                               "its place here.")
-                else:
-                    decisions[old] = Decision(old, "moved", delete=True, state=REMOVE, pair=new, detail=f"{detail}.")
+                decisions[old] = Decision(old, "moved", delete=True, state=REMOVE, pair=new, detail=(
+                    f"The template moved this file to `{new}`" + (", and your changes came with it."
+                                                                  if edited else ".")))
                 decisions[new] = Decision(new, "moved-here", write=write, state=state_of(target[new]), pair=old)
             else:
                 decisions[old] = Decision(old, "conflict", pair=new, detail=(
@@ -1138,8 +1247,9 @@ def plan(
         if defer(path) or (decision.pair and defer(decision.pair)):
             for name in filter(None, (path, decision.pair)):
                 decisions[name] = Decision(name, "deferred", detail=(
-                    "A workflow file: the default token cannot write it. Add a BOT_ACCESS_TOKEN "
-                    "with the workflow scope and the next sync delivers it."),
+                    "A workflow file, and this run's token cannot write workflows. Set a "
+                    "BOT_ACCESS_TOKEN that can - the `workflow` scope, or Workflows write - and the "
+                    "next sync delivers it."),
                     diff=decisions[name].diff)
     return [decisions[p] for p in sorted(decisions)]
 
@@ -1207,9 +1317,10 @@ HEADINGS = (
     ("deleted", "🗑️ Removed, as the template removed it"),
     ("kept", "📌 Kept as yours after the template removed it"),
     ("owner-deleted", "🙈 Switched off, because you deleted it"),
+    ("held-off", "✋ Held off, as you chose"),
     ("unsafe", "⛔ Skipped as unsafe"),
 )
-EXPLAINED = frozenset({"conflict", "deferred", "kept", "unsafe", "restored", "owner-deleted", "moved"})
+EXPLAINED = frozenset({"conflict", "deferred", "kept", "unsafe", "restored", "owner-deleted", "moved", "held-off"})
 
 
 def render_report(*, template: str, version: str, previous: str, decisions: list[Decision],
@@ -1260,10 +1371,20 @@ def render_report(*, template: str, version: str, previous: str, decisions: list
             "> `.github/template-sync` names every path the template ships. Put a `#` in front of",
             "> one to keep it as yours, or add a rule under **Your rules**.",
         ]
-    text = "\n".join(lines) + "\n"
-    if len(text) > REPORT_LIMIT:
-        text = text[:REPORT_LIMIT - 200] + "\n\n... (truncated; the run's step summary has the rest)\n"
-    return text
+    return "\n".join(lines) + "\n"
+
+
+def pr_body(report: str) -> str:
+    """The report as a pull request can carry it: GitHub refuses a body over 65,536 characters.
+
+    Cut between items, never inside one, so no code fence or <details> is
+    left open; the run's step summary keeps all of it.
+    """
+    if len(report) <= REPORT_LIMIT:
+        return report
+    note = "\n... and more: the run's step summary lists every file.\n"
+    cut = report.rfind("\n- `", 0, REPORT_LIMIT - len(note))
+    return report[:cut if cut > 0 else REPORT_LIMIT - len(note)].rstrip() + "\n" + note
 
 
 def write_output(name: str, value: str) -> None:
@@ -1490,7 +1611,9 @@ def run(
 
     # Each template path is decided at the path it lives at HERE: its own,
     # unless a mapping moves it or leaves it out. Two template paths landing
-    # on one would make a merge of strangers, so that stops the run.
+    # on one would make a merge of strangers, so that stops the run - and so
+    # does a template path sitting where a relocated folder lands, whose
+    # origin could not be told apart from the relocated files'.
     origin: dict[str, str] = {}
     for path, entry in sorted(target_tree.items()):
         local = mapping.here(path) if mapping else path
@@ -1499,6 +1622,9 @@ def run(
         if local in origin:
             raise SyncError(f"{origin[local]} and {path} in {template} would both live at {local} here. "
                             "Fix the mapping so each has a place of its own.")
+        if mapping and mapping.there(local) != path:
+            raise SyncError(f"{path} in {template} sits where the mapping relocates a folder to. "
+                            "Fix the mapping so each file has a place of its own.")
         origin[local] = path
     shipped = {local: target_tree[path] for local, path in origin.items()}
     known = {p: s for p, s in lock.files.items() if p not in never}
@@ -1527,23 +1653,52 @@ def run(
                    {p: e.mode for p, e in shipped.items()}, transform)
     ours = {p: s for p, s in files_here.items() if p not in never}
 
+    # ⚠️ A SYNC NEVER GOES BACKWARDS. "Use this template" copies the
+    # template's default branch, not its release, so a repository generated
+    # between a merge and the next release holds files newer than `v1`. A
+    # sync to `v1` would read each of those changes as the template taking
+    # it back - proposing to revert every one and delete every file added
+    # since. A baseline only the template's NEWER history holds means this
+    # repository is ahead of the target, and there is nothing to sync until
+    # the template releases past it.
+    newer = newer_objects(template_dir, commit)
+    ahead = sorted(p for p, s in known.items() if s.blob in newer)
+    if ahead:
+        raise Skip(f"This repository already holds a newer version of {template} than {ref} ({version}) - "
+                   f"{', '.join(ahead[:3])}{' and more' if len(ahead) > 3 else ''}. There is nothing to sync "
+                   "until the template releases past it.")
+
     if mapping:
         # Moves are git's to see between TEMPLATE paths, so the baselines are
         # laid out where they came from, and each move found is brought home.
         theirs = {there: s for p, s in known.items() if (there := mapping.there(p)) is not None}
-        moves = {}
-        for old, new in template_moves(template_dir, theirs, commit).items():
-            old_here, new_here = mapping.here(old), mapping.here(new)
-            if old_here is not None and new_here is not None and new_here not in never:
-                moves[old_here] = new_here
+        found, found_replaced = template_moves(template_dir, theirs, commit)
+        moves, replaced = {}, {}
+        for into, pairs in ((moves, found), (replaced, found_replaced)):
+            for old, new in pairs.items():
+                old_here, new_here = mapping.here(old), mapping.here(new)
+                if old_here is not None and new_here is not None and new_here not in never:
+                    into[old_here] = new_here
         synced = set(shipped) | {p for p in known if mapping.there(p) is not None}
+        held: set[str] = set()
     else:
-        moves = template_moves(template_dir, known, commit)
+        moves, replaced = template_moves(template_dir, known, commit)
+        held = set()
         if ours_list is None:
             synced = set()
         else:
-            synced = matched(merge_list(base_list, target_list, ours_list, renames=moves), set(shipped)) | matched(
-                ours_list, set(known) - set(shipped))
+            reference = base_list if base_list is not None else target_list
+            draft, held = honour_choices(
+                merge_list(base_list, target_list, ours_list, renames=moves, carry_off=replaced),
+                ours_list, reference, set(shipped), {**moves, **replaced})
+            synced = (matched(draft, set(shipped)) | matched(ours_list, set(known) - set(shipped))) - held
+            # ⚠️ A DELETED FILE COMES BACK ONLY WHEN ITS OWNER ASKS. That
+            # means a line of its own, switched on: a pattern - the
+            # template's or a rule of the owner's - still matching the path
+            # is not a request, and git's matcher cannot always rule a single
+            # file out from under a folder pattern anyway.
+            asked = exact_on(ours_list)
+            synced -= {p for p, s in known.items() if s.deleted and p not in asked}
 
     decisions = plan(
         base,
@@ -1554,20 +1709,49 @@ def run(
         special=special,
         defer=(lambda _p: False) if workflow_files else (lambda p: p.startswith(WORKFLOW_DIR)),
         moves=moves,
+        replaced=replaced,
     )
     if mapping:
         # A file missing here is drift from the mapping, not an owner's choice:
         # it is neither switched off nor re-created, and stays in view until
-        # it is restored or the mapping records its absence.
+        # it is restored or the mapping records its absence. Its baseline is
+        # kept - or made, at a path a move just brought it to - so the next
+        # run finds it missing again rather than new.
         decisions = [
             Decision(d.path, "conflict", pair=d.pair, detail=(
                 f"This file is missing here, and nothing in {mapping.source or 'the mapping'} sets it "
                 "apart. Restore it, or record its absence there."),
-                diff=udiff(d.path, b"", target[d.path].data) if d.path in target else "")
+                diff=udiff(d.path, b"", target[d.path].data) if d.path in target else "",
+                state=FileState(d.state.blob, d.state.mode) if isinstance(d.state, FileState) else None)
             if d.outcome == "owner-deleted" else d
             for d in decisions
         ]
+    elif ours_list is None:
+        # Restoring a deleted list syncs nothing else, but a file the template
+        # removed meanwhile keeps its baseline and waits in the restored list,
+        # so the run that follows it can still remove it.
+        candidates = {d.path for d in decisions if d.outcome == "not-synced" and d.state == REMOVE
+                      and d.path in ours}
+        dropped = matched(base_list, candidates) if base_list is not None else set()
+        decisions = [Decision(d.path, "not-synced") if d.path in dropped else d for d in decisions]
+    else:
+        # A choice the list could not express by name is held off here, and
+        # said; so is a new file that carries on one the owner has off.
+        already = {line.key for line in parse_list(ours_list).body if line.kind == "entry"}
+        mentioned = {d.path for d in decisions if d.outcome != "not-synced"}
+        notes = [Decision(path, "held-off", detail=(
+            "You switched this file off, and the template's list no longer has a line that can say so; "
+            "it is held off for you. A rule of your own under Your rules settles it.")) for path in sorted(held)]
+        notes += [Decision(new, "held-off", detail=(
+            f"It carries on `{old}`, which you have off, so it starts switched off too. If it is a new file "
+            "you want, take the `#` away from its line."))
+            for old, new in sorted(replaced.items())
+            if new in shipped and new not in synced and old not in synced and escape(new) not in already
+            and new not in mentioned and new not in held]
+        noted = {d.path for d in notes}
+        decisions = sorted([d for d in decisions if d.path not in noted] + notes, key=lambda d: d.path)
 
+    unsettled = ("conflict", "deferred", "waiting")
     if mapping:
         list_text = ours_list
         if ours_list is not None:
@@ -1577,7 +1761,7 @@ def run(
                 added={d.path: origin.get(d.path, d.path) for d in decisions
                        if d.write is not None and d.path not in ours},
                 removed=[d.path for d in decisions if d.delete and d.outcome != "moved"],
-                renamed={d.path: d.pair for d in decisions if d.outcome == "moved" and d.delete},
+                renamed={d.path: d.pair for d in decisions if d.outcome == "moved"},
             )
     else:
         list_text = merge_list(
@@ -1586,8 +1770,15 @@ def run(
             ours_list,
             disabled=[d.path for d in decisions if d.outcome == "owner-deleted"],
             renames=moves,
-            waiting=[d.path for d in decisions if d.path not in shipped and d.outcome in ("conflict", "deferred")],
+            carry_off=replaced,
+            waiting=[d.path for d in decisions if d.path not in shipped and (
+                d.outcome in unsettled or (ours_list is None and d.outcome == "not-synced"
+                                           and d.state is None and d.path in known))],
         )
+        if ours_list is not None:
+            reference = base_list if base_list is not None else target_list
+            list_text, _ = honour_choices(list_text, ours_list, reference, set(shipped), {**moves, **replaced},
+                                          settled=[d.path for d in decisions if d.outcome == "owner-deleted"])
     list_changed = list_text != ours_list
 
     writes = {d.path: d.write for d in decisions if d.write is not None}
@@ -1753,9 +1944,10 @@ def issue_body(template: str, pending: dict[str, dict], mapping: Mapping | None 
         "Nothing in them was touched.\n\n"
         "| File | Waiting since | Why |\n| :--- | :--- | :--- |\n"
         f"{rows}\n\n"
-        "**A conflict** settles when the file holds what you want of the template's change - the sync "
-        f"pull request shows the change - {settle}\n\n"
-        "**A workflow file** settles once a `BOT_ACCESS_TOKEN` secret with the workflow scope exists.\n\n"
+        "**A conflict** settles when the lines the template changed read as the template has them - "
+        f"the sync pull request shows the change - {settle} Make the change on your default branch, "
+        "never on the sync branch: each sync rewrites that branch from your default branch.\n\n"
+        "**A workflow file** settles once a `BOT_ACCESS_TOKEN` secret that can write workflows exists.\n\n"
         "This issue is redrawn on every sync and closes itself when nothing is waiting.\n"
     )
 
@@ -1865,7 +2057,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     write_output("pr-title", title if len(title) <= 100 else "chore(template): 🔄 sync with the template")
     write_output("commit-title", commit_title if len(commit_title) <= 100
                  else "chore(template): 🔄 sync with the template")
-    write_output("report", result.report)
+    write_output("report", pr_body(result.report))
     return 0
 
 
@@ -1911,7 +2103,7 @@ def cmd_lock(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Keep a generated repository's scaffold current.")
+    parser = argparse.ArgumentParser(description="Bring a generated repository's scaffold up to date, on request.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_run = sub.add_parser("run", help="sync this repository from its template")

@@ -199,10 +199,13 @@ class History:
                     self.files[new] = self.files.pop(old)
                     self.modes[new] = self.modes.pop(old)
                     self.default_on[new] = self.default_on.pop(old)
-                    # What the owner did to the file travels with it.
+                    # What the owner did to the file travels with it - and
+                    # only that: anything recorded at `new` belonged to an
+                    # earlier file there, which the template has since removed.
                     self.moved_to[old] = new
-                    self.owner_removed[new] |= self.owner_removed.pop(old, set())
+                    self.owner_removed[new] = self.owner_removed.pop(old, set())
                     for record in (self.owner_deleted, self.owner_touched):
+                        record.discard(new)
                         if old in record:
                             record.add(new)
                     break
@@ -263,8 +266,10 @@ class History:
                 lines = self.derived_lines(path)
                 self.edit(lines, owner=True, path=path)
                 self.write_lines(path, lines)
-                self.owner_touched.add(path)
-                self.awaiting_removal.discard(path)
+                # An edit to a file the template has since moved is an edit
+                # to the moved file too: it travels with the move.
+                self.owner_touched |= {path, self.where(path)}
+                self.awaiting_removal -= {path, self.where(path)}
             elif choice < 0.45 and present:
                 path = self.rng.choice(present)
                 self.world.put(self.world.repo, {path: None})

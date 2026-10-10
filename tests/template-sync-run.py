@@ -301,6 +301,25 @@ class TestTheOwnersChoicesHold:
         assert sync_world.outcomes(again)["scripts/tool.py"] == "not-synced"
         assert sync_world.read("scripts/tool.py") is None
 
+    def test_a_deleted_file_stays_deleted_when_the_template_flips_its_default(self, sync_world):
+        """A random history found this: off by default, then on again, restored a deleted file."""
+        sync_world.generate()
+        sync_world.owner({"scripts/tool.py": None})
+        sync_world.run_sync()
+        assert entry_on(sync_world, "#/scripts/tool.py")
+        listed = sync_world.text(".github/template-sync")
+        template_list = (sync_world.template / ".github/template-sync").read_text(encoding="utf-8")
+        sync_world.release("v1.1.0", {".github/template-sync": template_list.replace(
+            "\n/scripts/tool.py\n", "\n#/scripts/tool.py\n")})
+        sync_world.run_sync()
+        sync_world.release("v1.2.0", {".github/template-sync": template_list,
+                                      "scripts/tool.py": "print('tool, revised')\n"})
+        result = sync_world.run_sync()
+        assert sync_world.read("scripts/tool.py") is None, "a deleted file came back"
+        assert entry_on(sync_world, "#/scripts/tool.py")
+        assert "scripts/tool.py" not in {d.path for d in result.decisions if d.write is not None}
+        assert listed  # the owner never touched the line
+
     def test_switching_a_deleted_file_back_on_restores_it(self, sync_world):
         sync_world.generate()
         sync_world.owner({"scripts/tool.py": None})
@@ -464,15 +483,26 @@ class TestAMoveThatLeavesANewFileBehind:
         listed = text.replace(f"/{old}\n", f"/{old}\n/{new}\n") if f"/{old}\n" in text else text
         world.release("v1.1.0", {old: self.FRESH, new: content, ".github/template-sync": listed}, {new: mode})
 
-    def test_the_owners_file_moves_and_the_new_one_takes_its_place(self, sync_world):
+    def test_an_edited_file_is_never_taken_from_its_owner(self, sync_world):
+        # Content cannot tell this from a rewrite and a copy, so the old path
+        # is merged as itself - here it conflicts, untouched - and the new
+        # path arrives as the template has it.
         sync_world.generate()
         sync_world.owner({"scripts/tool.py": "print('tool')\nprint('mine')\n"})
         self.replace_move(sync_world)
         result = sync_world.run_sync()
         outcomes = sync_world.outcomes(result)
-        assert outcomes["scripts/tool.py"] == "moved" and outcomes["bin/tool.py"] == "moved-here"
-        assert sync_world.text("bin/tool.py") == "print('tool')\nprint('mine')\n", "the owner's edit moves"
-        assert sync_world.text("scripts/tool.py") == self.FRESH, "the new file takes the old place"
+        assert outcomes["scripts/tool.py"] == "conflict" and outcomes["bin/tool.py"] == "added"
+        assert sync_world.text("scripts/tool.py") == "print('tool')\nprint('mine')\n", "the owner's file stays"
+        assert sync_world.text("bin/tool.py") == "print('tool')\n"
+
+    def test_an_untouched_file_takes_the_new_one_and_the_moved_one_arrives(self, sync_world):
+        sync_world.generate()
+        self.replace_move(sync_world)
+        outcomes = sync_world.outcomes(sync_world.run_sync())
+        assert outcomes["scripts/tool.py"] == "updated" and outcomes["bin/tool.py"] == "added"
+        assert sync_world.text("scripts/tool.py") == self.FRESH
+        assert sync_world.text("bin/tool.py") == "print('tool')\n"
         assert not sync_world.run_sync().changed
 
     def test_a_deleted_file_does_not_come_back_when_its_old_path_is_reused(self, sync_world):
@@ -494,14 +524,17 @@ class TestAMoveThatLeavesANewFileBehind:
         assert sync_world.read("bin/tool.py") is None
         assert sync_world.text("scripts/tool.py") == "print('tool')\n", "a switched-off file is never touched"
 
-    def test_a_file_deleted_in_the_same_turn_stays_deleted_and_the_new_one_arrives(self, sync_world):
+    def test_a_file_deleted_in_the_same_turn_comes_back_under_neither_name(self, sync_world):
+        # Either reading of the pair - a move, or a rewrite and a copy - has
+        # one of these paths holding what the owner deleted, so neither is
+        # written; both are switched off, and say so.
         sync_world.generate()
         self.replace_move(sync_world)
         sync_world.owner({"scripts/tool.py": None})
         result = sync_world.run_sync()
-        assert sync_world.outcomes(result)["bin/tool.py"] == "owner-deleted"
-        assert sync_world.read("bin/tool.py") is None
-        assert sync_world.text("scripts/tool.py") == self.FRESH
+        outcomes = sync_world.outcomes(result)
+        assert outcomes["bin/tool.py"] == "owner-deleted" and outcomes["scripts/tool.py"] == "owner-deleted"
+        assert sync_world.read("bin/tool.py") is None and sync_world.read("scripts/tool.py") is None
         assert not sync_world.run_sync().changed
 
     def test_a_rewrite_with_nothing_like_it_elsewhere_is_not_a_move(self, sync_world):
