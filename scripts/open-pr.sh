@@ -186,7 +186,7 @@ else
   PUSH_ARGS=(-u origin "$BRANCH")
 fi
 if ! git push --force "${PUSH_ARGS[@]}"; then
-  echo "::error title=Pull request::Failed to push branch '$BRANCH'. If this change includes .github/workflows/ files, the default GITHUB_TOKEN cannot push them - configure a BOT_ACCESS_TOKEN secret (repo + workflow scopes). Otherwise verify branch-protection rules and the token's contents:write permission. No pull request was opened."
+  echo "::error title=Pull request::Failed to push branch '$BRANCH'. If this change includes .github/workflows/ files, the token must be able to write them: the default GITHUB_TOKEN never can, and a BOT_ACCESS_TOKEN needs the workflow scope (classic) or Workflows: write (fine-grained). Otherwise verify branch-protection rules and the token's contents:write permission. No pull request was opened."
   exit 1
 fi
 
@@ -195,6 +195,13 @@ fi
 PR_REF=""
 EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || true)
 if [ -n "$EXISTING" ]; then
+  # ⚠️ THE TITLE AND BODY ARE REFRESHED TOO. They describe the run that
+  # produced the branch, and a squash merge writes them into history as the
+  # commit message - so a pull request still describing an earlier run would
+  # record the wrong version, and the wrong list of what waits. Best-effort:
+  # a token that cannot edit must never fail the delivery itself.
+  gh pr edit "$EXISTING" --title "$PR_TITLE" --body "$PR_BODY" >/dev/null 2>&1 ||
+    echo "::warning::Could not refresh the title and body of pull request #$EXISTING; they describe an earlier run."
   # The comment carries the run's (dynamic) commit title, so the PR's
   # timeline reads as a change log of what each refresh actually measured.
   gh pr comment "$EXISTING" --body "🔄 $(date -u +%F) run - \`${COMMIT_TITLE}\` (force-pushed \`$BRANCH\`)." >/dev/null 2>&1 || true

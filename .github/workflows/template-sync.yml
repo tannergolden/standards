@@ -2,9 +2,9 @@
 #
 # 🔄 Template Sync
 #
-# Purpose: keeps a repository generated from a template current with it, as
-# one evolving pull request, and keeps the template itself honest about what
-# it ships.
+# Purpose: brings a repository generated from a template up to date with it,
+# as one evolving pull request, whenever its owner runs it - and keeps the
+# template itself honest about what it ships.
 #
 # "Use this template" hands over a copy and forgets it. Every fix the
 # template gets afterwards - a stub, a repository script, a seeded document -
@@ -44,7 +44,7 @@
 #     pull_request:
 #     workflow_dispatch:
 #   concurrency:
-#     group: ${{ github.workflow }}-${{ github.ref }}
+#     group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
 #     cancel-in-progress: false
 #   permissions: {}
 #   jobs:
@@ -141,17 +141,23 @@ jobs:
           notice: "🔄 Template Sync: bringing the template's latest release into this repository as a pull request."
 
       # Full history: a repository that never got a lock has its baseline
-      # recovered from its first commit.
+      # recovered from its first commit. And the branch the pull request
+      # TARGETS, whatever branch the run was dispatched from: a sync worked
+      # out on a feature branch and proposed against the default one would
+      # carry every commit of that feature branch with it.
       - name: '📂 Checkout Calling Repository'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.base || github.event.repository.default_branch }}
           fetch-depth: 0
           persist-credentials: false
 
+      # The token that can read the template asks: GitHub names a PRIVATE
+      # template as this repository's origin only to a token that can see it.
       - name: '🔎 Resolve The Template'
         id: resolve
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.BOT_ACCESS_TOKEN || github.token }}
           INPUT_TEMPLATE: ${{ inputs.template }}
           REPO: ${{ github.repository }}
           OWNER: ${{ github.repository_owner }}
@@ -193,12 +199,6 @@ jobs:
             exit 1
           fi
 
-      - name: '🔐 Resolve Workflow-File Policy'
-        id: policy
-        env:
-          HAVE_PAT: ${{ secrets.BOT_ACCESS_TOKEN != '' }}
-        run: echo "workflow-files=${HAVE_PAT}" >> "$GITHUB_OUTPUT"
-
       - name: '🔄 Sync'
         id: sync
         uses: tannergolden/standards/actions/template-sync@v1
@@ -207,8 +207,24 @@ jobs:
           template-dir: ${{ runner.temp }}/template.git
           template: ${{ steps.resolve.outputs.template }}
           ref: ${{ inputs.ref }}
-          workflow-files: ${{ steps.policy.outputs.workflow-files }}
+          # Decided from the token itself: none, or a classic one without
+          # the workflow scope, holds workflow files back instead of
+          # failing the push - and the whole pull request with it.
+          workflow-files: auto
+          workflow-token: ${{ secrets.BOT_ACCESS_TOKEN }}
           name: ${{ steps.resolve.outputs.name }}
+
+      # ⚠️ AN EARLIER RUN'S AUTO-MERGE COMES OFF BEFORE THIS RUN PUSHES. It is
+      # promised only to a run that asked for it with nothing waiting, and
+      # one an earlier run enabled survives the force-push below - so it
+      # would merge whatever this run proposes, waiting files and all.
+      - name: '⏸️ Hold Any Earlier Auto-Merge'
+        id: hold
+        if: ${{ steps.sync.outputs.changed == 'true' && !(inputs.automerge && steps.sync.outputs.clean == 'true') }}
+        env:
+          GH_TOKEN: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: gh pr merge --disable-auto chore/template-sync --repo "$REPO" >/dev/null 2>&1 || true
 
       - name: '🚀 Propose The Sync As A Pull Request'
         if: ${{ steps.sync.outputs.changed == 'true' }}

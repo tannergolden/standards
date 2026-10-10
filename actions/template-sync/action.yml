@@ -2,8 +2,9 @@
 #
 # 🔄 Template Sync
 #
-# Purpose: keeps a repository generated from a template current with it, and
-# keeps a template honest about what it ships.
+# Purpose: brings a repository generated from a template up to date with it
+# when its owner runs the sync, and keeps a template honest about what it
+# ships.
 #
 #   run    syncs the checked-out repository from a clone of its template:
 #          an identity-aware three-way merge per file, each file with its
@@ -55,9 +56,18 @@ inputs:
   workflow-files:
     description: >-
       Whether the token pushing the result can write .github/workflows/.
-      `false` holds those files back, keeps them waiting, and says so.
+      `false` holds those files back, keeps them waiting, and says so;
+      `auto` decides from `workflow-token`.
     required: false
     default: 'true'
+  workflow-token:
+    description: >-
+      With `workflow-files: auto`, the token that will push the result. None
+      holds workflow files back; so does a classic token without the
+      `workflow` scope. A fine-grained or App token names no scopes and is
+      trusted to have been made with Workflows write.
+    required: false
+    default: ''
   name:
     description: "The owner's display name. Used only to recover a lock that was never written."
     required: false
@@ -116,6 +126,7 @@ runs:
         REPOSITORY: ${{ inputs.repository }}
         VERSION: ${{ inputs.version }}
         MAP: ${{ inputs.map }}
+        WORKFLOW_TOKEN: ${{ inputs.workflow-token }}
       run: |
         set -euo pipefail
         script="${GITHUB_ACTION_PATH}/../../scripts/template-sync.py"
@@ -124,6 +135,32 @@ runs:
             if [ -z "$TEMPLATE_DIR" ]; then
               echo "::error title=Template sync::\`template-dir\` is empty. \`run\` needs a clone of the template to sync from."
               exit 1
+            fi
+            # ⚠️ A TOKEN THAT CANNOT WRITE WORKFLOWS MUST HOLD THEM BACK, NOT
+            # FAIL. GitHub refuses a push that touches .github/workflows/
+            # without that right - and with it the whole pull request. A
+            # classic token names its scopes in a header, so one without
+            # `workflow` is treated like no token for those files: they wait,
+            # named, and everything else still arrives.
+            if [ "$WORKFLOW_FILES" = "auto" ]; then
+              WORKFLOW_FILES=false
+              if [ -n "$WORKFLOW_TOKEN" ]; then
+                WORKFLOW_FILES=true
+                # The header goes to curl on stdin, never on its command line.
+                headers="$(printf 'header = "Authorization: Bearer %s"\n' "$WORKFLOW_TOKEN" |
+                  curl -sS --max-time 20 -o /dev/null -D - -K - "${GITHUB_API_URL:-https://api.github.com}/" 2>/dev/null || true)"
+                scopes="$(printf '%s\n' "$headers" | tr -d '\r' |
+                  sed -n 's/^[Xx]-[Oo][Aa][Uu][Tt][Hh]-[Ss][Cc][Oo][Pp][Ee][Ss]:[[:space:]]*//p' | tr -d ' ')"
+                if [ -n "$scopes" ]; then
+                  case ",${scopes}," in
+                    *,workflow,*) ;;
+                    *)
+                      echo "::warning title=Template sync::The token has no workflow scope, so files under .github/workflows/ wait until one with it is set."
+                      WORKFLOW_FILES=false
+                      ;;
+                  esac
+                fi
+              fi
             fi
             python3 "$script" run --template-dir "$TEMPLATE_DIR" --template "$TEMPLATE" --ref "$REF" \
               --workflow-files "$WORKFLOW_FILES" --name "$OWNER_NAME" --map "$MAP"

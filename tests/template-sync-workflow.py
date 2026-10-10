@@ -81,11 +81,36 @@ class TestTheReusableWorkflow:
             "${{inputs.automerge&&steps.sync.outputs.clean=='true'}}")
         assert step["with"]["branch"] == "chore/template-sync"
 
-    def test_workflow_files_follow_the_token(self):
-        shell = workflow_step_shell(WORKFLOW, "sync", "policy")
-        assert "HAVE_PAT" in shell
-        env = next(s for s in self.jobs()["sync"]["steps"] if s.get("id") == "policy")["env"]
-        assert env["HAVE_PAT"] == "${{ secrets.BOT_ACCESS_TOKEN != '' }}"
+    def test_workflow_files_follow_what_the_token_can_do(self):
+        step = next(s for s in self.jobs()["sync"]["steps"] if s.get("id") == "sync")
+        assert step["with"]["workflow-files"] == "auto"
+        assert step["with"]["workflow-token"] == "${{ secrets.BOT_ACCESS_TOKEN }}"
+
+    def test_the_sync_is_worked_out_on_the_branch_its_pull_request_targets(self):
+        checkout = next(s for s in self.jobs()["sync"]["steps"] if s.get("uses", "").startswith(
+            "actions/checkout"))
+        assert checkout["with"]["ref"].replace(" ", "") == (
+            "${{inputs.base||github.event.repository.default_branch}}")
+        assert checkout["with"]["fetch-depth"] == 0
+
+    def test_a_private_template_is_looked_up_with_the_token_that_can_see_it(self):
+        resolve = next(s for s in self.jobs()["sync"]["steps"] if s.get("id") == "resolve")
+        assert resolve["env"]["GH_TOKEN"].replace(" ", "") == "${{secrets.BOT_ACCESS_TOKEN||github.token}}"
+
+    def test_an_earlier_auto_merge_comes_off_before_a_run_that_did_not_earn_one_pushes(self):
+        steps = self.jobs()["sync"]["steps"]
+        hold = next(i for i, s in enumerate(steps) if s.get("id") == "hold")
+        push = next(i for i, s in enumerate(steps) if s.get("uses", "").startswith(
+            "tannergolden/standards/actions/open-pr"))
+        assert hold < push
+        # Exactly the runs whose own pull request does not ask to merge itself.
+        assert steps[hold]["if"].replace(" ", "") == (
+            "${{steps.sync.outputs.changed=='true'&&!(inputs.automerge&&steps.sync.outputs.clean=='true')}}")
+
+    def test_a_push_never_takes_the_place_of_a_sync_waiting_its_turn(self):
+        header = (ROOT / WORKFLOW).read_text(encoding="utf-8").split("\n---\n", 1)[0]
+        group = re.search(r"^#\s+group: (.+)$", header, re.M).group(1)
+        assert group == "${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}"
 
 
 class TestResolvingTheTemplate:
@@ -127,11 +152,99 @@ class TestResolvingTheTemplate:
         assert "Pass `template:` in the stub" in result.output
 
 
-class TestThePolicy:
-    @pytest.mark.parametrize("have", ["true", "false"])
-    def test_it_passes_the_token_question_through(self, run_shell, have):
-        result = run_shell(workflow_step_shell(WORKFLOW, "sync", "policy"), env={"HAVE_PAT": have})
-        assert result.outputs == {"workflow-files": have}
+class TestHoldingAnEarlierAutoMerge:
+    def test_it_asks_for_the_sync_branch_and_never_fails_the_run(self, run_shell, fake_gh, tmp_path):
+        fake_gh.route("pr merge", "no pull request found", code=1)
+        result = run_shell(workflow_step_shell(WORKFLOW, "sync", "hold"), cwd=tmp_path,
+                           env=fake_gh.env(GH_TOKEN="x", REPO="janedoe/widget"))
+        assert result.returncode == 0, result.output
+        assert fake_gh.calls == ["pr merge --disable-auto chore/template-sync --repo janedoe/widget"]
+
+
+class TestTheWorkflowFilePolicy:
+    """`auto`: what the pushing token can do decides, read from the token itself."""
+
+    CHECKS = ".github/workflows/checks.yml"
+    RELEASED = "name: checks\n# Released in v1.1.0.\njobs:\n  ci:\n    with:\n      lint-command: 'validate'\n"
+
+    @pytest.fixture
+    def curl(self, tmp_path):
+        """A `curl` that answers with whatever headers a test sets, and logs what it was given."""
+        bindir = tmp_path / "_curlbin"
+        bindir.mkdir()
+        headers, argv, stdin = tmp_path / "_curl_headers", tmp_path / "_curl_argv", tmp_path / "_curl_stdin"
+        shim = bindir / "curl"
+        shim.write_text(
+            "#!/usr/bin/env bash\n"
+            f'printf "%s\\n" "$*" >> "{argv}"\n'
+            f'cat >> "{stdin}"\n'
+            f'[ -f "{headers}" ] || exit 7\n'
+            f'cat "{headers}"\n',
+            encoding="utf-8",
+        )
+        shim.chmod(0o755)
+
+        class Curl:
+            path = f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}"
+
+            @staticmethod
+            def answer(*lines: str) -> None:
+                headers.write_text("".join(f"{line}\r\n" for line in ("HTTP/2 200", *lines, "")), encoding="utf-8")
+
+            @staticmethod
+            def argv() -> str:
+                return argv.read_text(encoding="utf-8") if argv.exists() else ""
+
+            @staticmethod
+            def stdin() -> str:
+                return stdin.read_text(encoding="utf-8") if stdin.exists() else ""
+
+        return Curl()
+
+    def run(self, run_shell, sync_world, curl, **env):
+        sync_world.generate()
+        sync_world.release("v1.1.0", {self.CHECKS: self.RELEASED})
+        shell = workflow_step_shell(ACTION, None, "sync")
+        base = {"GITHUB_ACTION_PATH": str(ROOT / "actions/template-sync"), "MODE": "run",
+                "TEMPLATE_DIR": str(sync_world.template), "TEMPLATE": "", "REF": "v1", "WORKFLOW_FILES": "auto",
+                "WORKFLOW_TOKEN": "", "OWNER_NAME": "", "REPOSITORY": "a/b", "VERSION": "", "MAP": "",
+                "PATH": curl.path, **SYNC_ENV}
+        result = run_shell(shell, cwd=sync_world.repo, env={**base, **env})
+        assert result.returncode == 0, result.output
+        return result, sync_world.text(self.CHECKS) == self.RELEASED
+
+    def test_no_token_holds_workflows_back_without_asking_anyone(self, run_shell, sync_world, curl):
+        _, updated = self.run(run_shell, sync_world, curl)
+        assert not updated
+        assert curl.argv() == ""
+
+    def test_a_classic_token_with_the_workflow_scope_writes_them(self, run_shell, sync_world, curl):
+        curl.answer("x-oauth-scopes: repo, workflow")
+        _, updated = self.run(run_shell, sync_world, curl, WORKFLOW_TOKEN="ghp_example")
+        assert updated
+
+    def test_a_classic_token_without_it_holds_them_back_and_says_so(self, run_shell, sync_world, curl):
+        curl.answer("X-OAuth-Scopes: repo, read:org, workflows")
+        result, updated = self.run(run_shell, sync_world, curl, WORKFLOW_TOKEN="ghp_example")
+        assert not updated
+        assert "The token has no workflow scope" in result.output
+
+    def test_a_token_that_names_no_scopes_is_trusted(self, run_shell, sync_world, curl):
+        # Fine-grained and App tokens name none: they are made with Workflows write or they are not.
+        curl.answer("content-type: application/json")
+        _, updated = self.run(run_shell, sync_world, curl, WORKFLOW_TOKEN="github_pat_example")
+        assert updated
+
+    def test_an_unreachable_api_trusts_the_token_and_leaves_the_push_to_name_the_cause(
+            self, run_shell, sync_world, curl):
+        _, updated = self.run(run_shell, sync_world, curl, WORKFLOW_TOKEN="ghp_example")
+        assert updated
+
+    def test_the_token_reaches_curl_on_stdin_never_on_its_command_line(self, run_shell, sync_world, curl):
+        curl.answer("x-oauth-scopes: workflow")
+        self.run(run_shell, sync_world, curl, WORKFLOW_TOKEN="ghp_secretvalue")
+        assert "ghp_secretvalue" not in curl.argv()
+        assert 'header = "Authorization: Bearer ghp_secretvalue"' in curl.stdin()
 
 
 class TestTheActionDispatches:
@@ -170,6 +283,50 @@ class TestTheActionDispatches:
                           TEMPLATE="tannergolden/path", MAP=str(mapping))
         assert result.returncode == 1
         assert "There is no .github/parity.lock yet" in result.output
+
+
+class TestTheSyncPullRequestStaysCurrent:
+    """A later run rewrites the open pull request's title and body, not only its branch.
+
+    A squash merge writes them into history as the commit message, so a pull
+    request still describing an earlier run records the wrong version, and
+    the wrong list of what waits.
+    """
+
+    TITLE = "chore(template): 🔄 sync with tannergolden/path v1.2.0"
+
+    def deliver(self, run_script, fake_gh, repo):
+        (repo / "synced.txt").write_text("v1.2.0\n", encoding="utf-8")
+        return run_script("scripts/open-pr.sh", cwd=repo, env=fake_gh.env(
+            GH_TOKEN="t", BRANCH_PREFIX="chore/template-sync", PR_BASE="main",
+            COMMIT_TITLE=self.TITLE, PR_TITLE=self.TITLE, PR_BODY="Needs you: c.txt"))
+
+    @pytest.fixture
+    def repo(self, git_repo, tmp_path):
+        """The seeded repository, with a remote of its own to push the branch to."""
+        remote = tmp_path / "remote.git"
+        env = {**os.environ, **SYNC_ENV}
+        subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(remote)], env=env, check=True)
+        subprocess.run(["git", "remote", "add", "origin", str(remote)], cwd=git_repo, env=env, check=True)
+        return git_repo
+
+    def test_an_open_pull_request_takes_this_runs_title_and_body(self, run_script, fake_gh, repo):
+        fake_gh.route("pr list", json.dumps([{"number": 7}]))
+        fake_gh.route("pr edit", "")
+        fake_gh.route("pr comment", "")
+        result = self.deliver(run_script, fake_gh, repo)
+        assert result.returncode == 0, result.output
+        edit = next(c for c in fake_gh.calls if c.startswith("pr edit 7"))
+        assert f"--title {self.TITLE} --body Needs you: c.txt" in edit
+        assert not any(c.startswith("pr create") for c in fake_gh.calls)
+
+    def test_a_token_that_cannot_edit_it_warns_and_still_delivers(self, run_script, fake_gh, repo):
+        fake_gh.route("pr list", json.dumps([{"number": 7}]))
+        fake_gh.route("pr edit", "forbidden", code=1)
+        fake_gh.route("pr comment", "")
+        result = self.deliver(run_script, fake_gh, repo)
+        assert result.returncode == 0, result.output
+        assert "Could not refresh the title and body of pull request #7" in result.output
 
 
 LOCK = {
