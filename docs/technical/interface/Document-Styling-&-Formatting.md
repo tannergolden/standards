@@ -390,8 +390,8 @@ fix lands once.
 
 Every marker closes with its `:end` twin. **Every repository carries an
 `assets/` folder for the kit to draw into, whatever its project**: both
-templates ship one, with a folder for every kind of asset, the kit's four
-among them.
+templates ship one with `branding/`, `screenshots/` and `diagrams/`, and the
+kit makes the folder for each part the first time it draws into it.
 
 ### One Page, One Theme
 
