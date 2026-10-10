@@ -338,6 +338,25 @@ class TestAmendingTheOwnList:
         out = sync.amend_list(PRIVATE_LIST, PUBLIC_LIST, added={"zzz/last.md": "zzz/last.md"})
         assert out.splitlines()[-1] == RULES
 
+    def test_an_arrival_a_pattern_leaves_to_owners_needs_no_line_where_the_same_pattern_does(self):
+        public = PUBLIC_LIST.replace(f"{YOURS}\n", f"{YOURS}\n#/assets/**\n")
+        own = PRIVATE_LIST.replace(f"{YOURS}\n", f"{YOURS}\n#/assets/**\n")
+        out = sync.amend_list(own, public, added={"assets/html/README.md": "assets/html/README.md"})
+        assert out == own
+
+    def test_an_arrival_a_pattern_leaves_to_owners_arrives_switched_off(self):
+        public = PUBLIC_LIST.replace(f"{YOURS}\n", f"{YOURS}\n#/assets/**\n")
+        out = sync.amend_list(PRIVATE_LIST, public, added={"assets/html/README.md": "assets/html/README.md"})
+        lines = out.splitlines()
+        assert "#/assets/html/README.md" in lines and "/assets/html/README.md" not in lines
+        assert sync.section_of(lines, lines.index("#/assets/html/README.md")) == YOURS
+
+    def test_a_pattern_here_that_names_an_arrival_is_never_contradicted(self):
+        public = PUBLIC_LIST.replace(f"{YOURS}\n", f"{YOURS}\n#/assets/html/README.md\n")
+        own = PRIVATE_LIST.replace(f"{KEPT}\n", f"{KEPT}\n/assets/**\n")
+        out = sync.amend_list(own, public, added={"assets/html/README.md": "assets/html/README.md"})
+        assert out == own, "a line of the template's choice would name the file both on and off here"
+
 
 # =============================================================================
 # A mapped sync, end to end
@@ -358,6 +377,16 @@ class TestAMappedSync:
         assert world.text(".github/docs/templates/Runbook.md") == seed("Steps.", PROPRIETARY)
         assert not (world.private / "docs").exists(), "nothing lands at the template's own path"
         assert world.listed() == []
+
+    def test_a_file_a_pattern_leaves_to_owners_arrives_without_a_line_of_its_own(self, world):
+        world.here({".github/template-sync": PRIVATE_LIST.replace(f"{YOURS}\n", f"{YOURS}\n#/assets/**\n")})
+        world.publish({"assets/html/README.md": "# HTML\n"},
+                      lambda t: t.replace(f"{YOURS}\n", f"{YOURS}\n#/assets/**\n"))
+        result = world.run()
+        assert world.outcomes(result) == {"assets/html/README.md": "added"}
+        lines = world.text(".github/template-sync").splitlines()
+        assert "/assets/html/README.md" not in lines and "#/assets/html/README.md" not in lines
+        assert world.listed() == [], "the file must stay named off, and only off"
 
     def test_a_changed_seed_updates_and_keeps_this_repositorys_footer(self, world):
         world.publish({"docs/templates/ADR.md": seed("Record one decision, and why.", MIT)})

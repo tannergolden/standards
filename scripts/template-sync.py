@@ -512,6 +512,15 @@ def amend_list(
     the template path it came from, and its line copies the template list's
     choice for it - on or off, in the section of the same name, in order -
     so a file the template leaves to its owners is left to them here too.
+
+    ⚠️ THE TEMPLATE'S CHOICE IS READ THE WAY ITS LIST MEANS IT, PATTERNS
+    INCLUDED. A file the template names only through `#/assets/**` is a file
+    it leaves to owners, and taking "no line of its own" for "not named"
+    switched it on here - kept current in every repository generated from
+    this one, and named both on and off, which this list's own check refuses.
+    And an arrival this list already names, by a line of its own or a pattern,
+    gains no line: a second could only repeat this list's choice or
+    contradict it.
     """
     lines = text.splitlines()
 
@@ -549,11 +558,8 @@ def amend_list(
         lines.insert(at, key if on else f"#{key}")
 
     template_lines = (template_list or "").splitlines()
-    choices: dict[str, tuple[bool, str | None]] = {}
-    for i, line in enumerate(template_lines):
-        parsed = classify(line)
-        if parsed.kind == "entry":
-            choices[parsed.key] = (parsed.on, section_of(template_lines, i))
+    rules_at = next((i for i, line in enumerate(template_lines) if line.startswith(RULES_MARKER)),
+                    len(template_lines))
 
     moving: list[tuple[str, bool, str | None]] = []
     for old, new in sorted((renamed or {}).items()):
@@ -567,9 +573,13 @@ def amend_list(
             del lines[at]
     for key, on, section in moving:
         insert(key, on, section)
-    for path, origin in sorted(added.items()):
-        on, section = choices.get(escape(origin), (True, None))
-        insert(escape(path), on, section)
+    arrivals = sorted(added.items())
+    named_here = naming(lines[:body_end()], [path for path, _ in arrivals])
+    choices = naming(template_lines[:rules_at], [origin for _, origin in arrivals])
+    for path, origin in arrivals:
+        if path not in named_here:
+            on, section = choices.get(origin, (True, None))
+            insert(escape(path), on, section)
     return "\n".join(lines) + "\n"
 
 
@@ -594,9 +604,18 @@ def matched(list_text: str, paths: Iterable[str]) -> set[str]:
     lines would mean in a .gitignore: anchoring, `**`, negation, the last match
     winning. A list here is an allowlist, so "ignored" reads as "kept current".
     """
+    return {path for path, (_, pattern) in deciding(list_text, paths).items() if not pattern.startswith("!")}
+
+
+def deciding(list_text: str, paths: Iterable[str]) -> dict[str, tuple[int, str]]:
+    """For each path a list's lines match, the line that decides it: its number, from 1, and its pattern.
+
+    Git's own matcher, as in `matched`, so the last matching line wins. A path
+    no line matches is left out.
+    """
     wanted = sorted(set(paths))
     if not wanted:
-        return set()
+        return {}
     repo = _match_repo()
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".list", delete=False) as handle:
         handle.write(list_text)
@@ -613,12 +632,27 @@ def matched(list_text: str, paths: Iterable[str]) -> set[str]:
     finally:
         os.unlink(list_file)
     fields = raw.split(b"\0")
-    out: set[str] = set()
+    out: dict[str, tuple[int, str]] = {}
     for i in range(0, len(fields) - 3, 4):
         pattern = decode(fields[i + 2])
-        if pattern and not pattern.startswith("!"):
-            out.add(decode(fields[i + 3]))
+        if pattern:
+            out[decode(fields[i + 3])] = (int(decode(fields[i + 1])), pattern)
     return out
+
+
+def naming(lines: list[str], paths: Iterable[str]) -> dict[str, tuple[bool, str | None]]:
+    """For each path a list's entries name, on or off, the state and section of the entry that decides it.
+
+    Every entry is read as the pattern it carries, whatever its state, so
+    `#/assets/**` names each file under assets/ just as `/assets/**` would:
+    which line speaks for a file is the question, and the last match wins, as
+    in a .gitignore. A negation that decides names its file off. A path no
+    entry names is left out.
+    """
+    entries = [classify(line) for line in lines]
+    text = "\n".join(line.key if line.kind == "entry" else "" for line in entries) + "\n"
+    return {path: (entries[number - 1].on and not pattern.startswith("!"), section_of(lines, number - 1))
+            for path, (number, pattern) in deciding(text, paths).items()}
 
 
 # =============================================================================
