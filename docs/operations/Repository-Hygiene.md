@@ -74,14 +74,14 @@ The root is deliberately minimal: everything relocatable already lives in `confi
 
 Every fork or new project seeded from this standards-based repository must maintain these core artifacts to remain compliant with our delivery standards.
 
-| File              | Purpose                               | Why it Matters                                                                                                                                                                             |
-| :---------------- | :------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`README.md`**   | First contact and navigation.         | Orients new contributors instantly.                                                                                                                                                        |
-| **`LICENSE`**     | Legal governance.                     | Defines how the code can be consumed.                                                                                                                                                      |
-| **`SECURITY.md`** | Responsibility disclosure.            | Provides a path for ethical vulnerability reporting.                                                                                                                                       |
-| **`CODEOWNERS`**  | Review accountability.                | Ensures changes are routed to the right experts.                                                                                                                                           |
-| **`.gitignore`**  | Noise cancellation.                   | Prevents secrets and artifacts from leaking into Git.                                                                                                                                      |
-| **`assets/`**     | A home for what presents the project. | Every repository carries it, whatever the project: it starts with `branding/`, `screenshots/` and `diagrams/`, and the Markdown Kit makes a folder there for each part of a page it draws. |
+| File              | Purpose                               | Why it Matters                                                                                                                                                                                      |
+| :---------------- | :------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`README.md`**   | First contact and navigation.         | Orients new contributors instantly.                                                                                                                                                                 |
+| **`LICENSE`**     | Legal governance.                     | Defines how the code can be consumed.                                                                                                                                                               |
+| **`SECURITY.md`** | Responsibility disclosure.            | Provides a path for ethical vulnerability reporting.                                                                                                                                                |
+| **`CODEOWNERS`**  | Review accountability.                | Ensures changes are routed to the right experts.                                                                                                                                                    |
+| **`.gitignore`**  | Noise cancellation.                   | Prevents secrets and artifacts from leaking into Git.                                                                                                                                               |
+| **`assets/`**     | A home for what presents the project. | Every repository carries it, whatever the project: it starts with `branding/`, `screenshots/`, `diagrams/` and `html/`, and the Markdown Kit makes a folder there for each part of a page it draws. |
 
 ---
 
