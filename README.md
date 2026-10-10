@@ -51,7 +51,8 @@ That stub has to live in your repository, because **GitHub only runs a workflow 
 repository being pushed to**. It is the one file ever copied, and it arrives already written when
 you generate from the public template, [`tannergolden/path`](https://github.com/tannergolden/path):
 fifteen stubs, grouped and pinned to `@v1`. After that, whenever you run it, **🔄 Template Sync**
-brings them up to date with the template as a pull request, merged with whatever you changed - see
+brings them up to date with the template as a pull request, merged with whatever you changed - all
+but the template-only `cut-release.yml` - see
 [Template Sync](docs/distribution/automation/Template-Sync.md).
 
 > [!IMPORTANT]
@@ -84,7 +85,7 @@ consuming repositories are where they execute. That left a gap for a long time, 
 an action reached consumers before anything had executed it.
 
 [`.github/workflows/self-checks.yml`](.github/workflows/self-checks.yml) closes it. It is local to
-this repository rather than published, the same way `release.yml` is, and **every first-party
+this repository rather than published, the same way `self-dependabot.yml` is, and **every first-party
 `uses:` in it is a local path** - `./actions/harden`, never `tannergolden/standards/actions/harden@v1`.
 That is the whole point: a local path resolves against the checked-out tree and therefore tests the
 diff, while a published path resolves the pin and would test the last release instead, reporting

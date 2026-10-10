@@ -73,18 +73,18 @@ labels, settings and rulesets through the API and never touches your tree. See
 
 ### Operations
 
-| Workflow                   | Does                                                                               |
-| :------------------------- | :--------------------------------------------------------------------------------- |
-| `governance.yml`           | Welcomes newcomers, labels pull requests, ages out and locks threads, syncs labels |
-| `auto-format.yml`          | Repairs formatting drift as a pull request. Any formatter                          |
-| `auto-index.yml`           | Regenerates every machined index, folder logs included, as a pull request          |
-| `issue-ops.yml`            | `/assign`, `/unassign`, `/label` slash commands                                    |
-| `ci-failure-alert.yml`     | Opens an issue when a watched workflow fails, closes it on recovery                |
-| `dependabot-automerge.yml` | Approves and queues patch and minor updates. Majors need a human                   |
-| `apply-standards.yml`      | Writes the label taxonomy and, opt-in, the rulesets                                |
-| `init-template.yml`        | Claims a generated repository for its new owner, once, then goes inert             |
-| `standards-version.yml`    | Opens one issue when a newer major exists. Never edits a pin                       |
-| `template-sync.yml`        | Keeps a generated repository current with its template, as one pull request        |
+| Workflow                   | Does                                                                                                                                       |
+| :------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| `governance.yml`           | Welcomes newcomers, labels pull requests, ages out and locks threads, syncs labels                                                         |
+| `auto-format.yml`          | Repairs formatting drift as a pull request. Any formatter                                                                                  |
+| `auto-index.yml`           | Regenerates every machined index, folder logs included, as a pull request                                                                  |
+| `issue-ops.yml`            | `/assign`, `/unassign`, `/label` slash commands                                                                                            |
+| `ci-failure-alert.yml`     | Opens an issue when a watched workflow fails, closes it on recovery                                                                        |
+| `dependabot-automerge.yml` | Approves and queues patch and minor updates. Majors need a human                                                                           |
+| `apply-standards.yml`      | Writes the label taxonomy and, opt-in, the rulesets                                                                                        |
+| `init-template.yml`        | Claims a generated repository for its new owner, once, then goes inert                                                                     |
+| `standards-version.yml`    | Opens one issue when a newer major exists. Never edits a pin                                                                               |
+| `template-sync.yml`        | Brings a generated repository up to date with its template as one pull request, only when its owner runs it; checks the list in a template |
 
 ### Pruning and release
 
@@ -159,9 +159,10 @@ Generate your repository from the public template,
 [tannergolden/path](https://github.com/tannergolden/path), and every trigger workflow arrives
 installed, grouped, and pinned to `@v1`: fifteen files covering the checks, governance, the release
 chain, maintenance, the standards lifecycle, the machined indexes, and template sync - which brings
-those files up to date afterwards, as a pull request, whenever you run it. The optional ones carry an
-`is_template` guard, so they are silent in the template and come alive in the repository generated
-from it.
+those files up to date afterwards, as a pull request, whenever you run it: all but the template-only
+`cut-release.yml`. The optional ones carry an `is_template` guard, so they are silent in the template
+and come alive in the repository generated from it. `cut-release.yml` runs only in the template, and
+`template-sync.yml` checks its list there.
 
 Then run **🎯 Apply Standards** once for the label taxonomy and, when you are ready for branch
 protection, the rulesets:
