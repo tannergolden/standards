@@ -12,11 +12,13 @@
 # This runs once in the generated repository and rewrites that identity to
 # the new owner's, then removes its own sentinel so it can never run again.
 #
-# ⚠️ WHAT IT DOES NOT REWRITE: `tannergolden/standards` references. Those are
-# the SHARED repository every consumer calls, and they are correct for
-# everybody. Rewriting them to the new owner would point the stubs at a
-# repository that does not exist. The distinction is the whole reason this
-# uses targeted rules rather than a blanket find-and-replace.
+# ⚠️ WHAT IT DOES NOT REWRITE: references to the SHARED repositories every
+# consumer calls - `tannergolden/standards`, `tannergolden/intelligence` and
+# the Markdown Kit, `tannergolden/markdown`, whose folders the templates'
+# assets/ READMEs link. They are correct for everybody. Rewriting them to the
+# new owner would point stubs and links at repositories that do not exist.
+# The distinction is the whole reason this uses targeted rules rather than a
+# blanket find-and-replace.
 #
 # THE EMAIL IS THE `noreply` FORM, AND THAT IS DELIBERATE. GitHub keeps
 # account emails private by default and the API returns null for most users,
@@ -47,6 +49,9 @@ import urllib.request
 
 API = "https://api.github.com"
 SKIP_DIRS = {".git", "node_modules", ".venv", "vendor", "target", "dist", "build"}
+# The template owner's repositories every generated repository shares, by
+# name: a path to one survives the handle rewrite untouched.
+SHARED = ("standards", "intelligence", "markdown")
 TEXT_SUFFIXES = {
     ".md", ".yml", ".yaml", ".json", ".jsonc", ".toml", ".txt", ".cfg", ".ini",
     ".sh", ".py", ".js", ".ts",
@@ -114,9 +119,8 @@ def rewrite(
     """
     # Targeted rules, never a blanket replace. The template owner's handle
     # appears both as an identity to rewrite and as part of the shared
-    # standards repository path, which must survive untouched.
-    keep = f"{template_owner}/standards"
-    guard = "\x00KEEP\x00"
+    # repositories' paths, which must survive untouched.
+    kept = {f"\x00KEEP{i}\x00": f"{template_owner}/{name}" for i, name in enumerate(SHARED)}
 
     for old, new in (
         # Contact links carry a placeholder because GitHub never substitutes
@@ -144,11 +148,13 @@ def rewrite(
     )
 
     # Any remaining bare handle becomes the new owner's, EXCEPT where it
-    # is part of the shared standards path.
+    # is part of a shared repository's path.
     if template_owner in text:
-        text = text.replace(keep, guard)
+        for guard, keep in kept.items():
+            text = text.replace(keep, guard)
         text = text.replace(template_owner, owner)
-        text = text.replace(guard, keep)
+        for guard, keep in kept.items():
+            text = text.replace(guard, keep)
 
     return text
 
@@ -270,7 +276,8 @@ def main() -> int:
             "no imposed structure: seed documents live under .github/docs/, the\n"
             "community health files are inherited from the account's .github\n"
             "repository, and every engineering standard is followed by link to\n"
-            "the shared standards repository rather than by copy.\n"
+            "the shared standards repository rather than by copy. Its one shared\n"
+            "folder is assets/, where the Markdown Kit draws the page.\n"
         )
     else:
         shape = (

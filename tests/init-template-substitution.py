@@ -13,10 +13,11 @@ was "left visibly wrong on purpose" and something they must fix by hand,
 the private one claiming an inherited chooser gets rewritten locally. Two
 documents drifted in opposite directions away from one untested line.
 
-The rules also have to NOT fire in one place: `tannergolden/standards` is
-the shared repository every generated repository calls, and it is correct
-for everyone. A blanket handle replace would rewrite it and point every
-workflow at a repository that does not exist.
+The rules also have to NOT fire in three places: `tannergolden/standards`,
+`tannergolden/intelligence` and `tannergolden/markdown` are the shared
+repositories every generated repository calls, and they are correct for
+everyone. A blanket handle replace would rewrite them and point every
+workflow and every link to the kit at a repository that does not exist.
 """
 
 from __future__ import annotations
@@ -87,6 +88,20 @@ class TestTheSharedStandardsPathSurvives:
 
     def test_the_guard_sentinel_does_not_survive_into_the_output(self):
         assert "\x00" not in rewrite(f"{TEMPLATE_OWNER}/standards and {TEMPLATE_OWNER}")
+
+
+class TestEverySharedRepositorySurvives:
+    """The Markdown Kit is shared too: the templates' assets/ READMEs link it,
+    and a rewritten link would send a new owner to a kit that does not exist."""
+
+    def test_a_link_to_each_shared_repository_is_left_alone(self):
+        for name in ("standards", "intelligence", "markdown"):
+            link = f"[{name}](https://github.com/{TEMPLATE_OWNER}/{name}/blob/Development/README.md)"
+            assert rewrite(link) == link, name
+
+    def test_the_owners_own_repository_beside_them_is_still_rewritten(self):
+        text = f"github.com/{TEMPLATE_OWNER}/markdown and github.com/{TEMPLATE_OWNER}/path"
+        assert rewrite(text) == f"github.com/{TEMPLATE_OWNER}/markdown and github.com/{OWNER}/path"
 
 
 class TestTheLicenceHolder:
