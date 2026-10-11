@@ -23,6 +23,12 @@
 #                               template itself: every file it ships must be
 #                               named, so nothing new arrives unannounced.
 #
+# WHAT ONLY THE TEMPLATE NEEDS IS NEVER HERE. A template names the files it
+# keeps for itself - its sentinel, a contract only it is held to - one to a
+# line under `# --- Only ever in the template`. Initialisation deletes every
+# one of them before its first commit and the lock it records names none of
+# them, so no sync offers one back unless the owner takes the `#` off its line.
+#
 # ⚠️ THE BASELINE IS PER FILE, AND THAT IS NOT A DETAIL. Replaying the real
 # history of both templates showed that one baseline for the whole repository
 # loses changes silently: a sync pull request with twenty clean updates and
@@ -85,6 +91,12 @@ WORKFLOW_DIR = ".github/workflows/"
 NEVER = frozenset({SENTINEL, LIST_PATH, LOCK_PATH})
 
 RULES_MARKER = "# --- Your rules"
+# The heading a template names what it alone needs under, one file to a
+# line. Each is deleted by initialisation and left out of the lock a
+# generated repository is born with, so the repository never holds it and
+# its absence never reads as the owner's deletion. The lines stay, switched
+# off, so the list still names everything the template ships.
+TEMPLATE_ONLY = "# --- Only ever in the template"
 # Above the marker, the engine's own: paths the template dropped that still
 # wait on the owner, kept named so the next run can finish what this one
 # could not. Redrawn on every run, so they leave once they resolve.
@@ -672,6 +684,32 @@ def naming(lines: list[str], paths: Iterable[str]) -> dict[str, tuple[bool, str 
     text = "\n".join(line.key if line.kind == "entry" else "" for line in entries) + "\n"
     return {path: (entries[number - 1].on and not pattern.startswith("!"), section_of(lines, number - 1))
             for path, (number, pattern) in deciding(text, paths).items()}
+
+
+def template_only(list_text: str | None, paths: Iterable[str]) -> set[str]:
+    """The paths a list keeps for the template alone: each named, on a line of its own, under TEMPLATE_ONLY.
+
+    Read the way the list is read everywhere - git's matcher, each entry
+    whatever its state, the last match winning - so a later line that names
+    the same path takes it back. Only the template's part of the list is
+    read: the heading is the template's, and nothing under Your rules decides
+    what initialisation deletes.
+
+    ⚠️ A PATTERN UNDER THE HEADING DELETES NOTHING. What this returns is
+    deleted from every generated repository, and `#/**` there would take the
+    whole tree with it - as would `#/.github`, which git reads as the folder
+    and everything in it. So only a line naming the path itself counts, and
+    the template's own check refuses any other line there rather than let it
+    pass silently.
+    """
+    parsed = parse_list(list_text)
+    if parsed is None:
+        return set()
+    lines = [line.text for line in parsed.body]
+    text = "\n".join(line.key if line.kind == "entry" else "" for line in parsed.body) + "\n"
+    return {path for path, (number, pattern) in deciding(text, paths).items()
+            if pattern.startswith("/") and unescape(pattern) == path
+            and (section_of(lines, number - 1) or "").startswith(TEMPLATE_ONLY)}
 
 
 # =============================================================================
@@ -1599,12 +1637,14 @@ def _load_indexer():
     return module
 
 
-def redraw_indexes(repo: pathlib.Path, paths: Iterable[str]) -> list[str]:
+def redraw_indexes(repo: pathlib.Path, paths: Iterable[str], title: str = "Template sync") -> list[str]:
     """Redraw every machined index in `paths` from the working tree as it now stands.
 
     The standards' own indexer, so a block comes out exactly as the owner's
     Machined Indexes would draw it. Best-effort: a block it cannot draw is left
-    as merged, with a warning, for that workflow to name.
+    as merged, with a warning under `title`, for that workflow to name.
+    Initialisation calls it too, once it has deleted what only the template
+    needed.
     """
     root = repo.resolve()
     wanted = [p for p in paths if (root / p).is_file() and not (root / p).is_symlink()
@@ -1621,7 +1661,7 @@ def redraw_indexes(repo: pathlib.Path, paths: Iterable[str]) -> list[str]:
                 if indexer.process(path, True):
                     redrawn.append(path)
             except (SystemExit, OSError, ValueError) as exc:
-                print(f"::warning title=Template sync::Could not redraw the machined index in {path}: {exc}")
+                print(f"::warning title={title}::Could not redraw the machined index in {path}: {exc}")
     finally:
         os.chdir(here)
     return redrawn
@@ -1773,12 +1813,22 @@ def generation_lock(
     when GitHub generates a repository, so each blob is the template's and the
     template's history can always produce it. The list is recorded too: it is
     the base every later redraw of the owner's copy is measured against.
+
+    ⚠️ WHAT THE LIST KEEPS FOR THE TEMPLATE ALONE IS LEFT OUT. Initialisation
+    deletes it before its first commit, so this repository never holds it. A
+    baseline for it would read that absence as the owner's own deletion: the
+    day they took the `#` off its line to have it, the sync would switch it
+    straight back off and say they had deleted it.
     """
+    entries = tree(repo, root or root_commit(repo))
+    listed = entries.get(LIST_PATH)
+    raw = read_blobs(repo, [listed.sha]).get(listed.sha) if listed is not None and listed.kind == "blob" else None
+    only = template_only(raw.decode("utf-8", "replace") if raw is not None else None, entries)
     files = {
         path: FileState(entry.sha, entry.mode)
-        for path, entry in tree(repo, root or root_commit(repo)).items()
+        for path, entry in entries.items()
         if entry.kind == "blob" and entry.mode in MODES and path not in (SENTINEL, LOCK_PATH)
-        and not unsafe(path)
+        and path not in only and not unsafe(path)
     }
     return Lock(template, "", "", identity, files, {})
 
@@ -1790,6 +1840,10 @@ def bootstrap(repo: pathlib.Path, template_dir: pathlib.Path, *, template: str, 
     init rewrote is matched by rewriting every version of that path the
     template ever had and looking for the one that produces it. A file with
     no match keeps no baseline, and the plan reports it rather than guessing.
+
+    A folder log init redrew - its folder lost what only the template needed -
+    matches on everything but its rows, the way every merge compares it, when
+    no version matches it whole.
     """
     lock = generation_lock(repo, template=template, identity=identity)
     have = read_blobs(template_dir, (s.blob for s in lock.files.values()))
@@ -1810,8 +1864,12 @@ def bootstrap(repo: pathlib.Path, template_dir: pathlib.Path, *, template: str, 
         found = {}
         for path in unknown:
             want = mine.get(lock.files[path].blob)
-            matches = sorted(sha for sha in versions[path]
-                             if sha in contents and transform(path, contents[sha]) == want)
+            if want is None:
+                continue
+            rewritten = {sha: transform(path, contents[sha]) for sha in versions[path] if sha in contents}
+            matches = sorted(sha for sha, data in rewritten.items() if data == want)
+            prose = masked(path, want)[0]
+            matches = matches or sorted(sha for sha, data in rewritten.items() if masked(path, data)[0] == prose)
             if matches:
                 found[path] = matches[0]
         return found
@@ -2255,6 +2313,21 @@ def check(repo: pathlib.Path) -> list[str]:
     if SENTINEL in on:
         problems.append(f"{SENTINEL} is switched on. Re-creating it would re-run initialisation; "
                         f"write it as `#{escape(SENTINEL)}`.")
+    # Initialisation deletes what this heading names, one file to a line. A
+    # line switched on would have the first sync put its file straight back,
+    # and a pattern - one that could sweep up the whole tree - deletes nothing,
+    # which nobody should find out from a generated repository.
+    lines = [line.text for line in parsed.body]
+    for number, line in enumerate(parsed.body):
+        if line.kind != "entry" or not (section_of(lines, number) or "").startswith(TEMPLATE_ONLY):
+            continue
+        if line.on:
+            problems.append(f"`{line.text}` is switched on under `{TEMPLATE_ONLY}`. Initialisation deletes "
+                            f"what that heading names, and the first sync would bring it back; write it as "
+                            f"`#{line.key}`.")
+        if not literal(line.key):
+            problems.append(f"`{line.text}` is a pattern under `{TEMPLATE_ONLY}`. Initialisation deletes only "
+                            "the files that heading names one to a line, so name each file on a line of its own.")
     present = set(tracked)
     for line in parsed.body:
         if line.kind != "entry":

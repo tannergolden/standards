@@ -55,7 +55,7 @@ only describes jobs is a workflow.
 | `sync-labels`         | `data/labels.yml`, script | Applies the label taxonomy, create-or-update, never pruning                                      |
 | `apply-rulesets`      | `data/rulesets/*`, script | Creates or updates branch and tag rulesets, matched by name                                      |
 | `sbom`                | script                    | Writes a dependency inventory for any ecosystem, not just npm                                    |
-| `init-template`       | script                    | Rewrites a generated repository's identity to its new owner, once                                |
+| `init-template`       | script                    | Rewrites a generated repository's identity and deletes what only the template needs, once        |
 | `standards-version`   | script                    | Opens one issue when a newer major of these standards is published                               |
 | `ci-failure-alert`    | script                    | Opens an issue when a watched workflow fails, closes it on recovery                              |
 | `prune-deployments`   | script                    | Deletes superseded deployments, keeping the current successful one                               |

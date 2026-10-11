@@ -10,7 +10,31 @@
 # edits it by hand, and most people never do.
 #
 # This runs once in the generated repository and rewrites that identity to
-# the new owner's, then removes its own sentinel so it can never run again.
+# the new owner's, deletes what only the template needs, then removes its own
+# sentinel so it can never run again.
+#
+# ⚠️ WHAT ONLY THE TEMPLATE NEEDS IS DELETED HERE, NOT LEFT TO THE OWNER. A
+# template ships files that serve the template itself and nothing generated
+# from it: the sentinel, and in the private template the contract it is held
+# to against the public one, with everything enforcing it. Left behind they
+# were scaffolding every owner had to find and delete by hand - and the
+# parity test was not even inert, since a generated repository's own CI runs
+# every test beside its scripts. The template names each of them, one to a
+# line, under `# --- Only ever in the template` in `.github/template-sync`;
+# every one is deleted before anything is rewritten. Their lines stay in the
+# list, switched off, so the owner still sees what the template ships and
+# can take one back with a sync.
+#
+# 🏷️ Cut Release is NOT one of them. It publishes the template's releases,
+# but any repository consumed by tag cuts its own the same way - the
+# Markdown Kit, generated from the public template, does - so it stays,
+# inert until its owner adopts it.
+#
+# EVERY FOLDER LOG IS REDRAWN LAST. A log lists the files beside it, so one
+# naming the sentinel, or a file deleted above, would describe a repository
+# that does not exist; the lock written below belongs in its folder's log
+# too. Redrawn from the finished tree, each row says what its file now says,
+# exactly as 🗂️ Machined Indexes would draw it on the owner's first push.
 #
 # ⚠️ WHAT IT DOES NOT REWRITE: a repository on the template owner's account.
 # The SHARED repositories every consumer calls - `tannergolden/standards`,
@@ -210,6 +234,11 @@ def initialised(
     newlines and writes only when the text changed, so a CRLF file whose
     identity was rewritten comes out LF, and one with nothing to rewrite
     keeps every byte.
+
+    Two things init does lie outside this, and a sync meets neither. A file
+    only the template needs is deleted, and no sync keeps it current or
+    remembers it. A folder log's rows are redrawn, and a sync never compares
+    a log's rows, only the words around them.
     """
     if not considered(pathlib.PurePosixPath(path)):
         return data
@@ -239,6 +268,29 @@ def _template_sync():
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def remove_template_only(root: pathlib.Path, sync) -> list[str]:
+    """Delete every tracked file the list keeps for the template alone, and return their paths.
+
+    `sync` is template-sync.py, whose reader decides what the list means, so
+    initialisation and every later sync read its heading alike. The list and
+    the lock are never deleted, whatever it says: a generated repository syncs
+    through them. A template with no list deletes nothing here.
+    """
+    listed = root / sync.LIST_PATH
+    if not listed.is_file():
+        return []
+    tracked = [p for p in sync.decode(sync.git(root, "ls-files", "-z")).split("\0") if p]
+    only = sync.template_only(listed.read_text(encoding="utf-8", errors="replace"), tracked)
+    removed: list[str] = []
+    for rel in sorted(only - {sync.LIST_PATH, sync.LOCK_PATH}):
+        path = root / rel
+        if sync.unsafe(rel) or not (path.is_file() or path.is_symlink()):
+            continue
+        path.unlink()
+        removed.append(rel)
+    return removed
 
 
 def main() -> int:
@@ -290,8 +342,26 @@ def main() -> int:
     # the kind of thing nobody notices until an audit.
     this_year = datetime.datetime.now(tz=datetime.timezone.utc).year
 
+    # Template sync's script reads the list - what the template keeps for
+    # itself, and what a sync keeps current - and draws the folder logs, so
+    # initialisation reads and draws them exactly as every later sync will.
+    sync = _template_sync()
+    root = pathlib.Path(".")
+    listed = (root / sync.LIST_PATH).is_file()
+
+    # First, before anything is rewritten: a file only the template needs is
+    # deleted, never claimed. The sentinel is usually among them, and is
+    # removed below either way.
+    try:
+        removed = remove_template_only(root, sync)
+    except sync.SyncError as exc:
+        raise SystemExit(f"::error title=Initialisation::{exc}") from None
+    deleted = [path for path in removed if path != sentinel.as_posix()]
+    if deleted:
+        print(f"Deleted {len(deleted)} file(s) only the template needs: {', '.join(deleted)}.")
+
     changed: list[str] = []
-    for path in sorted(pathlib.Path(".").rglob("*")):
+    for path in sorted(root.rglob("*")):
         if not path.is_file() or not considered(path):
             continue
         try:
@@ -313,25 +383,35 @@ def main() -> int:
             path.write_bytes(data)
             changed.append(str(path))
 
-    sentinel.unlink()
-    changed.append(str(sentinel))
-    print(f"Rewrote {len(changed) - 1} file(s); removed {sentinel}.")
+    sentinel.unlink(missing_ok=True)
+    print(f"Rewrote {len(changed)} file(s); removed {sentinel}.")
 
     # ⚠️ TEMPLATE SYNC'S BASELINE IS RECORDED HERE OR NOWHERE. The commit
     # GitHub generated is the template's tree byte for byte, and the amend
     # below replaces it, so this is the last moment its blobs are known
     # exactly. The lock records them, with the identity just stamped, and
-    # every later sync measures the owner's edits against it. Written after
+    # every later sync measures the owner's edits against it - every file but
+    # those deleted above, which this repository never holds. Written after
     # the rewrite above, so its own contents are never rewritten.
-    if pathlib.Path(".github/template-sync").is_file():
-        sync = _template_sync()
+    if listed:
         lock = sync.generation_lock(
-            pathlib.Path("."),
+            root,
             template=generated_from,
             identity=sync.Identity(owner, repo, display, this_year),
         )
-        pathlib.Path(sync.LOCK_PATH).write_text(sync.dump_lock(lock), encoding="utf-8")
+        (root / sync.LOCK_PATH).write_text(sync.dump_lock(lock), encoding="utf-8")
         print(f"Recorded the template's {len(lock.files)} file(s) in {sync.LOCK_PATH}.")
+
+    # Last, once the tree is final: every folder log is redrawn from it, so
+    # none names the sentinel or a file deleted above, and the lock is logged
+    # beside the list it belongs to.
+    try:
+        markdown = [p for p in sync.decode(sync.git(root, "ls-files", "-z")).split("\0") if p.endswith(".md")]
+    except sync.SyncError as exc:
+        raise SystemExit(f"::error title=Initialisation::{exc}") from None
+    redrawn = sync.redraw_indexes(root, markdown, title="Initialisation")
+    if redrawn:
+        print(f"Redrew the folder log in {', '.join(redrawn)}.")
 
     run("git", "config", "user.name", display)
     run("git", "config", "user.email", email)
@@ -382,6 +462,18 @@ def main() -> int:
         )
 
     source_line = f"Generated from {generated_from}.\n" if generated_from else "Generated from a template.\n"
+    # Named file by file, so the history says exactly what never arrived and
+    # where to look for it.
+    gone = (
+        "\n"
+        "It also deleted what only ever served the template, as\n"
+        ".github/template-sync names it under \"Only ever in the template\":\n"
+        "\n"
+        + "".join(f"- {path}\n" for path in deleted) +
+        "\n"
+        "Each keeps its line there, switched off. Take the # away from one\n"
+        "and run 🔄 Template Sync to have it back.\n"
+    ) if deleted else ""
     message = (
         subject + "\n"
         "\n"
@@ -394,6 +486,7 @@ def main() -> int:
         "template's account were deliberately left alone - the shared\n"
         "standards the workflow stubs call among them - because each belongs\n"
         "to that account, not this one.\n"
+        + gone +
         "\n"
         "Already wired: continuous integration, secret scanning, static\n"
         "analysis, workflow linting, governance automation, and pull request\n"
@@ -450,9 +543,13 @@ def main() -> int:
         "| Field | Value |\n| :--- | :--- |\n"
         f"| Owner | {display} (`@{owner}`) |\n"
         f"| Commit identity | `{email}` |\n"
-        f"| Files rewritten | {len(changed) - 1} |\n"
+        f"| Files rewritten | {len(changed)} |\n"
+        f"| Deleted, only the template needs them | {len(deleted)} |\n"
+        f"| Folder logs redrawn | {len(redrawn)} |\n"
         f"| History | {mode} |\n"
         "\n"
+        + ("**Deleted:** " + ", ".join(f"`{path}`" for path in deleted) + ". Each keeps its line in "
+           "`.github/template-sync`, switched off.\n\n" if deleted else "") +
         "The sentinel has been removed, so this workflow is now inert and will not run again.\n"
         "\n"
         "> **Next:** give `.github/workflows/checks.yml` the lint, test, and build commands for "

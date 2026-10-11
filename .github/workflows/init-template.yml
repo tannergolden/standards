@@ -2,13 +2,23 @@
 #
 # 🎉 Initialise From Template
 #
-# Purpose: runs once in a repository generated from the template and rewrites
-# the template author's identity to the new owner's.
+# Purpose: runs once in a repository generated from the template, rewrites
+# the template author's identity to the new owner's, and deletes what only
+# the template needs.
 #
 # GitHub's "Use this template" copies files VERBATIM. It substitutes nothing:
 # not the licence holder, not the funding target, not the contact links, not
 # the documentation footers. Without this, every generated repository carries
 # somebody else's name until a human notices, and most never do.
+#
+# Nor does it leave anything out. A template ships files that serve only the
+# template - its sentinel, a contract only it is held to - and names each
+# under `# --- Only ever in the template` in its `.github/template-sync`. This
+# deletes every one of them, so a new owner never finds scaffolding to clear
+# away, and redraws every folder log from what is left. Each keeps its line
+# in the list, switched off: taking the `#` away and running 🔄 Template Sync
+# brings one back. A stub any repository might adopt, like 🏷️ Cut Release,
+# belongs under a different heading and stays.
 #
 # ⚠️ THE SENTINEL IS WHAT MAKES THIS RUN EXACTLY ONCE. The template ships
 # `.github/TEMPLATE_INIT`; this removes it on success. Every later trigger

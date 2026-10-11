@@ -400,7 +400,7 @@ TEMPLATE_LIST = """\
 #/README.md
 #/LICENSE
 
-# --- Template only ------------------------------------------------------------
+# --- Only ever in the template ----------------------------------------------
 #/.github/TEMPLATE_INIT
 
 # --- Your rules ---------------------------------------------------------------
@@ -501,6 +501,9 @@ class SyncWorld:
         self.commit(self.repo, "Initial commit")
         if not init:
             return
+        # init's own steps, in init's order: what only the template needs goes
+        # first, the folder logs are redrawn last.
+        self.init.remove_template_only(self.repo, self.sync)
         for path in sorted(self.repo.rglob("*")):
             if not path.is_file() or ".git" in path.relative_to(self.repo).parts:
                 continue
@@ -512,13 +515,15 @@ class SyncWorld:
             )
             if new != data:
                 path.write_bytes(new)
-        (self.repo / self.sync.SENTINEL).unlink()
+        (self.repo / self.sync.SENTINEL).unlink(missing_ok=True)
         if lock:
             made = self.sync.generation_lock(
                 self.repo, template=self.TEMPLATE,
                 identity=self.sync.Identity(self.OWNER, self.REPOSITORY, self.NAME, self.YEAR),
             )
             (self.repo / self.sync.LOCK_PATH).write_text(self.sync.dump_lock(made), encoding="utf-8")
+        self.sync.redraw_indexes(self.repo, [p for p in self.git(self.repo, "ls-files", "-z").split("\0")
+                                             if p.endswith(".md")], title="Initialisation")
         self.git(self.repo, "add", "-A")
         self.git(self.repo, "commit", "-q", "--amend", "-m", "feat: initialise")
 

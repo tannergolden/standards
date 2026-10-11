@@ -159,10 +159,11 @@ Generate your repository from the public template,
 [tannergolden/path](https://github.com/tannergolden/path), and every trigger workflow arrives
 installed, grouped, and pinned to `@v1`: fifteen files covering the checks, governance, the release
 chain, maintenance, the standards lifecycle, the machined indexes, and template sync - which brings
-those files up to date afterwards, as a pull request, whenever you run it: all but the template-only
-`cut-release.yml`. The optional ones carry an `is_template` guard, so they are silent in the template
-and come alive in the repository generated from it. `cut-release.yml` runs only in the template, and
-`template-sync.yml` checks its list there.
+those files up to date afterwards, as a pull request, whenever you run it: all but `cut-release.yml`,
+which each repository keeps as its own. The optional ones carry an `is_template` guard, so they are
+silent in the template and come alive in the repository generated from it. `cut-release.yml` is the
+reverse: it runs only in the template until a repository released by tag - a kit, an action -
+adopts it. `template-sync.yml` checks its list there.
 
 Then run **🎯 Apply Standards** once for the label taxonomy and, when you are ready for branch
 protection, the rulesets:

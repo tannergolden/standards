@@ -135,7 +135,7 @@ class History:
             + "".join(f"{escape(p)}\n" for p in on)
             + "\n# --- Yours\n#/README.md\n#/LICENSE\n"
             + "".join(f"#{escape(p)}\n" for p in off)
-            + "\n# --- Template only\n#/.github/TEMPLATE_INIT\n\n# --- Your rules ---\n"
+            + "\n# --- Only ever in the template\n#/.github/TEMPLATE_INIT\n\n# --- Your rules ---\n"
         )
 
     def release(self) -> None:

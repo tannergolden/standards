@@ -10,6 +10,12 @@
 # author's licence holder, funding target, documentation footers, and contact
 # links. This rewrites them and removes the sentinel that let it run.
 #
+# IT ALSO DELETES WHAT ONLY THE TEMPLATE NEEDS. Every file the template's
+# `.github/template-sync` names under `# --- Only ever in the template` - the
+# sentinel, a contract only the template is held to - is deleted before
+# anything is rewritten, and every folder log is redrawn from what remains,
+# so nothing generated names a file it never got.
+#
 # ⚠️ IT DOES NOT REWRITE A REPOSITORY ADDRESS. `<owner>/standards` is the
 # repository every consumer calls, and the template itself, its sibling, the
 # agent instruction publisher and the account's `.github` are the same kind
@@ -27,7 +33,7 @@
 # ---
 
 name: '🎉 Initialise From Template'
-description: "Rewrites a generated repository's identity to its new owner, once, then disables itself."
+description: "Rewrites a generated repository's identity to its new owner and deletes what only the template needs, once, then disables itself."
 
 inputs:
   token:

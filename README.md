@@ -52,8 +52,9 @@ repository being pushed to**. It is the one file ever copied, and it arrives alr
 you generate from the public template, [`tannergolden/path`](https://github.com/tannergolden/path):
 fifteen stubs, grouped and pinned to `@v1`. After that, whenever you run it, **🔄 Template Sync**
 brings them up to date with the template as a pull request, merged with whatever you changed - all
-but the template-only `cut-release.yml` - see
-[Template Sync](docs/distribution/automation/Template-Sync.md).
+but `cut-release.yml`, which each repository keeps as its own to adopt or delete - see
+[Template Sync](docs/distribution/automation/Template-Sync.md). Initialisation deletes only what
+the template alone needs, which its list names.
 
 > [!IMPORTANT]
 > **Logic is never delivered by copying.** A trigger is not logic: it names events and nothing else,

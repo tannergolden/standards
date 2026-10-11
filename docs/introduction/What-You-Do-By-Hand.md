@@ -39,7 +39,7 @@ This is that list, in the order you meet it. If a step is not here, you should n
 > [!WARNING]
 > **Visibility is the one irreversible-feeling choice.** Generating the private template into a public repository publishes an "all rights reserved" licence to the world. Check the toggle before you click.
 
-Initialisation then runs on its own: it rewrites the template author's identity to yours, stamps the licence year to the current year, removes its own sentinel, and rewrites the first commit into a Conventional Commit describing what arrived. **You do nothing.**
+Initialisation then runs on its own: it rewrites the template author's identity to yours, stamps the licence year to the current year, deletes its own sentinel and every file only the template needs, and rewrites the first commit into a Conventional Commit describing what arrived. **You do nothing.**
 
 ---
 
