@@ -19,6 +19,7 @@ holds the way out its owner needed for a line they had made their own.
 from __future__ import annotations
 
 import os
+import random
 import subprocess
 import sys
 
@@ -549,6 +550,63 @@ class TestAnOwnerKeepsTheirLines:
         sync_world.release("v1.2.0", {"scripts/new.py": "a = 1\n\nb = 'theirs'\n\nc = 4\n"})
         assert sync_world.outcomes(sync_world.run_sync())["scripts/new.py"] == "merged"
         assert sync_world.text("scripts/new.py") == "a = 1\n\nb = 'mine'\n\nc = 4\n"
+
+    def test_only_the_change_kept_over_is_shown_never_one_that_arrived(self, sync_world):
+        self.setup_world(sync_world)
+        decision = next(d for d in sync_world.run_sync().decisions if d.path == ".github/workflows/checks.yml")
+        shown = [line for line in decision.diff.splitlines() if line[:1] in "+-" and line[:3] not in ("+++", "---")]
+        assert shown == ["-      lint-command: 'make lint'", "+      lint-command: 'validate --strict'"]
+
+    def test_in_a_line_set_both_additions_still_arrive_and_the_owners_change_stands(self, sync_world):
+        listing = TEMPLATE_LIST.replace("/scripts/tool.py\n", "/scripts/tool.py\n/.gitignore\n")
+        sync_world.release("v1.0.1", {".gitignore": GITIGNORE + "\n/tmp/\n", ".github/template-sync": listing})
+        sync_world.generate()
+        sync_world.owner({".gitignore": GITIGNORE.replace("/build/", "/build/mine/") + "\n/tmp/\n/preview/\n",
+                          ".github/template-sync": keeping(sync_world, ".gitignore")})
+        sync_world.release("v1.1.0", {".gitignore": GITIGNORE.replace("/build/", "/build/theirs/") + "\n/tmp/\n/.cache/\n"})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)[".gitignore"] == "yours-kept"
+        assert sync_world.text(".gitignore") == (GITIGNORE.replace("/build/", "/build/mine/")
+                                                 + "\n/tmp/\n/.cache/\n/preview/\n")
+
+    def test_settling_each_hunk_is_exactly_what_git_merge_file_does(self, tmp_path):
+        # Each hunk settled for the owner, or for the template, must be git's own
+        # --ours or --theirs, down to a last line with no newline, in LF or CRLF.
+        rng = random.Random(2026)  # noqa: S311 - reproducible trials, not secrets
+
+        def native(flag: str, *sides: bytes) -> bytes:
+            for name, data in zip("obt", sides):
+                (tmp_path / name).write_bytes(data)
+            return subprocess.run(["git", "merge-file", "-p", flag, *(str(tmp_path / n) for n in "obt")],
+                                  capture_output=True, check=False).stdout
+
+        def edited(lines: list[str]) -> list[str]:
+            lines = list(lines)
+            for _ in range(rng.randint(1, 3)):
+                at = rng.randrange(len(lines) + 1)
+                roll = rng.random()
+                if roll < 0.5 or not lines:
+                    lines.insert(at, f"new {rng.randint(0, 9)}")
+                elif roll < 0.8:
+                    lines[min(at, len(lines) - 1)] = f"changed {rng.randint(0, 9)}"
+                else:
+                    del lines[min(at, len(lines) - 1)]
+            return lines
+
+        settled = 0
+        for _ in range(400):
+            base = [f"line {i}" for i in range(rng.randint(1, 6))]
+            eol = rng.choice(["\n", "\r\n"])
+            o, b, t = (eol.join(lines) + rng.choice([eol, ""]) for lines in (edited(base), base, edited(base)))
+            o, b, t = (text.encode() for text in (o, b, t))
+            marked, clean = sync.merge3(o, b, t)
+            if clean:
+                continue
+            settled += 1
+            assert sync.resolved(marked, o, t, line_set=False, side="yours") == (native("--ours", o, b, t), True)
+            assert sync.resolved(marked, o, t, line_set=False, side="template") == (native("--theirs", o, b, t), True)
+            assert sync.resolved(marked, o, t, line_set=False) == (marked, False)
+        assert settled > 100, "the trials must reach conflicts to prove anything"
 
 
 @pytest.fixture(autouse=True)

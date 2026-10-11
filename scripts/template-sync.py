@@ -986,8 +986,7 @@ LINE_SETS = re.compile(r"(?:^|/)(?:\.[A-Za-z0-9_-]*ignore|\.gitattributes)$")
 MARKER = 40  # conflict markers no line of a real file is going to look like
 
 
-def merge3(ours: bytes, base: bytes, theirs: bytes, *, line_set: bool = False,
-           keep_ours: bool = False) -> tuple[bytes, bool]:
+def merge3(ours: bytes, base: bytes, theirs: bytes, *, line_set: bool = False) -> tuple[bytes, bool]:
     """git merge-file, so a merge here means exactly what it means anywhere in git.
 
     ⚠️ IN A LINE SET, TWO ADDITIONS IN ONE PLACE ARE NOT A CONFLICT. An owner
@@ -999,16 +998,15 @@ def merge3(ours: bytes, base: bytes, theirs: bytes, *, line_set: bool = False,
     git reads these files. A hunk that changes or deletes an existing line is
     still a conflict - a pattern the owner deleted never comes back this way.
 
-    `keep_ours` is the owner's own `# keep mine` for this file: wherever both
-    sides changed the same lines, the owner's stand, and every other change
-    the template made still arrives. Always clean.
+    Not clean, it returns git's diff3 view of the merge, which `resolved` can
+    still settle for an owner's `# keep mine`.
     """
     with tempfile.TemporaryDirectory(prefix="template-sync-merge-") as tmp:
         root = pathlib.Path(tmp)
         for name, data in (("ours", ours), ("base", base), ("theirs", theirs)):
             (root / name).write_bytes(data)
         proc = subprocess.run(
-            ["git", "merge-file", "-p", *(["--ours"] if keep_ours else ["--diff3"]), f"--marker-size={MARKER}",
+            ["git", "merge-file", "-p", "--diff3", f"--marker-size={MARKER}",
              "-L", "yours", "-L", "base", "-L", "template",
              str(root / "ours"), str(root / "base"), str(root / "theirs")],
             capture_output=True,
@@ -1020,14 +1018,21 @@ def merge3(ours: bytes, base: bytes, theirs: bytes, *, line_set: bool = False,
         return proc.stdout, True
     if not line_set:
         return proc.stdout, False
-    return both_added(proc.stdout)
+    return resolved(proc.stdout, ours, theirs, line_set=True)
 
 
-def both_added(marked: bytes) -> tuple[bytes, bool]:
-    """A diff3-marked merge with every hunk an addition on both sides, resolved; or not clean."""
+def resolved(marked: bytes, ours: bytes, theirs: bytes, *, line_set: bool,
+             side: str | None = None) -> tuple[bytes, bool]:
+    """A diff3 view from `merge3`, every hunk settled; or, where one cannot be, the view and not clean.
+
+    In a line set, a hunk that only adds, on both sides, keeps both. Any other
+    hunk goes to `side`: "yours" for an owner's `# keep mine`, or "template"
+    to show what that kept their lines over. With no side, it stays a conflict.
+    """
     opening, middle = b"<" * MARKER + b" yours", b"|" * MARKER + b" base"
     divider, closing = b"=" * MARKER, b">" * MARKER + b" template"
     out: list[bytes] = []
+    ending = None  # the side whose lines end the file, when a hunk does
     lines = marked.splitlines(keepends=True)
     i = 0
     while i < len(lines):
@@ -1041,19 +1046,37 @@ def both_added(marked: bytes) -> tuple[bytes, bool]:
             at_close = next(j for j in range(at_divider + 1, len(lines)) if lines[j].rstrip(b"\r\n") == closing)
         except StopIteration:
             return marked, False
-        if at_divider != at_base + 1:  # the hunk changes a line both sides started from
-            return marked, False
         ours_part, theirs_part = lines[i + 1:at_base], lines[at_divider + 1:at_close]
-        # An entry both sides added is kept once, where the owner put it; blank
-        # lines and comments are each side's own layout, and stay with it.
-        entries = {line.strip() for line in ours_part if line.strip() and not line.lstrip().startswith(b"#")}
-        theirs_part = [line for line in theirs_part
-                       if not line.strip() or line.lstrip().startswith(b"#") or line.strip() not in entries]
-        if theirs_part and not theirs_part[-1].endswith(b"\n"):
-            theirs_part = [*theirs_part[:-1], theirs_part[-1] + b"\n"]
-        out += theirs_part + ours_part
+        if line_set and at_divider == at_base + 1:
+            # An entry both sides added is kept once, where the owner put it;
+            # blank lines and comments are each side's own layout, and stay with it.
+            entries = {line.strip() for line in ours_part if line.strip() and not line.lstrip().startswith(b"#")}
+            theirs_part = [line for line in theirs_part
+                           if not line.strip() or line.lstrip().startswith(b"#") or line.strip() not in entries]
+            if theirs_part and not theirs_part[-1].endswith(b"\n"):
+                theirs_part = [*theirs_part[:-1], theirs_part[-1] + b"\n"]
+            out += theirs_part + ours_part
+            last = ours if ours_part else theirs if theirs_part else None
+        elif side == "yours":
+            out += ours_part
+            last = ours if ours_part else None
+        elif side == "template":
+            out += theirs_part
+            last = theirs if theirs_part else None
+        else:
+            return marked, False
+        ending = last if at_close == len(lines) - 1 else None
         i = at_close + 1
-    return b"".join(out), True
+    merged = b"".join(out)
+    # git ends a side's last line before the marker after it; where that side
+    # ends the file without one, so does the merge, as git merge-file --ours has it.
+    if ending is not None and not ending.endswith(b"\n"):
+        tail = ending.rsplit(b"\n", 1)[-1]
+        for added in (b"\r\n", b"\n"):
+            if merged.endswith(tail + added):
+                merged = merged[:-len(added)]
+                break
+    return merged, True
 
 
 def binary(*datas: bytes) -> bool:
@@ -1301,14 +1324,19 @@ def decide(
         return Decision(path, "conflict", detail=(
             "You and the template both changed this binary file. Yours is untouched."),
             diff=udiff(path, base.data, target.data))
-    merged, clean = merge3(o, b, t, line_set=bool(LINE_SETS.search(path)))
+    line_set = bool(LINE_SETS.search(path))
+    merged, clean = merge3(o, b, t, line_set=line_set)
     if clean:
         return Decision(path, "merged", write=Side(mode, refilled(merged, ours_rows, target_rows)),
                         state=state_of(target))
     if keep:
-        mine = refilled(merge3(o, b, t, keep_ours=True)[0], ours_rows, target_rows)
-        return kept_yours(path, target, Side(mode, mine) if mine != ours.data or mode != ours.mode else None,
-                          "The template's other changes to it arrived.", udiff(path, b, t))
+        mine, settled = resolved(merged, o, t, line_set=line_set, side="yours")
+        if settled:
+            # Shown: only what the owner's lines stood over, never what arrived.
+            shown = udiff(path, mine, resolved(merged, o, t, line_set=line_set, side="template")[0])
+            mine = refilled(mine, ours_rows, target_rows)
+            return kept_yours(path, target, Side(mode, mine) if mine != ours.data or mode != ours.mode else None,
+                              "The template's other changes to it arrived.", shown)
     return Decision(path, "conflict", detail=SAME_LINES, diff=udiff(path, b, t))
 
 
