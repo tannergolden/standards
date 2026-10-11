@@ -440,6 +440,25 @@ def merge_list(
     return "\n".join(out) + "\n"
 
 
+KEEP_MINE = re.compile(r"^#\s*keep mine:\s*(/.*?)\s*$", re.IGNORECASE)
+
+
+def kept_mine(text: str | None) -> set[str]:
+    """The files whose owner keeps their own lines wherever they and the template changed the same ones.
+
+    `# keep mine: /path`, written under Your rules: a note there is the
+    owner's, git's matcher never reads it, and every redraw keeps it where
+    they put it. Above that marker it would be the template's, which never
+    decides this for an owner. One file per note, named exactly - an owner
+    keeps lines they know, never a pattern of files.
+    """
+    parsed = parse_list(text)
+    if parsed is None:
+        return set()
+    found = (KEEP_MINE.match(rule.strip()) for rule in parsed.rules)
+    return {unescape(match.group(1)) for match in found if match and literal(match.group(1))}
+
+
 def exact_on(text: str | None) -> set[str]:
     """The paths a list switches on by a line of their own: what an owner can only have meant."""
     parsed = parse_list(text)
@@ -955,7 +974,7 @@ class Decision:
     write: Side | None = None
     delete: bool = False
     # None leaves the lock entry alone; REMOVE drops it; a FileState replaces it.
-    state: FileState | None | str = None
+    state: FileState | str | None = None
     detail: str = ""
     diff: str = ""
     pair: str = ""  # the other half of a move
@@ -967,7 +986,8 @@ LINE_SETS = re.compile(r"(?:^|/)(?:\.[A-Za-z0-9_-]*ignore|\.gitattributes)$")
 MARKER = 40  # conflict markers no line of a real file is going to look like
 
 
-def merge3(ours: bytes, base: bytes, theirs: bytes, *, line_set: bool = False) -> tuple[bytes, bool]:
+def merge3(ours: bytes, base: bytes, theirs: bytes, *, line_set: bool = False,
+           keep_ours: bool = False) -> tuple[bytes, bool]:
     """git merge-file, so a merge here means exactly what it means anywhere in git.
 
     ⚠️ IN A LINE SET, TWO ADDITIONS IN ONE PLACE ARE NOT A CONFLICT. An owner
@@ -978,13 +998,17 @@ def merge3(ours: bytes, base: bytes, theirs: bytes, *, line_set: bool = False) -
     kept: the template's first, so the owner's still come last and win, as
     git reads these files. A hunk that changes or deletes an existing line is
     still a conflict - a pattern the owner deleted never comes back this way.
+
+    `keep_ours` is the owner's own `# keep mine` for this file: wherever both
+    sides changed the same lines, the owner's stand, and every other change
+    the template made still arrives. Always clean.
     """
     with tempfile.TemporaryDirectory(prefix="template-sync-merge-") as tmp:
         root = pathlib.Path(tmp)
         for name, data in (("ours", ours), ("base", base), ("theirs", theirs)):
             (root / name).write_bytes(data)
         proc = subprocess.run(
-            ["git", "merge-file", "-p", "--diff3", f"--marker-size={MARKER}",
+            ["git", "merge-file", "-p", *(["--ours"] if keep_ours else ["--diff3"]), f"--marker-size={MARKER}",
              "-L", "yours", "-L", "base", "-L", "template",
              str(root / "ours"), str(root / "base"), str(root / "theirs")],
             capture_output=True,
@@ -1150,6 +1174,38 @@ def refilled(data: bytes, *sources: list[tuple[bytes, list[bytes]]]) -> bytes:
     return b"\n".join(out)
 
 
+# What a line-by-line conflict says; how the owner may settle it follows, by
+# the kind of sync (see `settle`).
+SAME_LINES = ("You and the template changed the same lines. Your file is untouched; the template's change "
+              "is below. Make those lines match it on your default branch - not on the sync branch, which "
+              "each run replaces - and the next sync stops asking.")
+
+
+def settle(decision: Decision, mapping: Mapping | None) -> Decision:
+    """A same-lines conflict, with the ways out this kind of sync offers."""
+    if decision.outcome != "conflict" or decision.detail != SAME_LINES:
+        return decision
+    if mapping:
+        advice = (f" Or, if it is a difference this repository is meant to have, record it in "
+                  f"`{mapping.source or 'the mapping'}`.")
+    else:
+        advice = (f" To keep your lines and still take the template's other changes to it, add "
+                  f"`# keep mine: {escape(decision.path)}` under Your rules in .github/template-sync; "
+                  "to keep the whole file as it is, switch it off.")
+    return dataclasses.replace(decision, detail=SAME_LINES + advice)
+
+
+def kept_yours(path: str, target: Side, write: Side | None, why: str, diff: str) -> Decision:
+    """The owner's `# keep mine` settled it: their lines stand, and the template's change is shown, not applied.
+
+    The baseline moves to the template's version all the same, so its next
+    change elsewhere in the file merges as any other would.
+    """
+    return Decision(path, "yours-kept", write=write, state=state_of(target), diff=diff, detail=(
+        "You keep your lines in this file where you and the template both changed them - `# keep mine` in "
+        f".github/template-sync. {why} Its change to your lines is below, not applied."))
+
+
 def decide(
     path: str,
     base: Side | None,
@@ -1158,6 +1214,7 @@ def decide(
     *,
     synced: bool,
     was_deleted: bool,
+    keep: bool = False,
 ) -> Decision:
     """The one decision for one path. Pure: every input is passed in.
 
@@ -1165,6 +1222,8 @@ def decide(
     file new to this repository, MISSING when the lock names a blob the
     template no longer has), `target` what it holds now, `ours` what this
     repository holds. Template sides are already in the owner's identity.
+    `keep` is the owner's `# keep mine` for this path: where this would be a
+    conflict, their lines stand and the template's change is shown instead.
     """
     if not synced:
         # A file the template stopped shipping is the owner's from here on,
@@ -1200,6 +1259,10 @@ def decide(
             if ours.mode == target.mode:
                 return Decision(path, "current", state=state_of(target))
             return Decision(path, "updated", write=Side(target.mode, ours.data), state=state_of(target))
+        if keep:
+            return kept_yours(path, target, None if ours.mode == target.mode else Side(target.mode, ours.data),
+                              "The version it last synced from is gone, so it syncs from this one on.",
+                              udiff(path, o, t))
         return Decision(path, "conflict", detail=(
             "The template no longer has the version this file was last synced from, so your "
             "changes cannot be told apart from the template's. Make the file match the "
@@ -1211,6 +1274,9 @@ def decide(
             if ours.mode == target.mode:
                 return Decision(path, "current", state=state_of(target))
             return Decision(path, "updated", write=Side(target.mode, ours.data), state=state_of(target))
+        if keep:
+            return kept_yours(path, target, None, "The template added its own file here; yours stays.",
+                              udiff(path, o, t))
         return Decision(path, "conflict", detail=(
             "The template added a file here and you already have a different one. Yours is "
             "untouched; make it match the template's, or switch the path off."),
@@ -1229,6 +1295,9 @@ def decide(
         data = target.data if ours.data == base.data else refilled(t, ours_rows, target_rows)
         return Decision(path, "updated", write=Side(mode, data), state=state_of(target))
     if binary(ours.data, base.data, target.data):
+        if keep:
+            return kept_yours(path, target, None if mode == ours.mode else Side(mode, ours.data),
+                              "It is a binary file, so it stays as yours.", udiff(path, base.data, target.data))
         return Decision(path, "conflict", detail=(
             "You and the template both changed this binary file. Yours is untouched."),
             diff=udiff(path, base.data, target.data))
@@ -1236,12 +1305,11 @@ def decide(
     if clean:
         return Decision(path, "merged", write=Side(mode, refilled(merged, ours_rows, target_rows)),
                         state=state_of(target))
-    return Decision(path, "conflict", detail=(
-        "You and the template changed the same lines. Your file is untouched; the template's "
-        "change is below. Make those lines match it on your default branch - not on the sync "
-        "branch, which each run replaces - and the next sync stops asking. To keep yours, switch "
-        "the file off."),
-        diff=udiff(path, b, t))
+    if keep:
+        mine = refilled(merge3(o, b, t, keep_ours=True)[0], ours_rows, target_rows)
+        return kept_yours(path, target, Side(mode, mine) if mine != ours.data or mode != ours.mode else None,
+                          "The template's other changes to it arrived.", udiff(path, b, t))
+    return Decision(path, "conflict", detail=SAME_LINES, diff=udiff(path, b, t))
 
 
 def renames_of(base: dict[str, Side], target: dict[str, Side]) -> dict[str, str]:
@@ -1356,6 +1424,7 @@ def plan(
     defer: Callable[[str], bool] = lambda _p: False,
     moves: dict[str, str] | None = None,
     replaced: dict[str, str] | None = None,
+    keep: set[str] = frozenset(),
 ) -> list[Decision]:
     """Every decision for every path the template ships or shipped.
 
@@ -1422,6 +1491,7 @@ def plan(
             ours.get(path),
             synced=path in synced,
             was_deleted=path in deleted,
+            keep=path in keep,
         )
         if path in special and decisions[path].outcome not in ("not-synced", "gone"):
             decisions[path] = Decision(path, "conflict", detail=(
@@ -1538,6 +1608,7 @@ HEADINGS = (
     ("deferred", "⏸️ Waiting on a token"),
     ("updated", "✅ Updated to the template's version"),
     ("merged", "🔀 Merged with your changes"),
+    ("yours-kept", "🧷 Merged, your lines kept where you both changed them"),
     ("added", "🆕 Added"),
     ("restored", "♻️ Switched back on and restored"),
     ("moved", "🚚 Moved by the template"),
@@ -1547,7 +1618,8 @@ HEADINGS = (
     ("held-off", "✋ Held off, as you chose"),
     ("unsafe", "⛔ Skipped as unsafe"),
 )
-EXPLAINED = frozenset({"conflict", "deferred", "kept", "unsafe", "restored", "owner-deleted", "moved", "held-off"})
+EXPLAINED = frozenset({"conflict", "deferred", "kept", "unsafe", "restored", "owner-deleted", "moved", "held-off",
+                       "yours-kept"})
 
 
 def render_report(*, template: str, version: str, previous: str, decisions: list[Decision],
@@ -1582,7 +1654,7 @@ def render_report(*, template: str, version: str, previous: str, decisions: list
         lines += [f"#### {title}", ""]
         for d in items:
             lines.append(f"- `{d.path}`" + (f" - {d.detail}" if d.detail and key in EXPLAINED else ""))
-            if d.diff and key == "conflict":
+            if d.diff and key in ("conflict", "yours-kept"):
                 # Longer than any backtick run inside: a Markdown file's own
                 # fences would otherwise close this one partway through.
                 fence = "`" * max(3, 1 + max((len(run) for run in re.findall(r"`+", d.diff)), default=0))
@@ -1941,7 +2013,10 @@ def run(
         defer=(lambda _p: False) if workflow_files else (lambda p: p.startswith(WORKFLOW_DIR)),
         moves=moves,
         replaced=replaced,
+        # A mapped sync's differences live in its contract, never in a note.
+        keep=set() if mapping else kept_mine(ours_list),
     )
+    decisions = [settle(d, mapping) for d in decisions]
     if mapping:
         # A file missing here is drift from the mapping, not an owner's choice:
         # it is neither switched off nor re-created, and stays in view until
@@ -2189,7 +2264,9 @@ def issue_body(template: str, pending: dict[str, dict], mapping: Mapping | None 
         f"or when `{mapping.source or 'the mapping'}` records the difference, if it is one this "
         "repository is meant to have."
         if mapping else
-        "or when you put a `#` in front of it in `.github/template-sync` to keep it as yours."
+        "or when you put a `#` in front of it in `.github/template-sync` to keep it as yours. To keep "
+        "only your lines and still take the template's other changes to it, add `# keep mine: /path` for "
+        "it under Your rules there instead."
     )
     return (
         f"### {issue_title(mapping)}\n\n"

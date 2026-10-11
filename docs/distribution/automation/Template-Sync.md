@@ -86,6 +86,7 @@ The file names **every path the template ships**, in `.gitignore` syntax, read b
 | You want                                             | Do this                                                   |
 | :--------------------------------------------------- | :-------------------------------------------------------- |
 | To keep a file as your own                           | Put a `#` in front of its line: `#/docs/templates/ADR.md` |
+| To keep your lines in a file, and take the rest      | Add `# keep mine: /path/to/file` under **Your rules**     |
 | The template to update it again                      | Take the `#` away                                         |
 | To stop a whole folder                               | Add `!/docs/templates/**` under **Your rules**            |
 | To have a file the template left to you kept current | Take the `#` away from its line                           |
@@ -120,6 +121,7 @@ The third column is the heading the file is listed under in the pull request.
 | changed it           | is untouched                      | ✅ Updated to the template's version                                |
 | changed it           | changed elsewhere                 | 🔀 Merged with your changes: both kept                              |
 | changed it           | changed the same lines            | ⚠️ Needs you: yours untouched, the template's change shown          |
+| changed it           | changed the same lines, kept mine | 🧷 Merged, your lines kept where you both changed them              |
 | added it             | does not exist                    | 🆕 Added, in your identity                                          |
 | added it             | already exists, different         | ⚠️ Needs you: yours untouched                                       |
 | removed it           | is untouched                      | 🗑️ Removed, as the template removed it                              |
@@ -141,6 +143,15 @@ lost, and the issue keeps the file in view.
 A conflict settles once the lines the template changed read as the template has them, or once the
 file is switched off. Make that change on your default branch, never on `chore/template-sync`: each
 run rewrites the sync branch from the default branch, and what was committed to it goes with it.
+
+**A line you made your own can stay yours.** A command in `checks.yml`, say, is a choice, and
+switching the whole stub off to keep it would cost every later fix to the rest of it. Add a note
+under **Your rules** naming the file - `# keep mine: /.github/workflows/checks.yml` - and from the
+next sync on, wherever you and the template both changed the same lines, yours stand: the
+template's other changes to the file still arrive, its change to your lines is shown in the pull
+request and not applied, and nothing waits on you. Delete the note to be asked again. It is the
+owner's alone - a note above **Your rules** is the template's and decides nothing - and it names one
+file exactly, never a pattern.
 
 **A choice survives the template reshaping its list.** When a template folds the lines for several
 files into one pattern, or splits one, a file you had switched off stays off: the sync writes the
@@ -310,19 +321,19 @@ Template Parity contract. A mapping changes four things:
 
 ## 🩺 Troubleshooting
 
-| Symptom                                                                 | Cause, and the fix                                                                                                                                |
-| :---------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
-| "has not published `v1` yet"                                            | The template has no release. Cut one there                                                                                                        |
-| "has not been initialised yet"                                          | `.github/TEMPLATE_INIT` is still here. Let init run, or dispatch it                                                                               |
-| Workflow files keep waiting                                             | No `BOT_ACCESS_TOKEN`, or a classic one without the `workflow` scope                                                                              |
-| "Failed to push branch 'chore/template-sync'"                           | A fine-grained `BOT_ACCESS_TOKEN` without **Workflows** write, or branch protection on the branch                                                 |
-| "Could not fetch" the template                                          | `BOT_ACCESS_TOKEN` cannot read it: a private template needs read access, and an expired token fails even for a public one. Renew it, or delete it |
-| "Could not open the pull request"                                       | Turn on **Allow GitHub Actions to create and approve pull requests**, or set a `BOT_ACCESS_TOKEN`                                                 |
-| "already holds a newer version"                                         | It was generated after the template's last release. Nothing to do until the next one                                                              |
-| A conflict is reported on every run                                     | It is waiting on you: make the lines match the template's on your default branch, or put a `#` in front of the file                               |
-| "says this repository syncs from X, and the workflow names Y"           | The stub's `template` input and the lock disagree. Make them agree                                                                                |
-| The lock is refused                                                     | It was edited by hand. Restore it from history                                                                                                    |
-| "the template no longer has the version this file was last synced from" | The template's history was rewritten. Make the file match the template's version, or switch it off                                                |
+| Symptom                                                                 | Cause, and the fix                                                                                                                                                    |
+| :---------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "has not published `v1` yet"                                            | The template has no release. Cut one there                                                                                                                            |
+| "has not been initialised yet"                                          | `.github/TEMPLATE_INIT` is still here. Let init run, or dispatch it                                                                                                   |
+| Workflow files keep waiting                                             | No `BOT_ACCESS_TOKEN`, or a classic one without the `workflow` scope                                                                                                  |
+| "Failed to push branch 'chore/template-sync'"                           | A fine-grained `BOT_ACCESS_TOKEN` without **Workflows** write, or branch protection on the branch                                                                     |
+| "Could not fetch" the template                                          | `BOT_ACCESS_TOKEN` cannot read it: a private template needs read access, and an expired token fails even for a public one. Renew it, or delete it                     |
+| "Could not open the pull request"                                       | Turn on **Allow GitHub Actions to create and approve pull requests**, or set a `BOT_ACCESS_TOKEN`                                                                     |
+| "already holds a newer version"                                         | It was generated after the template's last release. Nothing to do until the next one                                                                                  |
+| A conflict is reported on every run                                     | It is waiting on you: make the lines match the template's on your default branch, add `# keep mine: /path` for it under Your rules, or put a `#` in front of the file |
+| "says this repository syncs from X, and the workflow names Y"           | The stub's `template` input and the lock disagree. Make them agree                                                                                                    |
+| The lock is refused                                                     | It was edited by hand. Restore it from history                                                                                                                        |
+| "the template no longer has the version this file was last synced from" | The template's history was rewritten. Make the file match the template's version, or switch it off                                                                    |
 
 ### 🔗 See also
 

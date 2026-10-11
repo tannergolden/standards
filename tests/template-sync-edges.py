@@ -12,7 +12,8 @@ The last three classes come from the first repository generated for real,
 tannergolden/markdown, played against the public template's next releases:
 a machined index conflicted over rows nobody wrote, two additions to the end
 of .gitignore conflicted, and a release that only forgot switched-off files
-proposed a pull request that changed nothing but the lock.
+proposed a pull request that changed nothing but the lock. The one after them
+holds the way out its owner needed for a line they had made their own.
 """
 
 from __future__ import annotations
@@ -459,6 +460,95 @@ class TestBookkeepingAloneOpensNoPullRequest:
         result = sync_world.run_sync()
         assert sync_world.outcomes(result)["scripts/tool.py"] == "current"
         assert result.changed, "left behind, the template's next edit to those lines would conflict"
+
+
+# A stub whose command its owner made their own, a line apart from the rest.
+STUB = "name: checks\njobs:\n  ci:\n    with:\n      lint-command: 'validate'\n\n      test-command: 'test'\n"
+
+
+def keeping(world, path: str = ".github/workflows/checks.yml") -> str:
+    """The owner's list with `# keep mine` for `path` under Your rules."""
+    return world.text(".github/template-sync").rstrip("\n") + f"\n# keep mine: /{path}\n"
+
+
+class TestAnOwnerKeepsTheirLines:
+    """`# keep mine: /path` under Your rules: where both changed the same lines, the owner's stand."""
+
+    def setup_world(self, world, keep: bool = True):
+        world.release("v1.0.1", {".github/workflows/checks.yml": STUB})
+        world.generate()
+        world.owner({".github/workflows/checks.yml": STUB.replace("'validate'", "'make lint'"),
+                     **({".github/template-sync": keeping(world)} if keep else {})})
+        world.release("v1.1.0", {".github/workflows/checks.yml": STUB.replace(
+            "'validate'", "'validate --strict'").replace("'test'", "'test --all'")})
+
+    def test_the_owners_line_stands_and_the_templates_other_change_arrives(self, sync_world):
+        self.setup_world(sync_world)
+        result = sync_world.run_sync()
+        decision = next(d for d in result.decisions if d.path == ".github/workflows/checks.yml")
+        assert decision.outcome == "yours-kept"
+        text = sync_world.text(".github/workflows/checks.yml")
+        assert "'make lint'" in text and "'test --all'" in text and "--strict" not in text
+        assert not sync_world.lock().pending, "nothing waits: the owner has decided"
+        assert "validate --strict" in decision.diff, "the change not applied is shown"
+        assert "Merged, your lines kept" in result.report and "validate --strict" in result.report
+
+    def test_the_templates_next_change_elsewhere_merges_as_usual(self, sync_world):
+        self.setup_world(sync_world)
+        sync_world.run_sync()
+        sync_world.release("v1.2.0", {".github/workflows/checks.yml": STUB.replace(
+            "'validate'", "'validate --strict'").replace("'test'", "'test --all'").replace(
+            "name: checks", "name: checks, renamed")})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)[".github/workflows/checks.yml"] == "merged"
+        text = sync_world.text(".github/workflows/checks.yml")
+        assert "name: checks, renamed" in text and "'make lint'" in text
+
+    def test_without_the_note_it_is_a_conflict_that_names_the_way_out(self, sync_world):
+        self.setup_world(sync_world, keep=False)
+        result = sync_world.run_sync()
+        decision = next(d for d in result.decisions if d.path == ".github/workflows/checks.yml")
+        assert decision.outcome == "conflict"
+        assert "`# keep mine: /.github/workflows/checks.yml` under Your rules" in decision.detail
+        assert "'make lint'" in sync_world.text(".github/workflows/checks.yml")
+
+    def test_the_note_survives_every_redraw_of_the_list(self, sync_world):
+        self.setup_world(sync_world)
+        sync_world.release("v1.2.0", {".github/template-sync": TEMPLATE_LIST.replace(
+            "/scripts/tool.py\n", "/scripts/tool.py\n/scripts/other.py\n"), "scripts/other.py": "x = 1\n"})
+        sync_world.run_sync()
+        assert "# keep mine: /.github/workflows/checks.yml" in sync_world.text(".github/template-sync")
+        assert sync.kept_mine(sync_world.text(".github/template-sync")) == {".github/workflows/checks.yml"}
+
+    def test_only_the_owners_rules_can_keep_and_only_by_exact_path(self):
+        listing = (TEMPLATE_LIST.replace("# --- Kept current", "# keep mine: /docs/guide.md\n# --- Kept current")
+                   + "# keep mine: /scripts/*.py\n# KEEP MINE: /scripts/tool.py\n")
+        assert sync.kept_mine(listing) == {"scripts/tool.py"}
+
+    def test_a_binary_file_stays_the_owners(self, sync_world):
+        sync_world.release("v1.0.1", {"scripts/logo.bin": b"\x00logo-1", ".github/template-sync":
+                                      TEMPLATE_LIST.replace("/scripts/tool.py\n", "/scripts/tool.py\n/scripts/logo.bin\n")})
+        sync_world.generate()
+        sync_world.owner({"scripts/logo.bin": b"\x00mine", ".github/template-sync": keeping(sync_world, "scripts/logo.bin")})
+        sync_world.release("v1.1.0", {"scripts/logo.bin": b"\x00logo-2"})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["scripts/logo.bin"] == "yours-kept"
+        assert sync_world.read("scripts/logo.bin") == b"\x00mine"
+        assert not sync_world.lock().pending
+
+    def test_a_file_the_template_added_beside_the_owners_own_stays_theirs(self, sync_world):
+        sync_world.generate()
+        sync_world.owner({"scripts/new.py": "a = 1\n\nb = 'mine'\n\nc = 3\n",
+                          ".github/template-sync": keeping(sync_world, "scripts/new.py")})
+        sync_world.release("v1.1.0", {"scripts/new.py": "a = 1\n\nb = 'theirs'\n\nc = 3\n", ".github/template-sync":
+                                      TEMPLATE_LIST.replace("/scripts/tool.py\n", "/scripts/tool.py\n/scripts/new.py\n")})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["scripts/new.py"] == "yours-kept"
+        assert sync_world.text("scripts/new.py") == "a = 1\n\nb = 'mine'\n\nc = 3\n"
+        # The template's file is the baseline from here on, so its next change merges.
+        sync_world.release("v1.2.0", {"scripts/new.py": "a = 1\n\nb = 'theirs'\n\nc = 4\n"})
+        assert sync_world.outcomes(sync_world.run_sync())["scripts/new.py"] == "merged"
+        assert sync_world.text("scripts/new.py") == "a = 1\n\nb = 'mine'\n\nc = 4\n"
 
 
 @pytest.fixture(autouse=True)

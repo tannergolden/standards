@@ -439,6 +439,18 @@ class TestAMappedSync:
         assert world.lock().pending[".github/docs/README.md"]["reason"] == "conflict"
         assert "<<<<<<<" not in before
 
+    def test_a_keep_mine_note_is_no_way_out_here_the_contract_is(self, world):
+        # The private template's own list ships to the repositories generated
+        # from it; a difference it is meant to have belongs in its contract.
+        listing = world.text(".github/template-sync").rstrip("\n") + "\n# keep mine: /.github/docs/README.md\n"
+        world.here({".github/docs/README.md": seed("The seeds live in .github/docs/templates/, privately.", PROPRIETARY),
+                    ".github/template-sync": listing})
+        world.publish({"docs/README.md": seed("The seeds live in docs/templates/, publicly.", MIT)})
+        result = world.run()
+        conflict = next(d for d in result.decisions if d.path == ".github/docs/README.md")
+        assert conflict.outcome == "conflict"
+        assert "keep mine" not in conflict.detail and "record it in" in conflict.detail
+
     def test_a_file_missing_here_is_drift_not_a_choice(self, world):
         world.here({".github/workflows/checks.yml": None})
         world.publish({".github/workflows/checks.yml": "name: checks\non: push\njobs: {} # revised\n"})
