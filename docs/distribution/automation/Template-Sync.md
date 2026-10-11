@@ -303,8 +303,8 @@ syncs through a **mapping** instead of a list: the action's `map:` input names a
 contract was written out as. `tannergolden/repo` does this with `tannergolden/path`, through its 📐
 Template Parity contract. A mapping changes four things:
 
-- **Paths and text are the contract's.** Folders are relocated, text the contract replaces - a
-  footer - is replaced, and excluded paths never arrive. Nothing passes through init's identity
+- **Paths and text are the contract's.** A folder can be relocated, text the contract replaces -
+  a footer - is replaced, and excluded paths never arrive. Nothing passes through init's identity
   rewrite: both repositories belong to the same owner.
 - **It keeps its own lock**, named by the mapping, so it never touches `.github/template-sync.lock`.
 - **The repository's own list is amended, not redrawn**: a file that arrives gains its line, and one

@@ -764,7 +764,7 @@ def rewriter(identity: Identity | None, template: str) -> Callable[[str, bytes],
 # =============================================================================
 #
 # Some repositories are not generated from a template but DEFINED against
-# one: tannergolden/repo is tannergolden/path with five permitted
+# one: tannergolden/repo is tannergolden/path with four permitted
 # differences, written down as data in its own contract. A mapping is that
 # contract in the form this script reads - which template paths never come
 # here, which folders sit somewhere else, and which text differs inside them

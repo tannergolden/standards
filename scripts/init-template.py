@@ -270,6 +270,42 @@ def _template_sync():
     return module
 
 
+def shape_of(root: pathlib.Path) -> str:
+    """The paragraph the initial commit gives the template's shape.
+
+    The two templates ship deliberately different shapes, so it is chosen by
+    what is actually IN the tree - the public path carries a structure and
+    its own community health files, the private one is a standards-wired
+    foundation - rather than by a name a fork could change.
+
+    ⚠️ THE STRUCTURE TELLS THEM APART, NOT WHERE THE SEEDS SIT. The private
+    template kept its seeds in .github/docs/, and that was what this read;
+    both keep them in docs/ now. Only the public one ships src/.
+    """
+    if not (root / "docs/templates").is_dir():
+        return (
+            "This is a golden-path template whose engineering standards are\n"
+            "followed by link to the shared standards repository rather than by\n"
+            "copy.\n"
+        )
+    if (root / "src").is_dir():
+        return (
+            "This is the public golden path. A working structure arrived with\n"
+            "it - src/, tests/, packages/, benchmarks/, assets/, docs/ - along\n"
+            "with the community health files, while every engineering standard\n"
+            "is followed by link to the shared standards repository rather than\n"
+            "by copy.\n"
+        )
+    return (
+        "This is the private golden path. A standards-wired foundation with\n"
+        "no imposed structure: the seed documents live under docs/, the\n"
+        "community health files are inherited from the account's .github\n"
+        "repository, and every engineering standard is followed by link to\n"
+        "the shared standards repository rather than by copy. Beside docs/,\n"
+        "its one folder is assets/, where the Markdown Kit draws the page.\n"
+    )
+
+
 def remove_template_only(root: pathlib.Path, sync) -> list[str]:
     """Delete every tracked file the list keeps for the template alone, and return their paths.
 
@@ -433,34 +469,7 @@ def main() -> int:
     if len(subject) > 100:
         subject = "feat: 🎉 initialise the generated repository"
 
-    # The two templates ship deliberately different shapes, so the body is
-    # chosen by what is actually IN the tree - the public path carries a
-    # structure and its own community health files, the private one is a
-    # standards-wired foundation - rather than by a name a fork could change.
-    if pathlib.Path("docs/templates").is_dir():
-        shape = (
-            "This is the public golden path. A working structure arrived with\n"
-            "it - src/, tests/, packages/, benchmarks/, assets/, docs/ - along\n"
-            "with the community health files, while every engineering standard\n"
-            "is followed by link to the shared standards repository rather than\n"
-            "by copy.\n"
-        )
-    elif pathlib.Path(".github/docs/templates").is_dir():
-        shape = (
-            "This is the private golden path. A standards-wired foundation with\n"
-            "no imposed structure: seed documents live under .github/docs/, the\n"
-            "community health files are inherited from the account's .github\n"
-            "repository, and every engineering standard is followed by link to\n"
-            "the shared standards repository rather than by copy. Its one shared\n"
-            "folder is assets/, where the Markdown Kit draws the page.\n"
-        )
-    else:
-        shape = (
-            "This is a golden-path template whose engineering standards are\n"
-            "followed by link to the shared standards repository rather than by\n"
-            "copy.\n"
-        )
-
+    shape = shape_of(root)
     source_line = f"Generated from {generated_from}.\n" if generated_from else "Generated from a template.\n"
     # Named file by file, so the history says exactly what never arrived and
     # where to look for it.

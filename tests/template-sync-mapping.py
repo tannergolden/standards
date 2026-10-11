@@ -3,9 +3,9 @@
 """Template sync through a mapping, for a repository DEFINED as a delta of its template.
 
 tannergolden/repo is not generated from tannergolden/path; it is path with
-five permitted differences, written down as a contract. A mapping is that
-contract as the engine reads it: what never comes over, which folder sits
-somewhere else, which footer reads differently. These tests hold the same
+four permitted differences, written down as a contract. A mapping is that
+contract as the engine reads it: what never comes over, which folder, if
+any, sits somewhere else, which footer reads differently. These tests hold the same
 engine to the promises a mapped sync makes on top of the usual ones:
 
 - a difference the mapping permits survives every sync;
