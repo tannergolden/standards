@@ -190,6 +190,11 @@ class History:
             self.owner_deleted.discard(path)
             self.owner_touched.discard(path)
             self.owner_removed.pop(path, None)
+            # Unless the owner still has one there - kept when they switched it
+            # off as the template removed it. That file is theirs, never the
+            # template's new one, so the template removing it later leaves it.
+            if self.world.read(path) is not None:
+                self.owner_touched.add(path)
         elif choice < 0.68 and len(self.files) > 3:
             path = self.rng.choice(sorted(self.files))
             del self.files[path], self.modes[path], self.default_on[path]

@@ -217,6 +217,24 @@ class TestNothingASyncStartsIsAbandoned:
         sync_world.run_sync()
         assert sync_world.read("scripts/tool.py") is None
 
+    def test_a_file_kept_through_a_removal_stays_through_the_path_coming_and_going_again(self, sync_world):
+        # Found by a random history: kept, re-added over, then removed again.
+        with_old = TEMPLATE_LIST.replace("/scripts/tool.py\n", "/scripts/tool.py\n/scripts/old.py\n")
+        sync_world.release("v1.0.1", {"scripts/old.py": "x = 1\n", ".github/template-sync": with_old})
+        sync_world.generate()
+        sync_world.owner({".github/template-sync": sync_world.text(".github/template-sync").replace(
+            "\n/scripts/old.py\n", "\n#/scripts/old.py\n")})
+        sync_world.release("v1.1.0", {"scripts/old.py": None, ".github/template-sync": TEMPLATE_LIST})
+        assert sync_world.outcomes(sync_world.run_sync())["scripts/old.py"] == "not-synced"
+        sync_world.release("v1.2.0", {"scripts/old.py": "x = 2\n", ".github/template-sync": with_old})
+        assert sync_world.outcomes(sync_world.run_sync())["scripts/old.py"] == "conflict"
+        assert "scripts/old.py" in sync_world.lock().pending
+        sync_world.release("v1.3.0", {"scripts/old.py": None, ".github/template-sync": TEMPLATE_LIST})
+        result = sync_world.run_sync()
+        assert sync_world.read("scripts/old.py") == b"x = 1\n", "never recorded as the template's, so never removed"
+        assert not sync_world.lock().pending, "and nothing waits on a file the template no longer ships"
+        assert not sync_world.run_sync(write=False).changed, result.report
+
     def test_an_owner_rule_written_under_the_waiting_entries_is_kept(self):
         template = "# --- Kept current\n/a.md\n/docs/b.md\n\n# --- Your rules ---\n"
         drawn = sync.merge_list(template, template, template, waiting=["old.md"])
