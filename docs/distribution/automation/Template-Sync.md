@@ -146,6 +146,25 @@ run rewrites the sync branch from the default branch, and what was committed to 
 files into one pattern, or splits one, a file you had switched off stays off: the sync writes the
 choice back by name under **Your rules** and reports it as held off.
 
+**A machined index is never merged.** The rows inside an `AUTO-INDEX` block are
+drawn from the files beside it, and a redraw re-pads every row when one longer entry arrives - so a
+folder log you never touched by hand still reads as changed after you add one file. Only the prose
+and markers around a block are compared and merged; the rows are yours as they stood, and once a
+sync has written anything, every block in every file it keeps current is redrawn from the tree it
+leaves, by the same indexer 🗂️ Machined Indexes runs. Its pull request needs no index fix after it.
+
+**In `.gitignore`, other ignore files and `.gitattributes`, two additions in one place are kept.**
+Both appending to the end of `.gitignore` is the commonest change either side makes, and git calls
+it a conflict only because both landed after the same line. The template's lines go first and
+yours last, so yours still win, as git reads these files; an entry both added is kept once, where
+you put it. A change to a line either side started from is still a conflict, so a pattern you
+deleted never comes back this way.
+
+**A release that changes nothing you would see opens no pull request.** Forgetting a file you had
+switched off, or the template redrawing only its own index rows, is bookkeeping: it is written to
+the lock with the next change that matters. A file you had already brought up to date by hand is
+not bookkeeping - its baseline moves, so the template's next edit to those lines merges cleanly.
+
 > [!IMPORTANT]
 > **One baseline per repository would lose changes, and only across two runs.** A run with twenty
 > clean updates and one conflict gets merged; a single baseline then sits past the conflicted
@@ -242,7 +261,7 @@ The engine is tested here, on real git repositories, with no network:
 | `tests/template-sync-list.py`       | The list's redraw rules, and git's matcher on hostile path names                 |
 | `tests/template-sync-lock.py`       | Every way a lock can be wrong, refused                                           |
 | `tests/template-sync-properties.py` | Random template histories against random owners, and the bad designs they catch  |
-| `tests/template-sync-edges.py`      | The cases reviews found: edits, deletions and choices that must survive the run  |
+| `tests/template-sync-edges.py`      | The cases review and real use found: edits, deletions, choices, indexes, ignores |
 | `tests/template-sync-mapping.py`    | A mapped sync: relocations, replaced text, exclusions, and its own lock and list |
 | `tests/template-sync-workflow.py`   | The workflow, the action, the token policy, the issue, and init's first lock     |
 

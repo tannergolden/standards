@@ -1,21 +1,28 @@
 # SPDX-FileCopyrightText: 2026 Tanner Golden
 # SPDX-License-Identifier: MIT
-"""The edges an independent review of template sync found, each pinned where it was found.
+"""The edges review and real use of template sync found, each pinned where it was found.
 
-Every test here failed against the engine as it stood when the review ran,
-and each names the promise it holds: an owner's edit is never taken from
+Every test here failed against the engine as it stood when the edge turned
+up, and each names the promise it holds: an owner's edit is never taken from
 them, a file they deleted comes back only when they ask, a choice they made
 survives the template reshaping its list, nothing a sync starts is ever
 abandoned, and a sync never goes backwards.
+
+The last three classes come from the first repository generated for real,
+tannergolden/markdown, played against the public template's next releases:
+a machined index conflicted over rows nobody wrote, two additions to the end
+of .gitignore conflicted, and a release that only forgot switched-off files
+proposed a pull request that changed nothing but the lock.
 """
 
 from __future__ import annotations
 
 import os
 import subprocess
+import sys
 
 import pytest
-from conftest import SYNC_ENV, TEMPLATE_LIST, load_script
+from conftest import ROOT, SYNC_ENV, TEMPLATE_LIST, load_script
 
 sync = load_script("scripts/template-sync.py")
 
@@ -272,6 +279,186 @@ class TestAPathThatCannotBeWritten:
         sync_world.release("v1.1.0", {"scripts/tool.py": "print('v1.1')\n"})
         result = sync_world.run_sync()
         assert sync_world.outcomes(result).get(name) == "unsafe"
+
+
+DOCS_README = (
+    "# Docs\n\nThe template's introduction.\n\n"
+    "<!-- AUTO-INDEX:BEGIN dir=. style=log -->\n<!-- AUTO-INDEX:END -->\n\n"
+    "The template's closing words.\n"
+)
+
+
+def redraw(where) -> subprocess.CompletedProcess:
+    """Every machined index in a tree, redrawn as Machined Indexes redraws it."""
+    return subprocess.run([sys.executable, str(ROOT / "scripts/update-doc-indexes.py"), "--write", "--tree"],
+                          cwd=where, capture_output=True, text=True, check=False)
+
+
+def checked(where) -> subprocess.CompletedProcess:
+    return subprocess.run([sys.executable, str(ROOT / "scripts/update-doc-indexes.py"), "--check", "--tree"],
+                          cwd=where, capture_output=True, text=True, check=False)
+
+
+def listed(*paths: str) -> str:
+    """The template's list with more entries; one written `#/path` is listed switched off."""
+    return TEMPLATE_LIST.replace("/docs/guide.md\n", "/docs/guide.md\n" + "".join(
+        f"{p}\n" if p.startswith("#") else f"/{p}\n" for p in paths))
+
+
+class TestAMachinedIndexIsNeverMerged:
+    """Its rows are drawn from the tree, so only the prose around them merges."""
+
+    def setup_world(self, world, template_files: dict, owner_files: dict, owner_redraws: bool = True):
+        world.put(world.template, {"docs/README.md": DOCS_README, ".github/template-sync": listed("docs/README.md")})
+        redraw(world.template)
+        world.release("v1.0.1", {})
+        world.generate()
+        world.put(world.repo, owner_files)
+        if owner_redraws:
+            redraw(world.repo)
+        world.commit(world.repo, "the owner's own documents, logged")
+        world.put(world.template, template_files)
+        redraw(world.template)
+        world.release("v1.1.0", {})
+
+    def test_an_owners_new_file_in_the_folder_never_conflicts_with_the_templates_edit(self, sync_world):
+        self.setup_world(
+            sync_world,
+            {"docs/README.md": DOCS_README.replace("introduction.", "introduction, now longer."),
+             "docs/new.md": "# New\n\nA document the template added.\n",
+             ".github/template-sync": listed("docs/README.md", "docs/new.md")},
+            {"docs/a-much-longer-name-of-the-owners-own.md": "# Mine\n\nThe owner's own document.\n"})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["docs/README.md"] == "updated"
+        text = sync_world.text("docs/README.md")
+        assert "introduction, now longer." in text
+        assert "a-much-longer-name-of-the-owners-own.md" in text and "new.md" in text
+        assert checked(sync_world.repo).returncode == 0, "the index must match the tree the sync left"
+        assert "redrawn from the tree" in result.report
+        assert not sync_world.run_sync(merge=False).changed
+
+    def test_prose_both_sides_changed_is_still_a_conflict_and_left_byte_for_byte(self, sync_world):
+        self.setup_world(
+            sync_world,
+            {"docs/README.md": DOCS_README.replace("introduction.", "introduction, the template's way."),
+             "docs/new.md": "# New\n\nA document the template added.\n",
+             ".github/template-sync": listed("docs/README.md", "docs/new.md")},
+            {"docs/README.md": DOCS_README.replace("introduction.", "introduction, the owner's way."),
+             "docs/mine.md": "# Mine\n\nThe owner's own document.\n"})
+        before = sync_world.read("docs/README.md")
+        result = sync_world.run_sync()
+        decision = next(d for d in result.decisions if d.path == "docs/README.md")
+        assert decision.outcome == "conflict"
+        assert sync_world.read("docs/README.md") == before
+        assert "the template's way" in decision.diff and "mine.md" not in decision.diff
+
+    def test_a_marker_shown_in_a_fence_is_an_example_and_merges_as_text(self):
+        example = (b"# Spec\n\n```markdown\n<!-- AUTO-INDEX:BEGIN dir=. style=log -->\n| row |\n"
+                   b"<!-- AUTO-INDEX:END -->\n```\n")
+        assert sync.masked("docs/Spec.md", example) == (example, [])
+        assert sync.masked("docs/notes.txt", DOCS_README.encode()) == (DOCS_README.encode(), [])
+
+    def test_a_dry_run_redraws_nothing(self, sync_world):
+        self.setup_world(
+            sync_world,
+            {"docs/new.md": "# New\n\nA document the template added.\n",
+             ".github/template-sync": listed("docs/README.md", "docs/new.md")},
+            {"docs/mine.md": "# Mine\n\nThe owner's own document.\n"})
+        sync_world.sync.run(sync_world.repo, sync_world.template, ref="v1", write=False)
+        assert sync_world.clean()
+
+    def test_the_workflows_folder_is_redrawn_only_with_a_token_that_can_write_it(self, sync_world):
+        readme = "# Workflows\n\n<!-- AUTO-INDEX:BEGIN dir=. style=log fields=name,on -->\n<!-- AUTO-INDEX:END -->\n"
+        sync_world.put(sync_world.template, {".github/workflows/README.md": readme, ".github/template-sync":
+                                             listed(".github/workflows/README.md")})
+        redraw(sync_world.template)
+        sync_world.release("v1.0.1", {})
+        sync_world.generate()
+        sync_world.owner({"docs/guide.md": "# The owner's guide\n"})
+        sync_world.put(sync_world.template, {".github/workflows/nightly.yml": "name: nightly\non:\n  schedule:\n",
+                                             "scripts/tool.py": "print('v1.1')\n", ".github/template-sync": listed(
+                                                 ".github/workflows/README.md", ".github/workflows/nightly.yml")})
+        redraw(sync_world.template)
+        sync_world.release("v1.1.0", {})
+        before = sync_world.read(".github/workflows/README.md")
+        result = sync_world.run_sync(workflow_files=False)
+        assert sync_world.outcomes(result)[".github/workflows/nightly.yml"] == "deferred"
+        assert sync_world.read(".github/workflows/README.md") == before
+
+
+GITIGNORE = "# Built\n/build/\n/dist/\n"
+
+
+class TestALineSetKeepsBothAdditions:
+    """In .gitignore and .gitattributes the last matching line decides, so the owner's stay last."""
+
+    def setup_world(self, world, template_text: str, owner_text: str, name: str = ".gitignore"):
+        world.release("v1.0.1", {name: GITIGNORE, ".github/template-sync": TEMPLATE_LIST.replace(
+            "/scripts/tool.py\n", f"/scripts/tool.py\n/{name}\n")})
+        world.generate()
+        world.owner({name: owner_text})
+        world.release("v1.1.0", {name: template_text})
+
+    def test_two_sections_added_at_the_end_are_both_kept_the_templates_first(self, sync_world):
+        self.setup_world(sync_world, GITIGNORE + "\n# Cache\n/.cache/\n", GITIGNORE + "\n# Mine\n/preview/\n")
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)[".gitignore"] == "merged"
+        assert sync_world.text(".gitignore") == GITIGNORE + "\n# Cache\n/.cache/\n\n# Mine\n/preview/\n"
+
+    def test_an_entry_both_added_is_kept_once_where_the_owner_put_it(self, sync_world):
+        self.setup_world(sync_world, GITIGNORE + "/.cache/\n/preview/\n", GITIGNORE + "/preview/\n")
+        sync_world.run_sync()
+        assert sync_world.text(".gitignore") == GITIGNORE + "/.cache/\n/preview/\n"
+
+    def test_a_pattern_the_owner_deleted_never_comes_back(self, sync_world):
+        self.setup_world(sync_world, GITIGNORE.replace("/dist/", "/dist/\n/dist-*/"),
+                         GITIGNORE.replace("/dist/\n", ""))
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)[".gitignore"] == "conflict"
+        assert "/dist" not in sync_world.text(".gitignore")
+
+    def test_any_other_file_still_calls_two_additions_in_one_place_a_conflict(self, sync_world):
+        self.setup_world(sync_world, GITIGNORE + "/.cache/\n", GITIGNORE + "/preview/\n", name="scripts/list.txt")
+        assert sync_world.outcomes(sync_world.run_sync())["scripts/list.txt"] == "conflict"
+
+
+class TestBookkeepingAloneOpensNoPullRequest:
+    def test_a_release_that_only_forgets_a_switched_off_file(self, sync_world):
+        sync_world.generate()
+        sync_world.owner({".github/template-sync": sync_world.text(".github/template-sync").replace(
+            "\n/scripts/tool.py\n", "\n#/scripts/tool.py\n")})
+        sync_world.release("v1.1.0", {"scripts/tool.py": None, ".github/template-sync": TEMPLATE_LIST})
+        result = sync_world.run_sync()
+        assert not result.changed
+        assert "scripts/tool.py" in sync_world.lock().files, "kept until a change that matters"
+        sync_world.release("v1.2.0", {"docs/guide.md": "# Guide v1.2\n"})
+        assert sync_world.run_sync().changed
+        assert "scripts/tool.py" not in sync_world.lock().files, "and written with it"
+
+    def test_a_release_that_only_redraws_the_templates_own_rows(self, sync_world):
+        # A document the template keeps to itself changes what it says about
+        # itself, so the template's own log of the folder redraws one row.
+        extra = "<!--\ndescription: '{}'\n-->\n# Extra\n"
+        sync_world.put(sync_world.template, {"docs/README.md": DOCS_README, "docs/extra.md": extra.format("One."),
+                                             ".github/template-sync": listed("docs/README.md", "#/docs/extra.md")})
+        redraw(sync_world.template)
+        sync_world.release("v1.0.1", {})
+        sync_world.generate()
+        sync_world.put(sync_world.template, {"docs/extra.md": extra.format("A new description.")})
+        redraw(sync_world.template)
+        sync_world.release("v1.1.0", {})
+        assert "A new description." in (sync_world.template / "docs/README.md").read_text(encoding="utf-8")
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["docs/README.md"] == "unchanged"
+        assert not result.changed
+
+    def test_an_owner_who_caught_up_by_hand_still_records_it(self, sync_world):
+        sync_world.generate()
+        sync_world.owner({"scripts/tool.py": "print('v1.1')\n"})
+        sync_world.release("v1.1.0", {"scripts/tool.py": "print('v1.1')\n"})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["scripts/tool.py"] == "current"
+        assert result.changed, "left behind, the template's next edit to those lines would conflict"
 
 
 @pytest.fixture(autouse=True)

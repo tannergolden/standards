@@ -961,21 +961,75 @@ class Decision:
     pair: str = ""  # the other half of a move
 
 
-def merge3(ours: bytes, base: bytes, theirs: bytes) -> tuple[bytes, bool]:
-    """git merge-file, so a merge here means exactly what it means anywhere in git."""
+# Files that are SETS of lines, where git reads the last matching line as the
+# one that decides: an ignore list, and .gitattributes.
+LINE_SETS = re.compile(r"(?:^|/)(?:\.[A-Za-z0-9_-]*ignore|\.gitattributes)$")
+MARKER = 40  # conflict markers no line of a real file is going to look like
+
+
+def merge3(ours: bytes, base: bytes, theirs: bytes, *, line_set: bool = False) -> tuple[bytes, bool]:
+    """git merge-file, so a merge here means exactly what it means anywhere in git.
+
+    ⚠️ IN A LINE SET, TWO ADDITIONS IN ONE PLACE ARE NOT A CONFLICT. An owner
+    and a template both appending to the end of .gitignore is the commonest
+    change either makes to it, and git calls it a conflict only because both
+    landed after the same line. Where a conflicting hunk ADDS lines on both
+    sides and touches no line either side started from, both additions are
+    kept: the template's first, so the owner's still come last and win, as
+    git reads these files. A hunk that changes or deletes an existing line is
+    still a conflict - a pattern the owner deleted never comes back this way.
+    """
     with tempfile.TemporaryDirectory(prefix="template-sync-merge-") as tmp:
         root = pathlib.Path(tmp)
         for name, data in (("ours", ours), ("base", base), ("theirs", theirs)):
             (root / name).write_bytes(data)
         proc = subprocess.run(
-            ["git", "merge-file", "-p", "-q", "-L", "yours", "-L", "base", "-L", "template",
+            ["git", "merge-file", "-p", "--diff3", f"--marker-size={MARKER}",
+             "-L", "yours", "-L", "base", "-L", "template",
              str(root / "ours"), str(root / "base"), str(root / "theirs")],
             capture_output=True,
             check=False,
         )
     if proc.returncode < 0 or proc.returncode > 127:
         raise SyncError(f"git merge-file failed: {proc.stderr.decode('utf-8', 'replace').strip()}")
-    return proc.stdout, proc.returncode == 0
+    if proc.returncode == 0:
+        return proc.stdout, True
+    if not line_set:
+        return proc.stdout, False
+    return both_added(proc.stdout)
+
+
+def both_added(marked: bytes) -> tuple[bytes, bool]:
+    """A diff3-marked merge with every hunk an addition on both sides, resolved; or not clean."""
+    opening, middle = b"<" * MARKER + b" yours", b"|" * MARKER + b" base"
+    divider, closing = b"=" * MARKER, b">" * MARKER + b" template"
+    out: list[bytes] = []
+    lines = marked.splitlines(keepends=True)
+    i = 0
+    while i < len(lines):
+        if lines[i].rstrip(b"\r\n") != opening:
+            out.append(lines[i])
+            i += 1
+            continue
+        try:
+            at_base = next(j for j in range(i + 1, len(lines)) if lines[j].rstrip(b"\r\n") == middle)
+            at_divider = next(j for j in range(at_base + 1, len(lines)) if lines[j].rstrip(b"\r\n") == divider)
+            at_close = next(j for j in range(at_divider + 1, len(lines)) if lines[j].rstrip(b"\r\n") == closing)
+        except StopIteration:
+            return marked, False
+        if at_divider != at_base + 1:  # the hunk changes a line both sides started from
+            return marked, False
+        ours_part, theirs_part = lines[i + 1:at_base], lines[at_divider + 1:at_close]
+        # An entry both sides added is kept once, where the owner put it; blank
+        # lines and comments are each side's own layout, and stay with it.
+        entries = {line.strip() for line in ours_part if line.strip() and not line.lstrip().startswith(b"#")}
+        theirs_part = [line for line in theirs_part
+                       if not line.strip() or line.lstrip().startswith(b"#") or line.strip() not in entries]
+        if theirs_part and not theirs_part[-1].endswith(b"\n"):
+            theirs_part = [*theirs_part[:-1], theirs_part[-1] + b"\n"]
+        out += theirs_part + ours_part
+        i = at_close + 1
+    return b"".join(out), True
 
 
 def binary(*datas: bytes) -> bool:
@@ -1005,6 +1059,97 @@ def state_of(side: Side) -> FileState:
     return FileState(side.sha, side.mode)
 
 
+# =============================================================================
+# Machined indexes: derived from the tree, so never merged
+# =============================================================================
+#
+# ⚠️ A FOLDER'S LOG IS DERIVED DATA, AND A LINE-BY-LINE MERGE OF IT CONFLICTS
+# OVER NOTHING. A README's `<!-- AUTO-INDEX:BEGIN ... -->` block is redrawn by
+# 🗂️ Machined Indexes from the files beside it, and a redraw re-pads every
+# row of a table when one longer entry arrives - so an owner who adds a single
+# file to a folder has changed every row of its log. Played against the first
+# real repository generated from the public template, the template's next new
+# stub conflicted in the workflows README for no other reason.
+#
+# So a block's rows are taken out of all three sides before they are compared
+# or merged, the file is merged as the prose and markers it is, and each block
+# is filled again with the owner's own rows. Once a sync has written, the
+# standards' own indexer redraws every block it keeps current from the tree
+# as it now stands: what Machined Indexes would propose next, already done.
+
+INDEX_BEGIN = re.compile(rb"<!--\s*AUTO-INDEX:BEGIN\s+(.*?)\s*-->")
+INDEX_END = b"<!-- AUTO-INDEX:END -->"
+INDEX_FENCE = re.compile(rb"^(?:```|~~~)")
+
+
+def index_blocks(lines: list[bytes]) -> list[tuple[int, int]]:
+    """Each live block as (its BEGIN line, its END line), found as the indexer finds them.
+
+    A marker inside a fenced code block is an example, not a block, and a
+    BEGIN that never closes is no block either.
+    """
+    blocks: list[tuple[int, int]] = []
+    fenced, i = False, 0
+    while i < len(lines):
+        if INDEX_FENCE.match(lines[i].strip()):
+            fenced = not fenced
+        elif not fenced and INDEX_BEGIN.search(lines[i]):
+            end = next((j for j in range(i + 1, len(lines)) if INDEX_END in lines[j]), None)
+            if end is None:
+                break
+            blocks.append((i, end))
+            i = end
+        i += 1
+    return blocks
+
+
+def _marker(line: bytes) -> bytes:
+    found = INDEX_BEGIN.search(line)
+    return b" ".join(found.group(1).split()) if found else b""
+
+
+def masked(path: str, data: bytes) -> tuple[bytes, list[tuple[bytes, list[bytes]]]]:
+    """A Markdown file with each block's rows taken out, and the rows each block held."""
+    if not path.endswith(".md") or b"AUTO-INDEX:BEGIN" not in data:
+        return data, []
+    lines = data.split(b"\n")
+    blocks = index_blocks(lines)
+    if not blocks:
+        return data, []
+    out: list[bytes] = []
+    rows: list[tuple[bytes, list[bytes]]] = []
+    at = 0
+    for begin, end in blocks:
+        out += lines[at:begin + 1]
+        rows.append((_marker(lines[begin]), lines[begin + 1:end]))
+        at = end
+    out += lines[at:]
+    return b"\n".join(out), rows
+
+
+def refilled(data: bytes, *sources: list[tuple[bytes, list[bytes]]]) -> bytes:
+    """Masked `data` with each block filled from the first source that has a block of the same marker."""
+    lines = data.split(b"\n")
+    blocks = index_blocks(lines)
+    if not blocks:
+        return data
+    pools = [list(source) for source in sources]
+    out: list[bytes] = []
+    at = 0
+    for begin, end in blocks:
+        out += lines[at:begin + 1]
+        marker, found = _marker(lines[begin]), None
+        for pool in pools:  # each source gives up its block, so a repeated marker stays in step
+            hit = next((k for k, (key, _) in enumerate(pool) if key == marker), None)
+            if hit is not None:
+                rows = pool.pop(hit)[1]
+                found = rows if found is None else found
+        out += found or []
+        at = end
+    out += lines[at:]
+    return b"\n".join(out)
+
+
 def decide(
     path: str,
     base: Side | None,
@@ -1030,7 +1175,7 @@ def decide(
     if target is None:  # the template no longer ships it
         if ours is None:
             return Decision(path, "gone", state=REMOVE)
-        if base is not None and base is not MISSING and ours.data == base.data:
+        if base is not None and base is not MISSING and masked(path, ours.data)[0] == masked(path, base.data)[0]:
             return Decision(path, "deleted", delete=True, state=REMOVE)
         return Decision(path, "kept", state=REMOVE,
                         detail="The template removed this file and you had changed it, so it stays, as yours.")
@@ -1045,8 +1190,13 @@ def decide(
         return Decision(path, "owner-deleted", state=FileState(recorded.sha, recorded.mode, True),
                         detail="You deleted this file, so it is now switched off in .github/template-sync.")
 
+    # What people wrote is compared and merged; a machined index's rows are
+    # derived from the tree, taken out here and filled again below.
+    o, ours_rows = masked(path, ours.data)
+    t, target_rows = masked(path, target.data)
+
     if base is MISSING:
-        if ours.data == target.data:
+        if o == t:
             if ours.mode == target.mode:
                 return Decision(path, "current", state=state_of(target))
             return Decision(path, "updated", write=Side(target.mode, ours.data), state=state_of(target))
@@ -1054,41 +1204,44 @@ def decide(
             "The template no longer has the version this file was last synced from, so your "
             "changes cannot be told apart from the template's. Make the file match the "
             "template's version to resume syncing it, or switch it off."),
-            diff=udiff(path, ours.data, target.data))
+            diff=udiff(path, o, t))
 
     if base is None:
-        if ours.data == target.data:
+        if o == t:
             if ours.mode == target.mode:
                 return Decision(path, "current", state=state_of(target))
             return Decision(path, "updated", write=Side(target.mode, ours.data), state=state_of(target))
         return Decision(path, "conflict", detail=(
             "The template added a file here and you already have a different one. Yours is "
             "untouched; make it match the template's, or switch the path off."),
-            diff=udiff(path, ours.data, target.data))
+            diff=udiff(path, o, t))
 
+    b = masked(path, base.data)[0]
     mode = merge_mode(ours.mode, base.mode, target.mode)
-    if base.data == target.data or ours.data == target.data:
+    if b == t or o == t:
         # Nothing for the content to do: the template did not change it, or
         # the owner already has exactly what the template now holds.
         if mode == ours.mode:
-            kind = "unchanged" if base.data == target.data else "current"
+            kind = "unchanged" if b == t else "current"
             return Decision(path, kind, state=state_of(target))
         return Decision(path, "updated", write=Side(mode, ours.data), state=state_of(target))
-    if ours.data == base.data:
-        return Decision(path, "updated", write=Side(mode, target.data), state=state_of(target))
+    if o == b:
+        data = target.data if ours.data == base.data else refilled(t, ours_rows, target_rows)
+        return Decision(path, "updated", write=Side(mode, data), state=state_of(target))
     if binary(ours.data, base.data, target.data):
         return Decision(path, "conflict", detail=(
             "You and the template both changed this binary file. Yours is untouched."),
             diff=udiff(path, base.data, target.data))
-    merged, clean = merge3(ours.data, base.data, target.data)
+    merged, clean = merge3(o, b, t, line_set=bool(LINE_SETS.search(path)))
     if clean:
-        return Decision(path, "merged", write=Side(mode, merged), state=state_of(target))
+        return Decision(path, "merged", write=Side(mode, refilled(merged, ours_rows, target_rows)),
+                        state=state_of(target))
     return Decision(path, "conflict", detail=(
         "You and the template changed the same lines. Your file is untouched; the template's "
         "change is below. Make those lines match it on your default branch - not on the sync "
         "branch, which each run replaces - and the next sync stops asking. To keep yours, switch "
         "the file off."),
-        diff=udiff(path, base.data, target.data))
+        diff=udiff(path, b, t))
 
 
 def renames_of(base: dict[str, Side], target: dict[str, Side]) -> dict[str, str]:
@@ -1244,7 +1397,7 @@ def plan(
             if result.outcome != "conflict":
                 write = result.write or Side(merge_mode(ours[old].mode, base[old].mode, target[new].mode),
                                              ours[old].data)
-                edited = ours[old].data != base[old].data
+                edited = masked(old, ours[old].data)[0] != masked(old, base[old].data)[0]
                 decisions[old] = Decision(old, "moved", delete=True, state=REMOVE, pair=new, detail=(
                     f"The template moved this file to `{new}`" + (", and your changes came with it."
                                                                   if edited else ".")))
@@ -1336,6 +1489,46 @@ def apply(repo: pathlib.Path, writes: dict[str, Side], deletes: Iterable[str]) -
     git(root, "checkout-index", "-f", "-z", "--stdin", data=b"".join(encode(p) + b"\0" for p in sorted(writes)))
 
 
+def _load_indexer():
+    """update-doc-indexes.py, beside this script: the indexer Machined Indexes runs. None if absent."""
+    path = pathlib.Path(__file__).with_name("update-doc-indexes.py")
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("update_doc_indexes", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def redraw_indexes(repo: pathlib.Path, paths: Iterable[str]) -> list[str]:
+    """Redraw every machined index in `paths` from the working tree as it now stands.
+
+    The standards' own indexer, so a block comes out exactly as the owner's
+    Machined Indexes would draw it. Best-effort: a block it cannot draw is left
+    as merged, with a warning, for that workflow to name.
+    """
+    root = repo.resolve()
+    wanted = [p for p in paths if (root / p).is_file() and not (root / p).is_symlink()
+              and b"AUTO-INDEX:BEGIN" in (root / p).read_bytes()]
+    indexer = _load_indexer() if wanted else None
+    if indexer is None:
+        return []
+    redrawn: list[str] = []
+    here = os.getcwd()
+    try:
+        os.chdir(root)
+        for path in wanted:
+            try:
+                if indexer.process(path, True):
+                    redrawn.append(path)
+            except (SystemExit, OSError, ValueError) as exc:
+                print(f"::warning title=Template sync::Could not redraw the machined index in {path}: {exc}")
+    finally:
+        os.chdir(here)
+    return redrawn
+
+
 # =============================================================================
 # Reporting
 # =============================================================================
@@ -1358,7 +1551,7 @@ EXPLAINED = frozenset({"conflict", "deferred", "kept", "unsafe", "restored", "ow
 
 
 def render_report(*, template: str, version: str, previous: str, decisions: list[Decision],
-                  list_changed: bool, mapping: Mapping | None = None) -> str:
+                  list_changed: bool, mapping: Mapping | None = None, redrawn: Iterable[str] = ()) -> str:
     groups: dict[str, list[Decision]] = {}
     for decision in decisions:
         groups.setdefault(decision.outcome, []).append(decision)
@@ -1378,6 +1571,10 @@ def render_report(*, template: str, version: str, previous: str, decisions: list
     elif list_changed:
         lines += ["`.github/template-sync` was redrawn from the template's latest list. Every "
                   "choice you made in it is kept.", ""]
+    redrawn = sorted(redrawn)
+    if redrawn:
+        lines += ["🗂️ Every machined index this changed was redrawn from the tree, as Machined Indexes "
+                  "would: " + ", ".join(f"`{p}`" for p in redrawn) + ".", ""]
     for key, title in HEADINGS:
         items = groups.get(key)
         if not items:
@@ -1844,19 +2041,41 @@ def run(
     new_lock = Lock(template, version, commit, None if mapping else lock.identity, files, pending)
 
     # A new version that changed nothing here is not worth a pull request:
-    # only the files, the per-file baselines and what is still pending count.
+    # only the files, the per-file baselines and what is still pending count -
+    # and of the baselines, only those a later merge reads.
+    #
+    # ⚠️ BOOKKEEPING ALONE NEVER OPENS A PULL REQUEST. The first real generated
+    # repository showed why: a release that only stopped shipping files it had
+    # switched off proposed a pull request that changed nothing but this lock,
+    # for its owner to merge. A baseline forgotten for a path that is no longer
+    # synced, or no longer anywhere, and one the template moved without
+    # changing anything people wrote, are recorded with the next change that
+    # matters; nothing reads them before then. One the OWNER caught up to is
+    # not bookkeeping: left behind, the template's next edit to those lines
+    # would read as a conflict.
     old = json.loads(lock_side.data) if lock_side is not None else None
-    lock_moved = old is None or {k: old.get(k) for k in ("files", "pending")} != {
-        k: json.loads(dump_lock(new_lock))[k] for k in ("files", "pending")}
+    bookkeeping = {d.path for d in decisions if d.outcome in ("not-synced", "gone", "unchanged")}
+
+    def counted(entries: dict) -> dict:
+        return {path: entry for path, entry in entries.items() if path not in bookkeeping}
+
+    fresh = json.loads(dump_lock(new_lock))
+    lock_moved = old is None or old.get("pending") != fresh["pending"] or (
+        counted(old.get("files") or {}) != counted(fresh["files"]))
     changed = bool(writes or deletes) or lock_moved
+    redrawn: list[str] = []
     if changed:
         writes[lock_path] = Side(lock_side.mode if lock_side else "100644",
                                  dump_lock(new_lock, mapping.name if mapping else "🔄 Template Sync").encode("utf-8"))
         if write:
             apply(repo, writes, deletes)
+            settled = {d.path for d in decisions if d.outcome not in ("conflict", "deferred", "waiting", "unsafe")}
+            redrawn = redraw_indexes(repo, sorted(
+                p for p in synced & settled
+                if p.endswith(".md") and p not in special and (workflow_files or not p.startswith(WORKFLOW_DIR))))
 
     report = render_report(template=template, version=version, previous=previous, decisions=decisions,
-                           list_changed=list_changed, mapping=mapping)
+                           list_changed=list_changed, mapping=mapping, redrawn=redrawn)
     return Result(decisions, new_lock, list_text or "", list_changed, changed, version, previous, report)
 
 
