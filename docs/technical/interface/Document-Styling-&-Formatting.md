@@ -399,9 +399,9 @@ The page has one theme, set once in the stub or in `.github/markdown.yaml`:
 `standard` by default, one of the eleven prints (blueprint, the spectrum from
 redprint to pinkprint, the Van Dyke brownprint and the blackprint), a print of
 the repository's own, or a collection's design for the month. Every part draws
-in it, so the header, the badges and the body read as one set of drawings.
-`rainbowprint` draws each update in the next colour of the spectrum, and the
-whole page changes colour together.
+in it, so the header, the badges, the body and the trophy case read as one set
+of drawings. `rainbowprint` draws each update in the next colour of the
+spectrum, and the whole page changes colour together.
 
 The rules in this specification bind a drawn page as they bind a typed one.
 Apart from the description's length, which
