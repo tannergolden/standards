@@ -16,6 +16,10 @@
 # anything is rewritten, and every folder log is redrawn from what remains,
 # so nothing generated names a file it never got.
 #
+# ⚠️ BUT NOTHING UNDER .github/workflows/. GitHub refuses the workflow token
+# any change there, so a workflow file only the template needs stays, named
+# for the owner to delete, and no identity or folder log there is touched.
+#
 # ⚠️ IT DOES NOT REWRITE A REPOSITORY ADDRESS. `<owner>/standards` is the
 # repository every consumer calls, and the template itself, its sibling, the
 # agent instruction publisher and the account's `.github` are the same kind

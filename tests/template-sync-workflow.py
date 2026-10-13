@@ -473,6 +473,19 @@ class TestInitialised:
         data = b"tannergolden\n"
         assert self.call(path, data) is data
 
+    @pytest.mark.parametrize("path", [".github/workflows/README.md", ".github/workflows/checks.yml",
+                                      ".github/workflows/nested/notes.md", "./.github/workflows/checks.yml"])
+    def test_a_workflow_file_is_never_rewritten(self, path):
+        """GitHub refuses the workflow token init pushes with any change there, the README included."""
+        data = b"Built with \xe2\x9d\xa4\xef\xb8\x8f by [@tannergolden](https://github.com/tannergolden).\n"
+        assert self.init.workflow_file(path)
+        assert self.call(path, data) is data
+
+    @pytest.mark.parametrize("path", [".github/workflows", ".github/workflows.md", ".github/workflows-old/a.yml",
+                                      "docs/.github/workflows/a.yml", ".github/CODEOWNERS"])
+    def test_only_the_workflow_folder_itself_is_spared(self, path):
+        assert not self.init.workflow_file(path)
+
     def test_invalid_utf8_is_untouched(self):
         data = b"\xff\xfe tannergolden\n"
         assert self.call("notes.md", data) is data

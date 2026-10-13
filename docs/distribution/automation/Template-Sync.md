@@ -110,7 +110,9 @@ How the file is read:
 - **What the template keeps for itself never arrives.** A file named under
   `# --- Only ever in the template` - the sentinel, a contract only the template is held to - was
   deleted by initialisation and has no baseline here, so no sync offers it. Its line stays,
-  switched off: take the `#` away and the next sync adds it.
+  switched off: take the `#` away and the next sync adds it. A workflow file is the one exception:
+  GitHub lets the workflow token change nothing under `.github/workflows/`, so initialisation leaves
+  it in place, names it, and you delete it. No sync touches it while its line is off.
 
 > [!WARNING]
 > **A deleted list is restored, not obeyed.** Deleting `.github/template-sync` might mean "stop", so
@@ -282,7 +284,7 @@ The engine is tested here, on real git repositories, with no network:
 | `tests/template-sync-edges.py`      | The cases review and real use found: edits, deletions, choices, indexes, ignores |
 | `tests/template-sync-mapping.py`    | A mapped sync: relocations, replaced text, exclusions, and its own lock and list |
 | `tests/template-sync-workflow.py`   | The workflow, the action, the token policy, the issue, and init's first lock     |
-| `tests/init-template-removal.py`    | What init deletes as only the template's, and every sync after it                |
+| `tests/init-template-removal.py`    | What init deletes, the workflows it leaves alone, and every sync after it        |
 
 The random histories carry an **oracle that does not ask the engine**: every line is a unique token,
 so "did the template's change arrive" is a set question. Each known-bad design - one baseline per
@@ -325,7 +327,11 @@ Template Parity contract. A mapping changes four things:
 - **Name what only the template needs under `# --- Only ever in the template`**, one file to a line,
   switched off. Initialisation deletes each of them from every generated repository, leaves them
   out of its lock and redraws every folder log from what is left; the check refuses a line there
-  that is switched on or names anything but one file. A stub any repository might adopt -
+  that is switched on or names anything but one file. It changes nothing under
+  `.github/workflows/`, because GitHub refuses the workflow token any push that does: a workflow
+  listed there stays, named for each owner to delete, no identity in that folder is rewritten, and
+  its log is never redrawn. Keep such a workflow inert outside the template, as `is_template`
+  keeps 📐 Template Parity. A stub any repository might adopt -
   🏷️ Cut Release, which a kit consumed by tag uses too - belongs with the owner's files instead,
   where it arrives and stays.
 - **Release with 🏷️ Cut Release.** Generated repositories follow the moving major, so a merge to the

@@ -20,6 +20,13 @@
 # brings one back. A stub any repository might adopt, like 🏷️ Cut Release,
 # belongs under a different heading and stays.
 #
+# ⚠️ NOTHING UNDER .github/workflows/ CHANGES HERE. The push authenticates
+# with the GITHUB_TOKEN, and GitHub refuses it any change in that folder,
+# the README there included; no `permissions:` key grants that right. So a
+# workflow file only the template needs stays, named in the run and the
+# commit for its owner to delete, and nothing else there is rewritten or
+# redrawn. Deleting one used to fail the whole initialisation.
+#
 # ⚠️ THE SENTINEL IS WHAT MAKES THIS RUN EXACTLY ONCE. The template ships
 # `.github/TEMPLATE_INIT`; this removes it on success. Every later trigger
 # finds no sentinel and exits immediately, so the stub can stay in the tree
