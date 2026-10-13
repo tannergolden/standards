@@ -28,6 +28,9 @@
 # line under `# --- Only ever in the template`. Initialisation deletes every
 # one of them before its first commit and the lock it records names none of
 # them, so no sync offers one back unless the owner takes the `#` off its line.
+# A workflow file is left for the owner to delete instead, since GitHub
+# refuses init's token any change under .github/workflows/; no sync touches
+# it either while its line is off.
 #
 # ⚠️ THE BASELINE IS PER FILE, AND THAT IS NOT A DETAIL. Replaying the real
 # history of both templates showed that one baseline for the whole repository
@@ -1815,10 +1818,11 @@ def generation_lock(
     the base every later redraw of the owner's copy is measured against.
 
     ⚠️ WHAT THE LIST KEEPS FOR THE TEMPLATE ALONE IS LEFT OUT. Initialisation
-    deletes it before its first commit, so this repository never holds it. A
-    baseline for it would read that absence as the owner's own deletion: the
-    day they took the `#` off its line to have it, the sync would switch it
-    straight back off and say they had deleted it.
+    deletes it before its first commit, so this repository never holds it -
+    or, a workflow file init may not change, leaves it for the owner to
+    delete. A baseline for it would read that absence as the owner's own
+    deletion: the day they took the `#` off its line to have it, the sync
+    would switch it straight back off and say they had deleted it.
     """
     entries = tree(repo, root or root_commit(repo))
     listed = entries.get(LIST_PATH)

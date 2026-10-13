@@ -502,7 +502,8 @@ class SyncWorld:
         if not init:
             return
         # init's own steps, in init's order: what only the template needs goes
-        # first, the folder logs are redrawn last.
+        # first - a workflow file aside - the folder logs are redrawn last, the
+        # one beside the workflows aside.
         self.init.remove_template_only(self.repo, self.sync)
         for path in sorted(self.repo.rglob("*")):
             if not path.is_file() or ".git" in path.relative_to(self.repo).parts:
@@ -523,7 +524,8 @@ class SyncWorld:
             )
             (self.repo / self.sync.LOCK_PATH).write_text(self.sync.dump_lock(made), encoding="utf-8")
         self.sync.redraw_indexes(self.repo, [p for p in self.git(self.repo, "ls-files", "-z").split("\0")
-                                             if p.endswith(".md")], title="Initialisation")
+                                             if p.endswith(".md") and not self.init.workflow_file(p)],
+                                 title="Initialisation")
         self.git(self.repo, "add", "-A")
         self.git(self.repo, "commit", "-q", "--amend", "-m", "feat: initialise")
 

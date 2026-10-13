@@ -21,20 +21,32 @@
 # parity test was not even inert, since a generated repository's own CI runs
 # every test beside its scripts. The template names each of them, one to a
 # line, under `# --- Only ever in the template` in `.github/template-sync`;
-# every one is deleted before anything is rewritten. Their lines stay in the
-# list, switched off, so the owner still sees what the template ships and
-# can take one back with a sync.
+# every one is deleted before anything is rewritten - but a workflow file,
+# below. Their lines stay in the list, switched off, so the owner still sees
+# what the template ships and can take one back with a sync.
+#
+# ⚠️ NOTHING UNDER .github/workflows/ IS EVER CHANGED HERE. The push below
+# authenticates with the workflow token, and GitHub refuses any push from it
+# that creates, changes or deletes a file in that folder - the README beside
+# the workflows included - whatever the job's permissions say: no
+# `permissions:` key grants that right. Deleting the private template's
+# parity workflow got tannergolden/cheat's push refused, and with it the
+# whole initialisation. So a workflow file only the template needs stays
+# where it is, named in the commit and the run for its owner to delete; no
+# identity is rewritten in that folder; and its folder log is never
+# redrawn, which it never needs, since nothing beside it changed.
 #
 # 🏷️ Cut Release is NOT one of them. It publishes the template's releases,
 # but any repository consumed by tag cuts its own the same way - the
 # Markdown Kit, generated from the public template, does - so it stays,
 # inert until its owner adopts it.
 #
-# EVERY FOLDER LOG IS REDRAWN LAST. A log lists the files beside it, so one
-# naming the sentinel, or a file deleted above, would describe a repository
-# that does not exist; the lock written below belongs in its folder's log
-# too. Redrawn from the finished tree, each row says what its file now says,
-# exactly as 🗂️ Machined Indexes would draw it on the owner's first push.
+# EVERY FOLDER LOG IS REDRAWN LAST, the workflows' aside. A log lists the
+# files beside it, so one naming the sentinel, or a file deleted above, would
+# describe a repository that does not exist; the lock written below belongs
+# in its folder's log too. Redrawn from the finished tree, each row says what
+# its file now says, exactly as 🗂️ Machined Indexes would draw it on the
+# owner's first push.
 #
 # ⚠️ WHAT IT DOES NOT REWRITE: a repository on the template owner's account.
 # The SHARED repositories every consumer calls - `tannergolden/standards`,
@@ -91,6 +103,10 @@ TEXT_SUFFIXES = {
 TEXT_NAMES = {
     "LICENSE", "CODEOWNERS", ".editorconfig", ".gitignore", ".gitattributes",
 }
+
+# The folder whose every file - workflow or not - GitHub refuses to let the
+# workflow token create, change or delete. See the header.
+WORKFLOW_DIR = ".github/workflows/"
 
 
 def run(*args: str, check: bool = True) -> str:
@@ -205,9 +221,19 @@ def rewrite(
     return text
 
 
+def workflow_file(path: str | pathlib.PurePath) -> bool:
+    """Whether GitHub refuses the workflow token any change to `path`: anything under WORKFLOW_DIR."""
+    return pathlib.PurePosixPath(path).as_posix().startswith(WORKFLOW_DIR)
+
+
 def considered(path: pathlib.PurePath) -> bool:
-    """Whether initialisation looks inside a file at all."""
-    if any(part in SKIP_DIRS for part in path.parts):
+    """Whether initialisation looks inside a file at all.
+
+    Never inside a workflow file, whatever its name: initialisation could not
+    push the rewrite, so its identity stays as the template wrote it - and
+    template sync, reproducing init through `initialised()`, agrees.
+    """
+    if any(part in SKIP_DIRS for part in path.parts) or workflow_file(path):
         return False
     return path.suffix in TEXT_SUFFIXES or path.name in TEXT_NAMES
 
@@ -236,9 +262,10 @@ def initialised(
     keeps every byte.
 
     Two things init does lie outside this, and a sync meets neither. A file
-    only the template needs is deleted, and no sync keeps it current or
-    remembers it. A folder log's rows are redrawn, and a sync never compares
-    a log's rows, only the words around them.
+    only the template needs is deleted - or, a workflow file, left as it was
+    generated - and no sync keeps it current or remembers it. A folder log's
+    rows are redrawn, and a sync never compares a log's rows, only the words
+    around them.
     """
     if not considered(pathlib.PurePosixPath(path)):
         return data
@@ -306,8 +333,12 @@ def shape_of(root: pathlib.Path) -> str:
     )
 
 
-def remove_template_only(root: pathlib.Path, sync) -> list[str]:
-    """Delete every tracked file the list keeps for the template alone, and return their paths.
+def remove_template_only(root: pathlib.Path, sync) -> tuple[list[str], list[str]]:
+    """Delete every tracked file the list keeps for the template alone, but a workflow file.
+
+    Returns the paths deleted, and the workflow files left for the owner to
+    delete: GitHub refuses the push of a deleted one, and with it everything
+    else initialisation did.
 
     `sync` is template-sync.py, whose reader decides what the list means, so
     initialisation and every later sync read its heading alike. The list and
@@ -316,17 +347,21 @@ def remove_template_only(root: pathlib.Path, sync) -> list[str]:
     """
     listed = root / sync.LIST_PATH
     if not listed.is_file():
-        return []
+        return [], []
     tracked = [p for p in sync.decode(sync.git(root, "ls-files", "-z")).split("\0") if p]
     only = sync.template_only(listed.read_text(encoding="utf-8", errors="replace"), tracked)
     removed: list[str] = []
+    left: list[str] = []
     for rel in sorted(only - {sync.LIST_PATH, sync.LOCK_PATH}):
         path = root / rel
         if sync.unsafe(rel) or not (path.is_file() or path.is_symlink()):
             continue
+        if workflow_file(rel):
+            left.append(rel)
+            continue
         path.unlink()
         removed.append(rel)
-    return removed
+    return removed, left
 
 
 def main() -> int:
@@ -386,15 +421,20 @@ def main() -> int:
     listed = (root / sync.LIST_PATH).is_file()
 
     # First, before anything is rewritten: a file only the template needs is
-    # deleted, never claimed. The sentinel is usually among them, and is
-    # removed below either way.
+    # deleted, never claimed - but a workflow file, which only its owner can
+    # delete. The sentinel is usually among them, and is removed below either
+    # way.
     try:
-        removed = remove_template_only(root, sync)
+        removed, left = remove_template_only(root, sync)
     except sync.SyncError as exc:
         raise SystemExit(f"::error title=Initialisation::{exc}") from None
     deleted = [path for path in removed if path != sentinel.as_posix()]
     if deleted:
         print(f"Deleted {len(deleted)} file(s) only the template needs: {', '.join(deleted)}.")
+    for path in left:
+        print(f"::warning title=Initialisation::{path} serves only the template, but GitHub lets no workflow "
+              f"token change a workflow file, so it stays. Delete it yourself; its line in {sync.LIST_PATH} "
+              "is switched off, so no sync brings it back.")
 
     changed: list[str] = []
     for path in sorted(root.rglob("*")):
@@ -427,7 +467,8 @@ def main() -> int:
     # below replaces it, so this is the last moment its blobs are known
     # exactly. The lock records them, with the identity just stamped, and
     # every later sync measures the owner's edits against it - every file but
-    # those deleted above, which this repository never holds. Written after
+    # those the list keeps for the template alone, which this repository
+    # never holds once its owner deletes what was left above. Written after
     # the rewrite above, so its own contents are never rewritten.
     if listed:
         lock = sync.generation_lock(
@@ -440,9 +481,11 @@ def main() -> int:
 
     # Last, once the tree is final: every folder log is redrawn from it, so
     # none names the sentinel or a file deleted above, and the lock is logged
-    # beside the list it belongs to.
+    # beside the list it belongs to. Never the log beside the workflows: the
+    # push would be refused for it, and nothing beside it changed.
     try:
-        markdown = [p for p in sync.decode(sync.git(root, "ls-files", "-z")).split("\0") if p.endswith(".md")]
+        markdown = [p for p in sync.decode(sync.git(root, "ls-files", "-z")).split("\0")
+                    if p.endswith(".md") and not workflow_file(p)]
     except sync.SyncError as exc:
         raise SystemExit(f"::error title=Initialisation::{exc}") from None
     redrawn = sync.redraw_indexes(root, markdown, title="Initialisation")
@@ -483,6 +526,16 @@ def main() -> int:
         "Each keeps its line there, switched off. Take the # away from one\n"
         "and run 🔄 Template Sync to have it back.\n"
     ) if deleted else ""
+    # And what is still here, file by file, since only its owner can delete it.
+    stays = (
+        "\n"
+        "It could not delete what only ever served the template under\n"
+        ".github/workflows/, because GitHub lets no workflow token change a\n"
+        "file there. Delete each by hand; its line stays switched off, so no\n"
+        "sync brings it back:\n"
+        "\n"
+        + "".join(f"- {path}\n" for path in left)
+    ) if left else ""
     message = (
         subject + "\n"
         "\n"
@@ -495,7 +548,7 @@ def main() -> int:
         "template's account were deliberately left alone - the shared\n"
         "standards the workflow stubs call among them - because each belongs\n"
         "to that account, not this one.\n"
-        + gone +
+        + gone + stays +
         "\n"
         "Already wired: continuous integration, secret scanning, static\n"
         "analysis, workflow linting, governance automation, and pull request\n"
@@ -554,11 +607,15 @@ def main() -> int:
         f"| Commit identity | `{email}` |\n"
         f"| Files rewritten | {len(changed)} |\n"
         f"| Deleted, only the template needs them | {len(deleted)} |\n"
+        + (f"| Left for you to delete, workflow files only the template needs | {len(left)} |\n" if left else "") +
         f"| Folder logs redrawn | {len(redrawn)} |\n"
         f"| History | {mode} |\n"
         "\n"
         + ("**Deleted:** " + ", ".join(f"`{path}`" for path in deleted) + ". Each keeps its line in "
-           "`.github/template-sync`, switched off.\n\n" if deleted else "") +
+           "`.github/template-sync`, switched off.\n\n" if deleted else "")
+        + ("**Left for you to delete:** " + ", ".join(f"`{path}`" for path in left) + ". GitHub lets no "
+           "workflow token change a workflow file, so initialisation could not. Each keeps its line in "
+           "`.github/template-sync`, switched off, so no sync brings it back.\n\n" if left else "") +
         "The sentinel has been removed, so this workflow is now inert and will not run again.\n"
         "\n"
         "> **Next:** give `.github/workflows/checks.yml` the lint, test, and build commands for "
