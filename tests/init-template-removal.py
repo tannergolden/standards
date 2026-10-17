@@ -11,8 +11,8 @@ scaffolding to clear away by hand.
 
 Every one but a workflow file. Init pushes with the workflow token, and
 GitHub refuses any push from it that changes a file under .github/workflows/:
-deleting the parity workflow cost tannergolden/cheat, generated from the
-private template, its whole initialisation. So that one stays, named for its
+deleting the parity workflow cost a repository generated from the private
+template its whole initialisation. So that one stays, named for its
 owner to delete, and nothing else in its folder changes either - not its
 identity, not its folder log.
 
@@ -97,9 +97,8 @@ def initialise(world, monkeypatch, tmp_path) -> tuple[str, str]:
 
     The push is refused as GitHub refuses it: init pushes with the workflow
     token, and a push that changes anything under .github/workflows/ is
-    turned away whatever the job's permissions - which is how
-    tannergolden/cheat, generated from the private template, stayed
-    uninitialised.
+    turned away whatever the job's permissions - which is how a repository
+    generated from the private template stayed uninitialised.
 
     Returns the commit message it wrote and the step summary it left.
     """
@@ -260,9 +259,9 @@ class TestInitDeletesWhatOnlyTheTemplateNeeds:
 class TestNothingUnderTheWorkflowsChanges:
     """GitHub refuses the workflow token every change there, so init makes none.
 
-    tannergolden/cheat, generated from the private template, failed exactly
-    here: init deleted the parity workflow and redrew the log beside it, and
-    the push of the whole initialisation was refused.
+    A repository generated from the private template failed exactly here:
+    init deleted the parity workflow and redrew the log beside it, and the
+    push of the whole initialisation was refused.
     """
 
     def test_init_pushes_no_change_under_github_workflows(self, shaped, monkeypatch, tmp_path):

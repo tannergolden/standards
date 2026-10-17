@@ -30,8 +30,8 @@
 # that creates, changes or deletes a file in that folder - the README beside
 # the workflows included - whatever the job's permissions say: no
 # `permissions:` key grants that right. Deleting the private template's
-# parity workflow got tannergolden/cheat's push refused, and with it the
-# whole initialisation. So a workflow file only the template needs stays
+# parity workflow once got a generated repository's push refused, and with it
+# the whole initialisation. So a workflow file only the template needs stays
 # where it is, named in the commit and the run for its owner to delete; no
 # identity is rewritten in that folder; and its folder log is never
 # redrawn, which it never needs, since nothing beside it changed.
