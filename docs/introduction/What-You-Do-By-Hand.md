@@ -74,7 +74,7 @@ Dispatch **🎯 Apply Standards** from the Actions tab. Settings first, protecti
 > [!TIP]
 > **The dispatch form resets its toggles if you change the branch dropdown afterwards.** Set the branch first, the toggles last, or you will get a dry run you did not ask for. The summary always states which it was.
 
-A healthy repository re-planned in dry run reports `0 change(s)`. Anything else is real drift. What each setting is and why: [⚙️ Repository Settings](../operations/Repository-Settings.md).
+A healthy repository re-planned in dry run reports `0 change(s)` and writes nothing. Anything else is real drift, and `fail-on-drift: true` turns that dry run into a check that fails on it, which a scheduled dispatch can run for you. What each setting is and why: [⚙️ Repository Settings](../operations/Repository-Settings.md).
 
 ---
 

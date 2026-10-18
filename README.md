@@ -70,7 +70,7 @@ the template alone needs, which its list names.
 | :-------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
 | [`.github/workflows/`](.github/workflows/README.md) | 24 reusable workflows, called with `uses:` at the job level, plus two local to this repository: `self-checks.yml` and `self-dependabot.yml` |
 | [`actions/`](actions/README.md)                     | 17 composite actions, called with `uses:` at the step level                                                                                 |
-| [`data/`](data/README.md)                           | Rulesets and the label taxonomy, written **to** a repository                                                                                |
+| [`data/`](data/README.md)                           | Rulesets, the label taxonomy and the repository settings, written **to** a repository                                                       |
 | `config/`                                           | Linter and tooling configuration, read **by** a tool during a run                                                                           |
 | `docs/`                                             | The standards themselves, followed by link. Start at the standards index                                                                    |
 | `scripts/`                                          | Helpers the actions above ship and invoke                                                                                                   |

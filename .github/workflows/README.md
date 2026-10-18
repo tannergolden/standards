@@ -73,18 +73,18 @@ labels, settings and rulesets through the API and never touches your tree. See
 
 ### Operations
 
-| Workflow                   | Does                                                                                                                                       |
-| :------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
-| `governance.yml`           | Welcomes newcomers, labels pull requests, ages out and locks threads, syncs labels                                                         |
-| `auto-format.yml`          | Repairs formatting drift as a pull request. Any formatter                                                                                  |
-| `auto-index.yml`           | Regenerates every machined index, folder logs included, as a pull request                                                                  |
-| `issue-ops.yml`            | `/assign`, `/unassign`, `/label` slash commands                                                                                            |
-| `ci-failure-alert.yml`     | Opens an issue when a watched workflow fails, closes it on recovery                                                                        |
-| `dependabot-automerge.yml` | Approves and queues patch and minor updates. Majors need a human                                                                           |
-| `apply-standards.yml`      | Writes the label taxonomy and, opt-in, the rulesets                                                                                        |
-| `init-template.yml`        | Claims a generated repository for its new owner, once, then goes inert                                                                     |
-| `standards-version.yml`    | Opens one issue when a newer major exists. Never edits a pin                                                                               |
-| `template-sync.yml`        | Brings a generated repository up to date with its template as one pull request, only when its owner runs it; checks the list in a template |
+| Workflow                   | Does                                                                                                                                                    |
+| :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `governance.yml`           | Welcomes newcomers, labels pull requests, ages out and locks threads, syncs labels                                                                      |
+| `auto-format.yml`          | Repairs formatting drift as a pull request. Any formatter                                                                                               |
+| `auto-index.yml`           | Regenerates every machined index, folder logs included, as a pull request                                                                               |
+| `issue-ops.yml`            | `/assign`, `/unassign`, `/label` slash commands                                                                                                         |
+| `ci-failure-alert.yml`     | Opens an issue when a watched workflow fails, closes it on recovery                                                                                     |
+| `dependabot-automerge.yml` | Approves and queues patch and minor updates. Majors need a human                                                                                        |
+| `apply-standards.yml`      | Writes the label taxonomy and, opt-in, every repository setting with a standard value and the rulesets; a dry run with `fail-on-drift` is a drift check |
+| `init-template.yml`        | Claims a generated repository for its new owner, once, then goes inert                                                                                  |
+| `standards-version.yml`    | Opens one issue when a newer major exists. Never edits a pin                                                                                            |
+| `template-sync.yml`        | Brings a generated repository up to date with its template as one pull request, only when its owner runs it; checks the list in a template              |
 
 ### Pruning and release
 
@@ -165,8 +165,8 @@ silent in the template and come alive in the repository generated from it. `cut-
 reverse: it runs only in the template until a repository released by tag - a kit, an action -
 adopts it. `template-sync.yml` checks its list there.
 
-Then run **🎯 Apply Standards** once for the label taxonomy and, when you are ready for branch
-protection, the rulesets:
+Then run **🎯 Apply Standards** once for the label taxonomy, once more for the repository
+settings, and, when you are ready for branch protection, the rulesets:
 
 ```yaml
 # .github/workflows/apply-standards.yml
@@ -249,8 +249,9 @@ every published path resolves a pin and would exercise the released copy rather 
   Security). They skip rather than fail, so a private repository does not go permanently red.
 - **The default `GITHUB_TOKEN` cannot push workflow files** and cannot trigger required checks on
   pull requests it opens. Automation degrades gracefully and says which limit it hit.
-- **Rulesets need an admin token.** The default token cannot write them regardless of the
-  permissions a job requests.
+- **Settings and rulesets need an admin token.** The default token cannot write either regardless
+  of the permissions a job requests, and the settings job checks the token administers the
+  repository before it compares anything.
 - **`uses: ./...` does not work inside a reusable workflow.** A relative path resolves against the
   _calling_ repository's checkout, which is why every internal reference here is absolute and pinned.
 

@@ -31,13 +31,13 @@ That is also the line between this folder and `config/`. Anything **written to**
 here; anything **read by** a tool during a run lives in `config/`. The labeler rules are read by the
 labeler action at run time, so they are configuration, not state.
 
-| File                                         | Applied to                                                              |
-| :------------------------------------------- | :---------------------------------------------------------------------- |
-| `rulesets/protect-integration-branches.json` | Your default branch, plus `Experimental`/`Development`                  |
-| `rulesets/protect-promotion-branches.json`   | `Preview` and `Release`                                                 |
-| `rulesets/protect-release-tags.json`         | Full version tags: never moved while they exist, pruned when superseded |
-| `labels.yml`                                 | The label taxonomy, create-or-update, never pruning                     |
-| `repository-settings.json`                   | Merge strategy, workflow-token permissions, and the security features   |
+| File                                         | Applied to                                                                                                                                                       |
+| :------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rulesets/protect-integration-branches.json` | Your default branch, plus `Experimental`/`Development`                                                                                                           |
+| `rulesets/protect-promotion-branches.json`   | `Preview` and `Release`                                                                                                                                          |
+| `rulesets/protect-release-tags.json`         | Full version tags: never moved while they exist, pruned when superseded                                                                                          |
+| `labels.yml`                                 | The label taxonomy, create-or-update, never pruning                                                                                                              |
+| `repository-settings.json`                   | Every repository setting with a standard value: the repository object, the Actions policies, the security features and release immutability, one reason per line |
 
 > [!NOTE]
 > **These do not assume your branch names.** The first ruleset targets `~DEFAULT_BRANCH`, a ref
@@ -106,6 +106,14 @@ Anyone who wants exactness for good pins a commit SHA, which nothing here delete
   no-op run makes zero API calls and reports `N unchanged`. Anything else in that summary is a real
   difference between the registry and the repository. Run it with `DRY_RUN=true` to see the plan
   first.
+- **Every setting carries its reason.** A key added to `repository-settings.json` needs an entry in
+  the `_why` block beside its group, and the suite fails without one; a setting deliberately left
+  out goes in `_excluded` with the reason. [`scripts/apply-settings.py`](../scripts/apply-settings.py)
+  refuses a key it does not know and the handful it never writes, so a typo fails the run naming
+  itself rather than quietly applying nothing.
+- **A settings change reaches every repository it is reapplied to, and a drift check shows it
+  first.** Dispatch 🎯 Apply Standards with `dry-run` on in one repository after editing the file:
+  the plan names every line the change would write.
 - **The label reference is generated.** `docs/references/Repository-Labels.md` builds its tables from
   this file via [`scripts/update-label-docs.py`](../scripts/update-label-docs.py), which reports
   drift when run with `--check`. Edit the registry and re-run the script; never edit the tables.

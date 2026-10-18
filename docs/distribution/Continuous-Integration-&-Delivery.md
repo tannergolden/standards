@@ -125,9 +125,9 @@ Every action in these workflows is pinned to a full commit SHA, and **the two re
 
 <strong>🔐 Secrets, Permissions, & Approvals</strong>
 
-- Store secrets in **GitHub Environments** (`preview`, `release` - the `release` environment is created and branch-gated to `Release` automatically at init).
+- Store secrets in **GitHub Environments** (`preview`, which the first preview deploy creates; the release chain declares no environment, and a stub calling a reusable workflow cannot add one).
 - Use **OpenID Connect (OIDC)** (`id-token: write`) to issue cloud tokens without static keys when possible.
-- Require **reviewers** for the `preview`/`release` environments to gate deployments.
+- Require **reviewers** for the `preview` environment to gate deployments.
 - Restrict who can trigger promotions (CODEOWNERS + environment rules).
 
 ---

@@ -2,27 +2,35 @@
 #
 # ⚙️ Apply Repository Settings
 #
-# Purpose: brings a repository's SETTINGS in line with the published set:
-# squash-only merges, the pull request title and body as the commit, head
-# branches deleted on merge, auto-merge available, sign-off required on web
-# edits, Issues and Discussions on, the Actions workflow-token and fork
-# pull request policies, and the security features the standards assume are
-# on. The plan is written to the step summary as well as the log.
+# Purpose: brings a repository's SETTINGS in line with the published set, in
+# four groups: the repository object (squash-only merges, the pull request
+# title and body as the commit, head branches deleted on merge, auto-merge,
+# sign-off on web edits, Issues and Discussions on); the Actions policies
+# under Settings → Actions → General (Actions on, no SHA-pinning requirement,
+# the workflow token on read and write, pull request approval, the fork
+# policies for public and private repositories, outside access, retention);
+# the security features (secret scanning and its push protection, generic and
+# AI detection, Dependabot alerts and security updates, private vulnerability
+# reporting, CodeQL default setup off so the shipped stub stays the scanner);
+# and release immutability. The plan is written to the step summary as well
+# as the log, and the counts to the step's outputs.
 #
 # ⚠️ SETTINGS ONLY, NEVER RULESETS. Branch and tag protection is a separate
 # action for a separate reason: a wrong ruleset blocks every merge in the
 # repository, while a wrong setting is a checkbox. Keeping them apart means
 # turning on secret scanning cannot cost you the merge button.
 #
-# READ BEFORE WRITE. Each setting is compared against its current value and
-# only differences are sent, so a second run reports `0 change(s)` and makes
-# one API call. That is what makes this safe to run on a schedule.
+# READ BEFORE WRITE. Each setting is compared against what the repository
+# reports and only differences are sent, so a second run makes no write and
+# reports `0 change(s)`. That is what makes this safe to run on a schedule,
+# and with `fail-on-drift` a scheduled dry run is a drift check.
 #
-# ⚠️ SOME FEATURES ARE GATED, AND A SKIP IS NOT A FAILURE. Secret scanning is
-# free on public repositories and needs Advanced Security on private ones;
-# private vulnerability reporting is public-only. Both are detected and
-# skipped with a notice, because a repository that cannot have a feature has
-# not misconfigured anything.
+# ⚠️ SOME FEATURES ARE GATED, AND A SKIP IS NOT A FAILURE. Fork approvals are
+# public-only and the private-fork policy private-only; secret scanning is
+# free on public repositories and needs Secret Protection on private ones;
+# code scanning needs Code Security on a private repository. Each case is
+# detected and skipped with its reason on the plan line, because a repository
+# that cannot have a feature has not misconfigured anything.
 #
 # Used as:
 #
@@ -43,6 +51,8 @@ inputs:
       Token that can administer the target repository. The default
       GITHUB_TOKEN cannot change repository settings, so this needs a PAT or
       app token with administration write, the same one the rulesets use.
+      The run checks the token administers the repository before it compares
+      anything, and names the fix when it does not.
     required: true
   repository:
     description: 'Repository to configure, as owner/repo.'
@@ -52,7 +62,8 @@ inputs:
     description: >-
       Path to a settings JSON in the CALLING repository. Empty uses the
       published set. Name a file to depart from the standard deliberately
-      rather than by drift.
+      rather than by drift; a key the script does not know, or one it never
+      writes, is refused by name.
     required: false
     default: ''
   dry-run:
@@ -63,16 +74,43 @@ inputs:
       intent yet.
     required: false
     default: 'false'
+  fail-on-drift:
+    description: >-
+      With dry-run: fail when the plan is not empty, so a scheduled dry run
+      becomes a drift check. A healthy repository passes with `0 change(s)`;
+      anything else fails naming every setting that differs. Ignored when
+      dry-run is false, where the differences are applied instead.
+    required: false
+    default: 'false'
+
+outputs:
+  changes:
+    description: 'How many settings differ from the published set (and were applied, outside a dry run).'
+    value: ${{ steps.apply.outputs.changes }}
+  unchanged:
+    description: 'How many settings already matched.'
+    value: ${{ steps.apply.outputs.unchanged }}
+  skipped:
+    description: 'How many settings were skipped as unavailable on this repository, each with its reason in the plan.'
+    value: ${{ steps.apply.outputs.skipped }}
+  failed:
+    description: 'How many changes GitHub refused. Zero unless the step failed.'
+    value: ${{ steps.apply.outputs.failed }}
+  drift:
+    description: "'true' when anything differed from the published set, 'false' when nothing did."
+    value: ${{ steps.apply.outputs.drift }}
 
 runs:
   using: composite
   steps:
     - name: '⚙️ Apply repository settings'
+      id: apply
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
         TARGET_REPO: ${{ inputs.repository }}
         DRY_RUN: ${{ inputs.dry-run }}
+        FAIL_ON_DRIFT: ${{ inputs.fail-on-drift }}
         OVERRIDE_FILE: ${{ inputs.settings-file }}
       run: |
         set -euo pipefail
@@ -81,4 +119,4 @@ runs:
         else
           export SETTINGS_FILE="${GITHUB_ACTION_PATH}/../../data/repository-settings.json"
         fi
-        bash "${GITHUB_ACTION_PATH}/../../scripts/apply-settings.sh"
+        python3 "${GITHUB_ACTION_PATH}/../../scripts/apply-settings.py"

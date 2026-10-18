@@ -3,8 +3,21 @@
 # 🎯 Apply Standards
 #
 # Purpose: writes the label taxonomy into a repository, and optionally the
-# branch and tag rulesets, and optionally the repository settings. Three
+# repository settings, and optionally the branch and tag rulesets. Three
 # jobs, nothing else.
+#
+# THE SETTINGS JOB COVERS EVERY SETTING WITH A STANDARD VALUE, in four groups
+# that data/repository-settings.json spells out with a reason per line: the
+# repository object (merge policy, community surfaces, sign-off), the Actions
+# policies (Actions on, no SHA-pinning requirement, the workflow token, pull
+# request approval, both fork policies, outside access, retention), the
+# security features (secret scanning with push protection and generic and AI
+# detection, Dependabot alerts and security updates, private vulnerability
+# reporting, CodeQL default setup off so the shipped stub stays the scanner),
+# and release immutability. Everything is compared before it is written, so a
+# healthy repository plans `0 change(s)` and makes no write; everything gated
+# by visibility or plan is skipped with its reason. Pass `fail-on-drift` with
+# a dry run to make a scheduled dispatch a drift check.
 #
 # ⚠️ IT DOES NOT INSTALL STUBS. It once did, and the trigger files now ship
 # in the template repositories instead, which is where a consumer gets them.
@@ -12,10 +25,10 @@
 # the stub is still the one thing a consumer must hold; it simply arrives by
 # generating from a template rather than by a pull request from here.
 #
-# ⚠️ RULESETS REQUIRE AN ADMIN TOKEN. The default GITHUB_TOKEN cannot write
-# them at all, no matter what permissions the job requests. Provide a PAT or
-# GitHub App token with administration write as ADMIN_TOKEN. Without one,
-# labels still apply and the ruleset step says clearly why it was skipped.
+# ⚠️ SETTINGS AND RULESETS REQUIRE AN ADMIN TOKEN. The default GITHUB_TOKEN
+# cannot write either, no matter what permissions the job requests. Provide a
+# PAT or GitHub App token with administration write as ADMIN_TOKEN. Without
+# one, labels still apply and the other two jobs say clearly why they stopped.
 #
 # ⚠️ RUN IT WITH dry-run FIRST. A ruleset names required status checks, and
 # a check that never reports blocks every merge in the repository. The dry
@@ -61,11 +74,11 @@ on:
         default: true
       apply-settings:
         description: >-
-          Write the repository settings: squash-only merges, the pull
-          request title and body as the commit, head branches deleted on
-          merge, auto-merge available, the workflow-token policy, and the
-          security features. Off by
-          default because it needs the same admin token the rulesets do.
+          Write the repository settings: the merge policy and community
+          surfaces, every Actions policy under Settings → Actions → General,
+          the security features, and release immutability, each compared
+          before it is written. Off by default because it needs the same
+          admin token the rulesets do.
         required: false
         type: boolean
         default: false
@@ -85,6 +98,15 @@ on:
         required: false
         type: boolean
         default: true
+      fail-on-drift:
+        description: >-
+          Settings only, and only with dry-run: fail the settings job when
+          anything would change, naming every setting that differs. A
+          healthy repository passes with `0 change(s)`, which makes a
+          scheduled dry run a drift check. Ignored when dry-run is false.
+        required: false
+        type: boolean
+        default: false
       labels-file:
         description: 'Path to a label taxonomy in the CALLING repository. Empty uses the shared one.'
         required: false
@@ -100,6 +122,17 @@ on:
         required: false
         type: string
         default: ''
+    outputs:
+      settings-changes:
+        description: >-
+          How many settings differed from the published set, when the
+          settings job ran. Empty when it did not.
+        value: ${{ jobs.settings.outputs.changes }}
+      settings-drift:
+        description: >-
+          'true' when the settings job found anything differing from the
+          published set, 'false' when nothing did. Empty when it did not run.
+        value: ${{ jobs.settings.outputs.drift }}
     secrets:
       ADMIN_TOKEN:
         description: >-
@@ -161,6 +194,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions: {}
+    outputs:
+      changes: ${{ steps.apply.outputs.changes }}
+      drift: ${{ steps.apply.outputs.drift }}
     steps:
       - name: '🛡️ Harden Runner'
         uses: tannergolden/standards/actions/harden@v1
@@ -185,11 +221,13 @@ jobs:
           persist-credentials: false
 
       - name: '⚙️ Apply Repository Settings'
+        id: apply
         uses: tannergolden/standards/actions/apply-settings@v1
         with:
           token: ${{ secrets.ADMIN_TOKEN }}
           settings-file: ${{ inputs.settings-file }}
           dry-run: ${{ inputs.dry-run }}
+          fail-on-drift: ${{ inputs.fail-on-drift }}
 
       - name: '📝 Next Step'
         if: ${{ inputs.dry-run }}
