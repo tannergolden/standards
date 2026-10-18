@@ -114,8 +114,8 @@ runs:
       #
       # Suppressed inline rather than in config/zizmor.yml because that file
       # keys ignores by BASE FILE NAME, and every composite action here is
-      # `action.yml` - an entry there would silence this audit across all
-      # fifteen of them. See the note in config/zizmor.yml.
+      # `action.yml` - an entry there would silence this audit across every
+      # one of them. See the note in config/zizmor.yml.
       run: | # zizmor: ignore[github-env]
         set -euo pipefail
         # Runner images expose each preinstalled JDK as JAVA_HOME_<major>_X64,

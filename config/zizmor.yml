@@ -102,7 +102,7 @@ rules:
   # `github-env` on the Java selection step in `actions/setup/action.yml`.
   # Entries here are keyed by base file name, and every composite action in
   # this repository is named `action.yml`, so an entry would silence that
-  # audit across all fifteen of them rather than the one step that earned
+  # audit across every one of them rather than the one step that earned
   # it. The reasoning travels with the code, in the comment above that step.
   #
   # That is the only reason to accept a finding inline. Anything a file name
