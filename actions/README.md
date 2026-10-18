@@ -62,6 +62,7 @@ only describes jobs is a workflow.
 | `prune-workflow-runs` | script                    | Deletes old runs, keeping recent history and anything in flight                                  |
 | `apply-settings`      | script                    | Brings a repository's settings in line with the published set                                    |
 | `update-indexes`      | script                    | Regenerates, or checks, every machined index in a repository                                     |
+| `machined-blocks`     | script                    | Fails when a block marked with its own hash, such as `INTELLIGENCE`, was edited by hand          |
 | `template-sync`       | script                    | Brings a generated repository up to date with its template, on request; checks a template's list |
 
 ---

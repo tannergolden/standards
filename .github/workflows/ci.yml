@@ -216,6 +216,13 @@ jobs:
             echo "::notice title=Doc lint skipped::No 'lint-docs' target in a Makefile."
           fi
 
+      # A block another repository renders and marks with its own hash, such
+      # as the INTELLIGENCE block in AGENTS.md, must still match that hash.
+      # The next delivery overwrites a hand edit silently; this fails the
+      # pull request that makes one. A repository with no such block passes.
+      - name: '🧠 Verify Machined Blocks'
+        uses: tannergolden/standards/actions/machined-blocks@v1
+
       - name: '🧪 Run Tests'
         id: test
         env:
