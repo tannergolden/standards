@@ -125,6 +125,9 @@ git push --force-with-lease
 git config alias.cs "commit -s"
 ```
 
+> [!WARNING]
+> **`-s` signs off as the committer.** In an agent session whose git identity is the tool's own, it signs as the agent, which the commit check rejects. There, name the person explicitly: `git commit --author='<you>' --trailer 'Signed-off-by: <you>'`, and for a branch, `git rebase --exec "git commit --amend --no-edit --trailer 'Signed-off-by: <you>'" @{upstream}`.
+
 ---
 
 ## 🚑 Emergency: The Hotfix Path

@@ -92,7 +92,7 @@ The first half is barely a rule. Git already records the person making the commi
 | :---------------- | :----------------------------------------------------- | :---------------------------------------------- |
 | Author            | Whoever is contributing the commit. Never an AI        | Read from `user.name` and `user.email`          |
 | `Co-Authored-By:` | Everyone else who contributed, an AI always among them | A trailer in the body, one line per contributor |
-| `Signed-off-by:`  | The person certifying the DCO, normally the author     | `git commit -s`                                 |
+| `Signed-off-by:`  | The person certifying the DCO, normally the author     | `git commit -s`, or `--trailer` for an agent    |
 
 **"Always a co-author" is about the slot, not the frequency.** An AI is always credited in the trailer rather than the author field, and the trailer appears only on the commits it actually contributed to. A commit the contributor wrote by hand carries none, even in a session where an agent helped with something else an hour earlier. The trailer records who worked on these changes, not who was in the room.
 
@@ -131,11 +131,15 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Signed-off-by: Ada Lovelace <00000000+ada@users.noreply.github.com>
 ```
 
-Where the configured identity cannot be changed, override it per commit, using the contributor's own name and address and not one invented for the purpose:
+Where the configured identity cannot be changed, override it per commit, using the contributor's own name and address and not one invented for the purpose. Add the sign-off as an explicit trailer as well, because `-s` signs off as the **committer**, and where the identity cannot be changed the committer is the agent:
 
 ```bash
-git commit -s --author='Ada Lovelace <00000000+ada@users.noreply.github.com>'
+git commit --author='Ada Lovelace <00000000+ada@users.noreply.github.com>' \
+  --trailer 'Signed-off-by: Ada Lovelace <00000000+ada@users.noreply.github.com>'
 ```
+
+> [!WARNING]
+> **`git commit -s --author=<you>` signs off as the agent.** `--author` changes the author and nothing else; `-s` reads the committer, which is still the tool's own identity, so the commit carries an AI's sign-off. The ✍️ Commit Messages check rejects an AI author, an AI sign-off, and sign-offs none of which is the author's.
 
 > [!NOTE]
 > **Use the contributor's GitHub noreply address, not a personal one.** It is the address the contribution graph resolves, so it credits the right person, and it keeps a private inbox out of a history that is public and permanent. A commit is not redactable: a rewrite replaces the object and leaves the original reachable by SHA for anyone who already has it.
@@ -198,7 +202,7 @@ Not enforced, and encouraged. One emoji after the colon reads well in a long log
 2. **Write the message**: `type(scope): subject`, a blank line, then the body.
 3. **Credit whoever contributed**: a `Co-Authored-By:` trailer per additional contributor, an AI included, and only where they contributed to this commit. An AI never takes the author field, and checks what `user.name` resolves to before its first commit.
 4. **Sign**: with `commit.gpgsign true` set once, every commit is signed as it is made and lands Verified, under **Every Commit Is Verified** above. Nothing to type per commit.
-5. **Sign off**: `git commit -s` adds the `Signed-off-by` trailer. The required **✍️ DCO Sign-Off** check blocks the merge without it. Forgot? `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` for a whole branch.
+5. **Sign off**: `git commit -s` adds the `Signed-off-by` trailer. The required **✍️ DCO Sign-Off** check blocks the merge without it. Forgot? `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}` for a whole branch. In a session whose git identity is an agent's, `-s` and `--signoff` sign as the agent: add `--trailer 'Signed-off-by: <you>'` instead, and repair a branch with `git rebase --exec "git commit --amend --no-edit --trailer 'Signed-off-by: <you>'" @{upstream}`.
 6. **Push**: `git push -u origin HEAD`.
 7. **Open a pull request** into `Development`.
 
@@ -313,6 +317,7 @@ same expiry that already applies.
 | Subject too long or noisy              | Detail in the wrong place                                                       | Keep the subject under 72 characters and move the detail into the body                                                                                                |
 | Missing breaking-change notice         | Impact not stated                                                               | Add a `BREAKING CHANGE:` footer with details                                                                                                                          |
 | DCO check fails                        | No sign-off trailer                                                             | `git commit --amend -s --no-edit`, or `git rebase --signoff @{upstream}`                                                                                              |
+| Commit check rejects the author        | An AI authored or signed off the commit, or no sign-off is the author's         | `git commit --amend --no-edit --author='<you>' --trailer 'Signed-off-by: <you>'`                                                                                      |
 | The log shows an agent as the author   | The resolved identity is the tool, usually from a global config the harness set | Set `user.name` and `user.email` to the contributor, then `git commit --amend --reset-author`. Already pushed? Leave it and fix the identity, or rewrite deliberately |
 | Em dash rejected                       | Character in the message                                                        | Replace with a comma, a colon, parentheses, or a spaced hyphen                                                                                                        |
 | Commit shows Unverified, `unsigned`    | Signing is off in this clone                                                    | `git config --global commit.gpgsign true`, then `git commit --amend --no-edit -S`, or `git rebase --exec 'git commit --amend --no-edit -S' @{upstream}` for a branch  |
