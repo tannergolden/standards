@@ -47,14 +47,14 @@ Initialisation then runs on its own: it rewrites the template author's identity 
 
 Two of the three 🎯 Apply Standards jobs need a credential the built-in `GITHUB_TOKEN` can never have. Making it is yours, once:
 
-| Field                      | Value                                                                               |
-| :------------------------- | :---------------------------------------------------------------------------------- |
-| **Token name**             | `apply-standards-generated-repos`                                                   |
-| **Expiration**             | 30 days                                                                             |
-| **Repository access**      | _Only select repositories_ → the ones generated from the templates                  |
-| **Repository permissions** | **Administration: Read and write**; on a PRIVATE repository also **Contents: Read** |
+| Field                      | Value                                                          |
+| :------------------------- | :------------------------------------------------------------- |
+| **Token name**             | `apply-standards`                                              |
+| **Expiration**             | 7 days                                                         |
+| **Repository access**      | _All repositories_                                             |
+| **Repository permissions** | **Administration: Read and write** and **Contents: Read-only** |
 
-Then add it to the repository as a secret named exactly `ADMIN_TOKEN`.
+Then add it to each repository that holds the stub, as a secret named exactly `ADMIN_TOKEN`. _All repositories_ is what lets one token serve every one of them, including repositories you generate later.
 
 The full form, the paste-ready description, and why each value is what it is: [🛡️ Branch Protection → Creating the `ADMIN_TOKEN`](../operations/Branch-Protection.md#-creating-the-admin_token).
 

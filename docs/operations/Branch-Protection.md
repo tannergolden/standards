@@ -139,63 +139,65 @@ fails with that sentence rather than a bare `403` that reads like a bug.
 
 ### Make the token
 
-A **fine-grained personal access token** is the right choice: it can be limited to
-exactly the repositories you name and one permission, which a classic token cannot.
+A **fine-grained personal access token** is the right choice: it carries exactly the
+permissions you grant it and reaches only the repositories of the one owner you pick,
+which a classic token cannot. A classic token with the `repo` scope can push code to
+every repository you can reach, in your account and in every organisation you belong to.
 
 Go to **[Settings → Developer settings → Personal access tokens → Fine-grained
 tokens](https://github.com/settings/personal-access-tokens/new)** and fill the form
 exactly like this:
 
-| Field                      | Value                                                                                         |
-| :------------------------- | :-------------------------------------------------------------------------------------------- |
-| **Token name**             | `apply-standards-generated-repos`                                                             |
-| **Description**            | see below                                                                                     |
-| **Expiration**             | **30 days**                                                                                   |
-| **Repository access**      | _Only select repositories_ → the generated repositories only                                  |
-| **Repository permissions** | **Administration** → **Read and write**; on a PRIVATE repository also **Contents** → **Read** |
+| Field                      | Value                                                                 |
+| :------------------------- | :-------------------------------------------------------------------- |
+| **Token name**             | `apply-standards`                                                     |
+| **Description**            | see below                                                             |
+| **Resource owner**         | Your account, the owner of the repositories that hold the stub        |
+| **Expiration**             | **7 days**                                                            |
+| **Repository access**      | **All repositories**                                                  |
+| **Repository permissions** | **Administration** → **Read and write**; **Contents** → **Read-only** |
+| **Account permissions**    | None                                                                  |
+
+GitHub adds **Metadata** → **Read-only** by itself, and every other permission stays at
+**No access**. [This link](https://github.com/settings/personal-access-tokens/new?name=apply-standards&expires_in=7&administration=write&contents=read)
+opens the form with the name, the expiration and both permissions filled in, which
+leaves the description and the repository access to you.
 
 Description, which you can paste as-is:
 
 ```text
-Writes repository settings and branch and tag rulesets through the Apply
-Standards workflow, on repositories generated from the templates only.
-Administration: Read and write, plus Contents: Read on private repositories.
-Read from the ADMIN_TOKEN secret
-in each repository it is applied to. Safe to revoke: settings and rulesets
-already applied are unaffected, and re-applying only needs a new token.
+Writes repository settings and branch and tag rulesets through the Apply Standards workflow. Reaches all repositories, and is read from the ADMIN_TOKEN secret in each one that holds the Apply Standards stub. Administration: Read and write, plus Contents: Read for private repositories. Safe to revoke: settings and rulesets already applied are unaffected, and re-applying only needs a new token.
 ```
 
-**Select repositories, and select the right ones.** _All repositories_ hands a token
-that can rewrite branch protection to everything you own, including the templates and
-the standards repository itself. Choose _Only select repositories_ and pick the ones
-**generated from the templates**, which are the only repositories this is ever applied
-to. The templates and `standards` are never targets: a template has nothing to protect,
-and the standards repository is a publisher whose settings you manage directly.
+**Choose All repositories.** One token then reaches every repository that holds the
+stub, including any you generate after making it, so the token never needs editing:
+a new repository needs only its secret. It reaches everything else you own as well,
+`standards` and the templates included, and nothing there can read it, because a
+workflow reads only the secrets stored in its own repository and this one is stored
+only where the stub runs. What keeps that reach safe is everything else here: two
+permissions, seven days, and revoking it the moment the work is done.
 
-One token covering the generated repositories you actually run this against is fine,
-and easier to revoke than several. Adding a repository to an existing token is a
-two-click edit, so start narrow.
-
-**Why Contents: Read, and only on a private repository.** Before writing a
-ruleset the run checks that every status check it will require is actually
-declared by a workflow here - a required check nothing can report leaves every
-pull request pending forever. Reading those workflow files needs no permission
-on a public repository and needs `Contents: Read` on a private one. Without it
-the preflight sees no workflows at all and refuses to apply, which is the safe
-answer to the wrong question; the run says so and names this fix.
+**Why Contents: Read.** Before writing a ruleset the run checks that every status
+check it will require is actually declared by a workflow here - a required check
+nothing can report leaves every pull request pending forever. Reading those workflow
+files needs no permission on a public repository and needs `Contents: Read` on a
+private one, and _All repositories_ takes in every private repository you own.
+Without it the preflight sees no workflows at all and refuses to apply, which is the
+safe answer to the wrong question; the run says so and names this fix.
 
 **Why the name matters.** GitHub lists your tokens by name on one page across every
 repository you own. `admin` or `token` tells you nothing six months later, when the
-question is which of five credentials you can safely revoke. Naming it for the job
-and the repositories it covers answers that without opening it.
+question is which of five credentials you can safely revoke. Naming it for the
+workflow that reads it answers that without opening it.
 
-**Why 30 days, and not "No expiration".** Settings and rulesets are applied once
-or twice in a repository's whole life: at setup, and again if the standard changes. A
-credential that can rewrite branch protection should not outlive the ten minutes of
-work it was made for. If it lapses and you need it again, making another takes about
-a minute, which is cheaper than carrying a permanent administration token. Choose a
-longer window only if you have a scheduled job re-applying them, which nothing
-here does.
+**Why 7 days, and not "No expiration".** Settings and rulesets are applied once or
+twice in a repository's whole life: at setup, and again if the standard changes. A
+credential that can rewrite branch protection on every repository you own should not
+outlive the work it was made for, and seven days covers that work with room to spare:
+a dry run everywhere, reading the plans, and the real run. If it lapses and you need
+it again, making another takes about a minute, which is cheaper than carrying a
+permanent administration token. Choose a longer window only if you have a scheduled
+job re-applying them, which nothing here does.
 
 A GitHub App installation token with the same permission works identically, and is
 the better answer for an organisation, where a personal token ties repository
@@ -203,11 +205,16 @@ governance to one person's account.
 
 ### Store it
 
-In the repository that will run the workflow: **Settings → Secrets and variables →
-Actions → New repository secret**, named exactly `ADMIN_TOKEN`.
+In each repository that holds the stub: **Settings → Secrets and variables →
+Actions → New repository secret**, named exactly `ADMIN_TOKEN`. It is the same token
+in every one of them. A personal account has no Actions secret its repositories can
+share, so each keeps its own copy, and when the token expires its replacement goes
+into each of them the same way.
 
-Store it on the repository being protected, not on the standards repository. The
-stub runs in _your_ repository, so that is where the secret is read from.
+Store it on the repositories being protected, never on the standards repository or a
+template: neither is a target. A template has nothing to protect, and the standards
+repository is a publisher whose settings you manage directly. The stub runs in _your_
+repository, so that is where the secret is read from.
 
 ### Then
 
@@ -221,10 +228,12 @@ and `dry-run` left **on**. Read the plans, then run it again with `dry-run` off.
 
 > [!CAUTION]
 > A token with `administration` write can change branch protection, which is the
-> control everything else rests on. Scope it to the generated repositories it is
-> for, give it only that permission, and revoke it at
-> **[Settings → Personal access tokens](https://github.com/settings/tokens)** when
-> the work is done. If it leaks, revoking it is the first move and it is instant.
+> control everything else rests on, and with _All repositories_ it can do that on
+> every repository you own. Give it only the permissions above, store it only where
+> the stub runs, and revoke it at
+> **[Settings → Personal access tokens](https://github.com/settings/personal-access-tokens)**
+> when the work is done rather than waiting out its seven days. If it leaks, revoking
+> it is the first move and it is instant.
 
 ---
 
