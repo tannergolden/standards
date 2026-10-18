@@ -284,6 +284,10 @@ jobs:
           fi
           echo "Credential present."
 
+      # This step sets pipefail, under which make's own exit status read a
+      # declared `build` target as missing, so a package its Makefile builds
+      # would be published unbuilt. `|| true` leaves the answer to grep;
+      # ci.yml says why.
       - name: '🏗️ Build'
         working-directory: ${{ inputs.npm-directory }}
         env:
@@ -292,7 +296,7 @@ jobs:
           set -euo pipefail
           if [ -n "$COMMAND" ]; then
             bash -c "$COMMAND"
-          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^build:'; then
+          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && { make -np 2>/dev/null || true; } | grep -qE '^build:'; then
             make build
           else
             echo "::notice title=No build step::Publishing the tree as it is. Set build-command if the package needs compiling first."

@@ -11,9 +11,9 @@ make it testable would break the architecture the README sets out.
 
 So the shell is not copied here. `workflow_step_shell()` reads the `run:`
 block out of the workflow file that actually ships, and `run_shell()`
-executes it against a temporary directory with the environment Actions
-would provide. A test therefore exercises the shipped code, and editing the
-workflow without editing the test is caught immediately.
+executes it against a temporary directory with the shell and environment
+Actions would provide. A test therefore exercises the shipped code, and
+editing the workflow without editing the test is caught immediately.
 
 Nothing here touches the network. `fake_gh` puts a scripted `gh` on PATH so
 a script that shells out to it gets canned responses and records what it
@@ -75,21 +75,64 @@ def _steps(doc: dict, job_id: str | None) -> list[dict]:
     return doc["jobs"][job_id]["steps"]
 
 
-def workflow_step_shell(rel: str, job_id: str | None, step_id: str) -> str:
+# The command line Actions runs a `run:` block with, by the `shell:` its step
+# names. A step that names none gets `bash -e` on a Linux runner, and
+# `shell: bash` adds pipefail. Running every step as plain `bash` instead let
+# a probe that only fails under pipefail pass here: `make -np | grep -q`
+# reads a declared target as missing once grep stops reading early.
+ACTIONS_SHELLS = {
+    None: ["bash", "-e"],
+    "bash": ["bash", "--noprofile", "--norc", "-eo", "pipefail"],
+    "sh": ["sh", "-e"],
+    "python": ["python3"],
+}
+
+
+class StepShell(str):
+    """A step's `run:` block, carrying the command line Actions runs it with."""
+
+    argv: list[str]
+
+    def __new__(cls, text: str, argv: list[str]):
+        self = super().__new__(cls, text)
+        self.argv = argv
+        return self
+
+
+def _step_shell_name(doc: dict, job_id: str | None, step: dict) -> str | None:
+    """The shell a step runs under: its own, else its job's, else the workflow's."""
+    if "shell" in step:
+        return step["shell"]
+    job = doc.get("jobs", {}).get(job_id, {}) if job_id else {}
+    for scope in (job, doc):
+        shell = (scope.get("defaults") or {}).get("run", {}).get("shell")
+        if shell:
+            return shell
+    return None
+
+
+def workflow_step_shell(rel: str, job_id: str | None, step_id: str) -> StepShell:
     """Return the `run:` shell of one step, read from the file that ships.
 
     `step_id` matches the step's `id:` first and its `name:` second, so a
     step without an id is still addressable. Raising on a miss is
     deliberate: a renamed step must break its test rather than silently
     stop being covered, which is the failure this whole suite exists to
-    prevent elsewhere.
+    prevent elsewhere. The text carries the command line Actions would run
+    it with, which `run_shell()` uses unless a test names another.
     """
     doc = load_yaml(rel)
     for step in _steps(doc, job_id):
         if step.get("id") == step_id or step.get("name") == step_id:
             if "run" not in step:
                 raise AssertionError(f"{rel}: step {step_id!r} has no `run:` block")
-            return step["run"]
+            shell = _step_shell_name(doc, job_id, step)
+            if shell not in ACTIONS_SHELLS:
+                raise AssertionError(
+                    f"{rel}: step {step_id!r} runs under `shell: {shell}`, "
+                    "which ACTIONS_SHELLS cannot reproduce"
+                )
+            return StepShell(step["run"], ACTIONS_SHELLS[shell])
     available = [s.get("id") or s.get("name") for s in _steps(doc, job_id)]
     raise AssertionError(f"{rel}: no step {step_id!r} in job {job_id!r}. Have: {available}")
 
@@ -143,10 +186,14 @@ def run_shell(tmp_path):
 
     The environment is CLEARED apart from what a runner guarantees, so a
     test cannot pass because of a variable that happened to be exported in
-    the developer's shell.
+    the developer's shell. A step read with `workflow_step_shell()` runs
+    under the shell Actions gives it; any other script, and any test that
+    names `shell`, runs under that interpreter alone.
     """
 
-    def _run(script: str, cwd: Path | None = None, env: dict | None = None, shell: str = "bash"):
+    def _run(
+        script: str, cwd: Path | None = None, env: dict | None = None, shell: str | None = None
+    ):
         workdir = Path(cwd) if cwd else tmp_path
         workdir.mkdir(parents=True, exist_ok=True)
         runner_temp = tmp_path / "_runner_temp"
@@ -174,8 +221,9 @@ def run_shell(tmp_path):
 
         script_file = tmp_path / "_step.sh"
         script_file.write_text(script, encoding="utf-8")
+        argv = [shell] if shell else getattr(script, "argv", ["bash"])
         proc = subprocess.run(
-            [shell, str(script_file)],
+            [*argv, str(script_file)],
             cwd=str(workdir),
             env=base,
             capture_output=True,

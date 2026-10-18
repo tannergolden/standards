@@ -192,6 +192,13 @@ jobs:
       # declared rule. `-n` keeps it a dry run, so nothing is built and the
       # default goal does not fire. A directory named after the stage is no
       # longer mistaken for a build system.
+      #
+      # The probe answers through grep alone, with `|| true` keeping make's
+      # own exit status out of it. These steps run without pipefail, but
+      # under it make dies writing the database grep -q has stopped reading,
+      # or exits non-zero for a default goal it cannot dry-run, and either
+      # reads a declared stage as missing. That is how the setup action
+      # never ran `make setup`.
       - name: '✨ Run Linter'
         id: lint
         env:
@@ -199,7 +206,7 @@ jobs:
         run: |
           if [ -n "$COMMAND" ]; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; bash -c "$COMMAND"
-          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^lint:'; then
+          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && { make -np 2>/dev/null || true; } | grep -qE '^lint:'; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; make lint
           else
             echo "ran=false" >> "$GITHUB_OUTPUT"
@@ -209,7 +216,7 @@ jobs:
       - name: '📝 Lint Documentation'
         id: lintdocs
         run: |
-          if { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^lint-docs:'; then
+          if { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && { make -np 2>/dev/null || true; } | grep -qE '^lint-docs:'; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; make lint-docs
           else
             echo "ran=false" >> "$GITHUB_OUTPUT"
@@ -230,7 +237,7 @@ jobs:
         run: |
           if [ -n "$COMMAND" ]; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; bash -c "$COMMAND"
-          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^test:'; then
+          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && { make -np 2>/dev/null || true; } | grep -qE '^test:'; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; make test
           else
             echo "ran=false" >> "$GITHUB_OUTPUT"
@@ -244,7 +251,7 @@ jobs:
         run: |
           if [ -n "$COMMAND" ]; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; bash -c "$COMMAND"
-          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^build:'; then
+          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && { make -np 2>/dev/null || true; } | grep -qE '^build:'; then
             echo "ran=true" >> "$GITHUB_OUTPUT"; make build
           else
             echo "ran=false" >> "$GITHUB_OUTPUT"

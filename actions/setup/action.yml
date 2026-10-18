@@ -176,7 +176,13 @@ runs:
         # Probed against make's target database, not with `make -n setup`:
         # the latter exits 0 for a `setup/` DIRECTORY, so this step reported
         # having installed dependencies while running nothing at all.
-        if { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^setup:'; then
+        #
+        # And answered by grep alone. This step runs under pipefail, where
+        # make's own exit status read a declared target as missing: grep -q
+        # stops reading at its first match, so make dies writing the rest of
+        # its database, and a dry run whose default goal cannot be made exits
+        # non-zero too. `|| true` keeps that status out of the test.
+        if { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && { make -np 2>/dev/null || true; } | grep -qE '^setup:'; then
           make setup
         else
           echo "::notice title=No setup target::This repository's Makefile does not define 'setup', so dependency installation was left to the toolchain steps above."

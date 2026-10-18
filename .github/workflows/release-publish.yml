@@ -297,11 +297,13 @@ jobs:
       # probes before invoking. This one ran it bare, so a Makefile
       # declaring only `build` and `test`, which is an ordinary Makefile,
       # aborted the release job with "No rule to make target 'setup'"
-      # before anything was built, packaged, attested or published.
+      # before anything was built, packaged, attested or published. Its
+      # probe, like the build step's below, answers through grep alone
+      # (`|| true`), for the reason ci.yml gives at its stage steps.
       - name: '📦 Install Dependencies'
         if: ${{ steps.gate.outputs.proceed == 'true' && hashFiles('Makefile') != '' }}
         run: |
-          if { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^setup:'; then
+          if { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && { make -np 2>/dev/null || true; } | grep -qE '^setup:'; then
             make setup
           else
             echo "::notice title=Setup skipped::No 'setup' target in a Makefile, so dependency installation was left to the toolchain steps above."
@@ -314,7 +316,7 @@ jobs:
         run: |
           if [ -n "$COMMAND" ]; then
             bash -c "$COMMAND"
-          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && make -np 2>/dev/null | grep -qE '^build:'; then
+          elif { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && { make -np 2>/dev/null || true; } | grep -qE '^build:'; then
             make build
           else
             echo "::notice title=Build skipped::No build-command input and no 'build' target in a Makefile. This release will carry notes only."
