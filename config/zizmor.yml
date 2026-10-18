@@ -111,16 +111,22 @@ rules:
 
   # --- Pinning policy ---
   #
-  # Everything gets hash-pinned. The single exception is this repository's OWN
+  # Everything gets hash-pinned. The exception is this repository's OWN
   # actions and reusable workflows, which consumers call at the moving major
   # tag `@v1` BY DESIGN: that tag is how a fix reaches every repository at once
   # without 40 Dependabot pull requests, and it is under the same owner as the
   # code it points at. A hash pin here would also be circular, since a stub
   # published from this repository cannot name a commit that does not exist yet.
   #
+  # tannergolden/intelligence is the same case, for the same owner. A
+  # repository's 🔁 Intelligence Sync stub calls its workflow, and that
+  # workflow its action, at the moving major: moving that tag is how a release
+  # of the universal rules reaches every repository that carries the stub.
+  #
   # `ref-pin` still REQUIRES a ref: `@main` or a bare `uses:` is a finding.
   unpinned-uses:
     config:
       policies:
         'tannergolden/standards/*': ref-pin
+        'tannergolden/intelligence/*': ref-pin
         '*': hash-pin
