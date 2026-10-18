@@ -181,3 +181,31 @@ class TestTheDashBanCoversTheSameRange:
         text = CONFIG.read_text(encoding="utf-8")
         for codepoint, name in DASHES:
             assert chr(codepoint) not in text, f"the config contains a literal {name}"
+
+
+SIGNOFF_CASES = [
+    ("Signed-off-by: Ada Lovelace <00000000+ada@users.noreply.github.com>", False),
+    ("Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>", False),
+    ("Signed-off-by: Claude <noreply@anthropic.com>", True),
+    ("Signed-off-by: Codex <codex@openai.com>", True),
+    ("signed-off-by: copilot-swe-agent <198982749+Copilot@users.noreply.github.com>", True),
+]
+
+
+class TestAnAISignOffIsRejectedInBothPlaces:
+    """A sign-off is a person's certification; an AI never makes one."""
+
+    @pytest.mark.parametrize(("trailer", "rejected"), SIGNOFF_CASES)
+    def test_the_ci_gate(self, trailer, rejected):
+        assert ci_rejects(f"fix(api): resolve the crash\n\nBody.\n\n{trailer}") is rejected
+
+    @requires_node
+    @pytest.mark.parametrize(("trailer", "rejected"), SIGNOFF_CASES)
+    def test_the_local_config_agrees(self, trailer, rejected):
+        failed = js_failures(f"fix(api): resolve the crash\n\nBody.\n\n{trailer}")
+        assert ("no-ai-signoff" in failed) is rejected, (
+            f"node says {failed!r} for {trailer!r}; the CI gate says rejected={rejected}"
+        )
+
+    def test_the_rule_is_an_error_not_a_warning(self):
+        assert error_level("no-ai-signoff") == 2, "a warning does not fail a local run"

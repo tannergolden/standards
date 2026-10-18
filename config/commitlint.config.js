@@ -15,7 +15,7 @@
 export default {
   // `extends` inherits the base rules from the widely-used `config-conventional` preset.
   extends: ['@commitlint/config-conventional'],
-  // House plugins. Both mirror `scripts/commit-check.py`, which is the gate
+  // House plugins. Each mirrors `scripts/commit-check.py`, which is the gate
   // that actually blocks a merge; this file is what a contributor runs
   // locally, and the two are only useful if they agree. Every character is
   // built from its code point so this config never contains a banned
@@ -50,6 +50,25 @@ export default {
         // no notion of a leading emoji, and the house style puts an emoji on
         // most subjects. This is the same test as commit-check.py: strip an
         // optional emoji prefix, then require a lowercase ASCII letter.
+        // A sign-off is a person's certification, so an AI never signs off.
+        // Same names as AI_IDENTITY in commit-check.py, which also checks
+        // the AUTHOR field; that half is not in the message, so it can only
+        // be enforced there.
+        'no-ai-signoff': ({ body, footer }) => {
+          const ai =
+            /\b(claude|anthropic|openai|chatgpt|codex|copilot|gemini|antigravity|cursor|grok|x\.ai|devin)\b/i;
+          const signers = [body, footer]
+            .filter((part) => typeof part === 'string')
+            .join('\n')
+            .split('\n')
+            .filter((line) => /^signed-off-by:/i.test(line.trim()));
+          const bad = signers.find((line) => ai.test(line));
+          return [
+            !bad,
+            `the commit is signed off by an AI (${bad}); the person contributing it signs off, and the AI is credited with Co-Authored-By`,
+          ];
+        },
+
         'subject-lowercase': ({ subject }) => {
           if (typeof subject !== 'string' || subject.length === 0) {
             return [true, ''];
@@ -115,6 +134,7 @@ export default {
     'type-empty': [2, 'never'],
     // House rules, both defined in the plugin above.
     'no-banned-dashes': [2, 'always'],
+    'no-ai-signoff': [2, 'always'],
     'subject-lowercase': [2, 'always'],
   },
 };

@@ -23,6 +23,13 @@
 # together; editing either alone produces a rule nobody enforces or a gate
 # nothing documents.
 #
+# WHO A COMMIT IS BY is checked here too, because the DCO check beside it
+# only counts `Signed-off-by:` lines and never asks whose they are. An AI
+# is never the author and never signs off (docs/distribution/
+# Conventional-Commits.md), and a commit that carries sign-offs carries its
+# author's. The sign-off half is in the message, so commitlint has it too;
+# the author half is not, so only this gate can read it.
+#
 # EXEMPT BY CONTRACT, matching the DCO check so one pull request cannot pass
 # one gate and fail the other on the same commit:
 #   - bot-authored commits, which follow their own conventions
@@ -55,6 +62,15 @@ DEFAULT_TYPES = (
 # belongs in a commit message and a range is harder to get wrong than a
 # single code point. Written as escapes so this file never contains one.
 BANNED_DASHES = re.compile("[\u2013-\u2015]")
+
+# An AI's name or address, in an author field or a sign-off. Co-Authored-By
+# is deliberately not checked: crediting the model there is the rule. Kept
+# in step with the same list in config/commitlint.config.js.
+AI_IDENTITY = re.compile(
+    r"\b(claude|anthropic|openai|chatgpt|codex|copilot|gemini|antigravity|cursor|grok|x\.ai|devin)\b",
+    re.I,
+)
+SIGNOFF = re.compile(r"(?im)^signed-off-by:\s*(.+?)\s*$")
 
 # An optional leading emoji and space. The pull request title check encodes
 # the same thing as UTF-16 surrogate pairs, because the JavaScript action
@@ -169,6 +185,35 @@ def problems_for(message: str, types: list[str], max_header: int) -> list[str]:
     if BANNED_DASHES.search(message):
         found.append("it contains an em dash (use a comma, a colon, or a spaced hyphen)")
 
+    for signer in SIGNOFF.findall(message):
+        if AI_IDENTITY.search(signer):
+            found.append(
+                f"it is signed off by an AI ({signer}); the person contributing it signs off, "
+                "and the AI is credited with Co-Authored-By"
+            )
+
+    return found
+
+
+def identity_problems(commit: dict) -> list[str]:
+    """What is wrong with WHO a commit is by: an AI author, or sign-offs without the author's."""
+    author = (commit.get("commit") or {}).get("author") or {}
+    name, email = (author.get("name") or "").strip(), (author.get("email") or "").strip()
+    message = (commit.get("commit") or {}).get("message") or ""
+    found = []
+    if AI_IDENTITY.search(f"{name} {email}"):
+        found.append(
+            f"its author is an AI ({name} <{email}>); author it as the person contributing it, "
+            "with `git commit --author`"
+        )
+        return found
+    signers = SIGNOFF.findall(message)
+    mine = f"{name} <{email}>".lower()
+    if signers and not any(signer.lower() == mine for signer in signers):
+        found.append(
+            f"no sign-off is its author's ({name} <{email}>); add it with "
+            f"`--trailer 'Signed-off-by: {name} <{email}>'`"
+        )
     return found
 
 
@@ -192,7 +237,7 @@ def main() -> int:
             continue
 
         checked += 1
-        found = problems_for(message, types, max_header)
+        found = problems_for(message, types, max_header) + identity_problems(commit)
         if found:
             offenders.append((sha, message.split("\n", 1)[0].strip(), found))
 
@@ -215,7 +260,8 @@ def main() -> int:
             handle.write(
                 "\n**Fix it:** `git rebase -i @{upstream}`, reword the offending commits, "
                 "then `git push --force-with-lease`. For the most recent commit, "
-                "`git commit --amend` is enough.\n"
+                "`git commit --amend` is enough. For the author and sign-off, "
+                "`git commit --amend --no-edit --author '<you>' --trailer 'Signed-off-by: <you>'`.\n"
             )
     return 1
 
