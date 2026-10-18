@@ -139,6 +139,7 @@ category: docs
 - **No `-->` inside the block**, which would terminate the comment early. In
   practice nothing legitimate in a title, description, or tag list contains it.
 - **Exemption**: `.github/pull_request_template.md` carries no frontmatter **and no decorative header/footer** - GitHub inserts the template verbatim into every new pull-request body, where frontmatter, badges, and taglines would appear as noise. Only the integrity rules (encoding, prompt hygiene, alt text) apply to it.
+- **Exemption**: files an AI agent loads as a skill, subagent or custom agent - `SKILL.md` and every file in its folder, `.claude/agents/*.md`, `*.agent.md` - open with the `---` YAML frontmatter their loaders read, **and carry no decorative header/footer**. A loader reads frontmatter only from a `---` fence on the first line, so the comment form would leave the skill without a name or description, and every line is loaded into the agent's context, where a header is cost without meaning. A skill's folder carries no `README.md` for the same reason: it would ship with the skill. Only the integrity rules (encoding, prompt hygiene, alt text) apply to them.
 
 ---
 
