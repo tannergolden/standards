@@ -59,6 +59,15 @@
 # The distinction is the whole reason this uses targeted rules rather than a
 # blanket find-and-replace.
 #
+# ⚠️ NOR ANYTHING INSIDE A SEALED BLOCK. A block whose marker carries its
+# hash, `<!-- NAME:BEGIN sha256:<hash> -->`, such as the INTELLIGENCE block
+# tannergolden/intelligence delivers into AGENTS.md, belongs to the machine
+# that sealed it, which is why template sync masks one too. Its rules name
+# the template owner on purpose, to say whose repositories the owner's own
+# rules govern; rewriting the handle there broke the seal and handed those
+# rules to every new owner. Each sealed block passes through whole, marker
+# lines included. A marker inside a code fence is an example, not a block.
+#
 # THE EMAIL IS THE `noreply` FORM, AND THAT IS DELIBERATE. GitHub keeps
 # account emails private by default and the API returns null for most users,
 # so a real address cannot be read. `ID+login@users.noreply.github.com` is
@@ -108,6 +117,11 @@ TEXT_NAMES = {
 # workflow token create, change or delete. See the header.
 WORKFLOW_DIR = ".github/workflows/"
 
+# A sealed block's opening marker and a code fence, read as template sync
+# reads them. See the header: nothing inside a sealed block is rewritten.
+SEALED_BEGIN = re.compile(r"<!--\s*(?P<name>[A-Z][A-Z0-9_-]*(?::[A-Z][A-Z0-9_-]*)*):BEGIN\s+sha256:[0-9a-f]{64}\s*-->")
+FENCE = re.compile(r"^(?:```|~~~)")
+
 
 def run(*args: str, check: bool = True) -> str:
     result = subprocess.run(args, capture_output=True, text=True, check=False)
@@ -141,6 +155,32 @@ def summary(text: str) -> None:
             handle.write(text)
 
 
+def sealed_parts(text: str) -> list[tuple[str, bool]]:
+    """`text`, in order, as (part, sealed) pairs: each sealed block whole, its marker lines included.
+
+    Read as template sync reads one: a marker inside a code fence is an
+    example, and a BEGIN that never closes is no block at all.
+    """
+    lines = [line + "\n" for line in text.split("\n")]
+    lines[-1] = lines[-1][:-1]
+    parts: list[tuple[str, bool]] = []
+    start = i = 0
+    fenced = False
+    while i < len(lines):
+        if FENCE.match(lines[i].strip()):
+            fenced = not fenced
+        elif not fenced and (begin := SEALED_BEGIN.search(lines[i])):
+            closing = re.compile(r"<!--\s*" + re.escape(begin.group("name")) + r":END\s*-->")
+            end = next((j for j in range(i + 1, len(lines)) if closing.search(lines[j])), None)
+            if end is not None:
+                parts += [("".join(lines[start:i]), False), ("".join(lines[i:end + 1]), True)]
+                start = i = end + 1
+                continue
+        i += 1
+    parts.append(("".join(lines[start:]), False))
+    return [(part, sealed) for part, sealed in parts if part]
+
+
 def rewrite(
     text: str,
     *,
@@ -157,7 +197,27 @@ def rewrite(
     and a push - which is why the one rule both templates DOCUMENT WRONGLY,
     the contact-link placeholder, had no test at all. A rule and its gate
     change together; this is the gate.
+
+    The rules run only on the text around a sealed block, which passes
+    through whole: the header says why.
     """
+    return "".join(
+        part if sealed else substitute(part, owner=owner, repo=repo, display=display,
+                                       template_owner=template_owner, year=year)
+        for part, sealed in sealed_parts(text)
+    )
+
+
+def substitute(
+    text: str,
+    *,
+    owner: str,
+    repo: str,
+    display: str,
+    template_owner: str,
+    year: int,
+) -> str:
+    """The identity substitutions themselves, on text that holds no sealed block."""
     # Targeted rules, never a blanket replace. The template owner's handle
     # appears both as an identity to rewrite and as the first half of a
     # repository address, which must survive untouched. The last rule below

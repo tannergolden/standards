@@ -228,6 +228,66 @@ class TestANotesAuthor:
             assert rewrite(text) == text, text
 
 
+class TestASealedBlock:
+    """A block sealed with its hash belongs to the machine that sealed it, never to init.
+
+    The line inside is the intelligence block's own, as the vault template ships
+    it: the handle there says whose repositories the owner-only rules govern.
+    """
+
+    BEGIN = "<!-- INTELLIGENCE:BEGIN sha256:" + "0" * 64 + " -->\n"
+    END = "<!-- INTELLIGENCE:END -->\n"
+    INSIDE = (
+        "- Defaults: In forks, and in repositories tannergolden does not own, the project's own rules win "
+        "and owner-only Defaults do not apply; a repository with no remote yet counts as tannergolden's.\n"
+    )
+
+    def test_the_handle_inside_stays_while_the_handle_around_it_moves(self):
+        block = self.BEGIN + self.INSIDE + self.END
+        text = "Ask tannergolden.\n\n" + block + "\nAsk tannergolden.\n"
+        assert rewrite(text) == "Ask newowner.\n\n" + block + "\nAsk newowner.\n"
+
+    def test_no_rule_reaches_inside_one(self):
+        block = (
+            self.BEGIN
+            + "Ask [@tannergolden](https://github.com/tannergolden) about OWNER/REPOSITORY.\n"
+            + "Copyright (c) 2026 Tanner Golden\n"
+            + 'author: "Tanner Golden"\n'
+            + self.END
+        )
+        assert rewrite(block) == block
+
+    def test_the_lines_around_one_still_take_their_owner(self):
+        text = 'author: "Tanner Golden"\n' + self.BEGIN + self.INSIDE + self.END + "Copyright (c) 2026 Tanner Golden"
+        assert rewrite(text) == (
+            'author: "New Owner"\n' + self.BEGIN + self.INSIDE + self.END + "Copyright (c) 2031 New Owner"
+        )
+
+    def test_a_marker_in_a_code_fence_is_an_example(self):
+        text = "```markdown\n" + self.BEGIN + "tannergolden\n" + self.END + "```\n"
+        assert rewrite(text) == text.replace("\ntannergolden\n", "\nnewowner\n")
+
+    def test_a_block_without_its_hash_or_its_end_is_no_seal(self):
+        for text in (
+            "<!-- INTELLIGENCE:BEGIN -->\ntannergolden\n" + self.END,
+            self.BEGIN + "tannergolden\n",
+        ):
+            assert rewrite(text) == text.replace("\ntannergolden\n", "\nnewowner\n"), text
+
+    def test_initialisation_and_template_sync_see_it_alike(self):
+        """Template sync reproduces init through `initialised()`, so the seal holds for both."""
+        data = (self.BEGIN + self.INSIDE + self.END).encode("utf-8")
+        assert init.initialised(
+            "AGENTS.md",
+            data,
+            owner=OWNER,
+            repo=REPO,
+            display="New Owner",
+            template_owner=TEMPLATE_OWNER,
+            year=2031,
+        ) == data
+
+
 class TestItLeavesUnrelatedTextAlone:
     def test_text_with_no_identity_in_it_is_returned_unchanged(self):
         text = "# A heading\n\nSome prose about nothing in particular.\n"

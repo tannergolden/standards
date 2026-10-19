@@ -202,11 +202,12 @@ not bookkeeping - its baseline moves, so the template's next edit to those lines
 ### Your identity, not the template author's
 
 Initialisation rewrote the template author's identity in your repository - the licence holder, the
-documentation footers, the contact links, and the author of every note in a vault. Template sync passes every template file through
-**init's own function** before merging, with the identity init recorded in the lock, so a new file
-arrives with your name in its footer and an unchanged one never looks like your edit. References to
-repositories on the template's account - `tannergolden/standards` above all - are addresses and
-stay as they are.
+documentation footers, the contact links, and the author of every note in a vault. Template sync
+passes every template file through **init's own function** before merging, with the identity init
+recorded in the lock, so a new file arrives with your name in its footer and an unchanged one never
+looks like your edit. References to repositories on the template's account - `tannergolden/standards`
+above all - are addresses and stay as they are, and so does everything inside a sealed block: its
+words belong to the machine that sealed it.
 
 ---
 
