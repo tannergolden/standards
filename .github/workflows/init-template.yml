@@ -8,7 +8,7 @@
 #
 # GitHub's "Use this template" copies files VERBATIM. It substitutes nothing:
 # not the licence holder, not the funding target, not the contact links, not
-# the documentation footers, not the author a vault's notes name. Without this, every generated repository carries
+# the documentation footers, or a YAML `author:` naming the template's author. Without this, every generated repository carries
 # somebody else's name until a human notices, and most never do.
 #
 # Nor does it leave anything out. A template ships files that serve only the

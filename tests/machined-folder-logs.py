@@ -225,7 +225,7 @@ class TestEachEntryDescribesItself:
         assert indexes.describe(str(tmp_path / "src")) == "The source."
 
     def test_a_folder_without_a_readme_is_described_by_its_folder_note(self, tmp_path):
-        # An Obsidian vault names each folder's note after the folder, and
+        # A vault names each folder's note after the folder, and
         # keeps README files for its top folders alone.
         write(tmp_path / "Memory/Context/Context.md", "---\ndescription: \"The session summaries.\"\n---\n")
         assert indexes.describe(str(tmp_path / "Memory/Context")) == "The session summaries."

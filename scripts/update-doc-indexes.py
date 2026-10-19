@@ -49,7 +49,7 @@ out, and the hosting file listed as "This file.". Each row's description is
 what the entry says about itself:
 
   - a folder: its README.md's frontmatter description, else that of the note
-    named after the folder, the way an Obsidian vault describes a folder
+    named after the folder, the way a vault describes a folder
   - Markdown: the frontmatter description, else the opening comment's first
     sentence
   - Python: the first sentence of the module docstring
@@ -438,7 +438,7 @@ def form_markdown(text: str) -> str:
 def describe(path: str) -> str:
     """What a file or folder says about itself, in one sentence, or ''."""
     if os.path.isdir(path):
-        # A folder speaks through its README. An Obsidian vault gives each
+        # A folder speaks through its README. A vault gives each
         # folder a note named after it instead, and a README only to its top
         # folders, so a folder without one is described by that note.
         readme = os.path.join(path, "README.md")

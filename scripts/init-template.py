@@ -247,10 +247,10 @@ def substitute(
         text,
     )
 
-    # A note's author is the person it belongs to. A template of notes, such
-    # as a vault, names its author in each note's frontmatter, and a vault
-    # generated from it is its owner's from the first commit, so the author
-    # follows the owner the way the licence holder does. Only a whole
+    # A YAML `author:` names the person a file belongs to, such as a
+    # manifest's or a document's metadata, and a repository generated from
+    # a template is its owner's from the first commit, so the author follows
+    # the owner the way the licence holder does. Only a whole
     # `author:` value is replaced, quoted as it was and escaped for that
     # quote, so the YAML still parses whatever the display name holds.
     def author(match: re.Match[str]) -> str:
