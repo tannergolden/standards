@@ -324,6 +324,36 @@ Template Parity contract. A mapping changes four things:
 
 ---
 
+## 🧬 A Template Derived From Another
+
+The two golden path templates, the ones named `repo` and `path`, follow no template themselves. A
+repository generated from one of them can be made a template of its own - a vault, a kit, a service
+skeleton - and still take its golden path template's fixes. It runs both jobs: its `check`
+keeps its own list whole, since that list is the one its own generated repositories read, and a
+dispatch of **🔄 Template Sync** syncs it from the template it came from, as a mapped sync.
+
+- **Its derivation is a mapping**, kept in `.github/template-derive.json` in the format above, with
+  `.github/template-derive.lock` as its lock and `.github/template-sync` as its own list. It
+  excludes what this template removed, relocates what it moved and replaces what it reworded.
+- **Every other file of the template it came from arrives**, merged with this template's own
+  changes, and a file that arrives gains a line in its list copying that template's choice, so its
+  own generated repositories keep it current, or leave it to their owners, as the golden path does.
+- **Record its lock once**, at the commit the repository was generated from, while every file that
+  template ships is still here:
+  `template-sync.py lock --template OWNER/REPO --map .github/template-derive.json --template-dir DIR --ref SHA`.
+  Name both files under **Only ever in the template** in its list, so nothing generated from it
+  inherits them.
+- **Without the mapping, a template never syncs.** An ordinary sync redraws a list from the
+  template's, which would fold this template's own lines under Your rules; the sync job stops
+  instead and says what to write.
+- **The rest of its workflows run as they do anywhere else.** The stubs that are silent in a
+  template are silent only in the two golden path templates, so a derived template keeps its
+  checks, its governance and its maintenance. Initialisation and `release.yml` stay silent in every
+  template: a template never initialises itself, and it releases with **🏷️ Cut Release**, which its
+  own generated repositories follow.
+
+---
+
 ## 🧰 For Template Authors
 
 - **Name every file you ship in `.github/template-sync`.** The `check` job in the template's own
@@ -337,8 +367,9 @@ Template Parity contract. A mapping changes four things:
   that is switched on or names anything but one file. It changes nothing under
   `.github/workflows/`, because GitHub refuses the workflow token any push that does: a workflow
   listed there stays, named for each owner to delete, no identity in that folder is rewritten, and
-  its log is never redrawn. Keep such a workflow inert outside the template, as `is_template`
-  keeps 📐 Template Parity. A stub any repository might adopt -
+  its log is never redrawn. Keep such a workflow inert outside the template, as 📐 Template
+  Parity's guard does: it runs only in a template named `repo` or `path`, since `is_template` is
+  true in a derived template too. A stub any repository might adopt -
   🏷️ Cut Release, which a kit consumed by tag uses too - belongs with the owner's files instead,
   where it arrives and stays.
 - **Release with 🏷️ Cut Release.** Generated repositories follow the moving major, so a merge to the

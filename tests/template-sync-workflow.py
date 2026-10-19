@@ -30,10 +30,24 @@ class TestTheReusableWorkflow:
     def jobs(self):
         return load_yaml(WORKFLOW)["jobs"]
 
-    def test_the_check_runs_only_in_a_template_and_the_sync_only_outside_one(self):
+    def test_the_check_runs_in_every_template_and_the_sync_outside_the_golden_path(self):
         jobs = self.jobs()
         assert jobs["check"]["if"].replace(" ", "") == "${{github.event.repository.is_template}}"
-        assert jobs["sync"]["if"].replace(" ", "") == "${{!github.event.repository.is_template}}"
+        # Outside a template, always; in a template derived from another, on a
+        # dispatch alone; in the two golden path templates, never.
+        assert jobs["sync"]["if"].replace(" ", "") == (
+            "${{!github.event.repository.is_template||(github.event_name=='workflow_dispatch'&&"
+            "!contains(fromJSON('[\"repo\",\"path\"]'),github.event.repository.name))}}")
+
+    def test_the_run_and_the_waiting_issue_both_follow_the_derivation(self):
+        steps = self.jobs()["sync"]["steps"]
+        derive = next(i for i, s in enumerate(steps) if s.get("id") == "derive")
+        resolve = next(i for i, s in enumerate(steps) if s.get("id") == "resolve")
+        assert derive < resolve
+        assert steps[resolve]["env"]["MAP"] == "${{ steps.derive.outputs.map }}"
+        for step in steps:
+            if step.get("uses", "").startswith("tannergolden/standards/actions/template-sync"):
+                assert step["with"]["map"] == "${{ steps.derive.outputs.map }}", step.get("name")
 
     def test_each_job_asks_for_what_it_uses_and_nothing_more(self):
         jobs = self.jobs()
@@ -116,7 +130,7 @@ class TestTheReusableWorkflow:
 class TestResolvingTheTemplate:
     def run(self, run_shell, fake_gh, tmp_path, **env):
         shell = workflow_step_shell(WORKFLOW, "sync", "resolve")
-        base = {"INPUT_TEMPLATE": "", "REPO": "janedoe/widget", "OWNER": "janedoe", "GH_TOKEN": "x"}
+        base = {"INPUT_TEMPLATE": "", "MAP": "", "REPO": "janedoe/widget", "OWNER": "janedoe", "GH_TOKEN": "x"}
         return run_shell(shell, cwd=tmp_path, env=fake_gh.env(**{**base, **env}))
 
     def test_the_stubs_input_wins(self, run_shell, fake_gh, tmp_path):
@@ -150,6 +164,57 @@ class TestResolvingTheTemplate:
         result = self.run(run_shell, fake_gh, tmp_path)
         assert result.returncode == 1
         assert "Pass `template:` in the stub" in result.output
+
+    def derived(self, tmp_path, lock=".github/template-derive.lock"):
+        (tmp_path / ".github").mkdir(exist_ok=True)
+        mapping = tmp_path / ".github/template-derive.json"
+        mapping.write_text(json.dumps({"format": 1, "name": "x", "lock": lock, "list": ".github/template-sync"}))
+        return str(mapping)
+
+    def test_a_derived_templates_own_lock_names_what_it_follows(self, run_shell, fake_gh, tmp_path):
+        mapping = self.derived(tmp_path)
+        (tmp_path / ".github/template-derive.lock").write_text(json.dumps({"template": "tannergolden/repo"}))
+        (tmp_path / ".github/template-sync.lock").write_text(json.dumps({"template": "tannergolden/path"}))
+        fake_gh.route("users/janedoe", "{}")
+        result = self.run(run_shell, fake_gh, tmp_path, MAP=mapping)
+        assert result.outputs["template"] == "tannergolden/repo"
+
+    def test_a_derivation_lock_outside_github_is_never_read(self, run_shell, fake_gh, tmp_path):
+        mapping = self.derived(tmp_path, lock="../elsewhere.lock")
+        (tmp_path.parent / "elsewhere.lock").write_text(json.dumps({"template": "someone/else"}))
+        fake_gh.route("repos/janedoe/widget", '{"template_repository": {"full_name": "tannergolden/repo"}}')
+        fake_gh.route("users/janedoe", "{}")
+        result = self.run(run_shell, fake_gh, tmp_path, MAP=mapping)
+        assert result.outputs["template"] == "tannergolden/repo"
+
+
+class TestReadingTheDerivation:
+    """A template follows the one it came from only through its mapping, and nothing else uses one."""
+
+    def run(self, run_shell, tmp_path, is_template, mapping=True):
+        if mapping:
+            (tmp_path / ".github").mkdir(exist_ok=True)
+            (tmp_path / ".github/template-derive.json").write_text("{}")
+        shell = workflow_step_shell(WORKFLOW, "sync", "derive")
+        return run_shell(shell, cwd=tmp_path, env={"IS_TEMPLATE": is_template})
+
+    def test_a_derived_template_syncs_through_its_mapping(self, run_shell, tmp_path):
+        result = self.run(run_shell, tmp_path, "true")
+        assert result.returncode == 0, result.output
+        assert result.outputs == {"map": f"{tmp_path}/.github/template-derive.json"}
+
+    def test_a_template_without_one_stops_and_says_what_to_write(self, run_shell, tmp_path):
+        result = self.run(run_shell, tmp_path, "true", mapping=False)
+        assert result.returncode == 1
+        assert ".github/template-derive.json" in result.output
+        assert "template-sync.py lock --map" in result.output
+
+    def test_outside_a_template_the_file_means_nothing(self, run_shell, tmp_path):
+        # A repository generated from a derived template may have kept the
+        # file; it syncs from that template, unmapped, all the same.
+        result = self.run(run_shell, tmp_path, "false")
+        assert result.returncode == 0, result.output
+        assert result.outputs == {"map": ""}
 
 
 class TestHoldingAnEarlierAutoMerge:

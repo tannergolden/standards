@@ -13,10 +13,19 @@
 # and only for the paths `.github/template-sync` says are kept current.
 #
 # TWO JOBS, ONE STUB, SPLIT BY `is_template`:
-#   check  in the template: every file it ships must be named in its list, so
+#   check  in a template: every file it ships must be named in its list, so
 #          nothing new reaches a generated repository unannounced.
 #   sync   in a generated repository: fetch the template at the major it
 #          follows, merge, and propose the result as a pull request.
+#
+# ⚠️ A TEMPLATE DERIVED FROM ANOTHER RUNS BOTH. A repository generated from a
+# golden path template - one of the two named `repo` and `path` - can be made
+# a template of its own and still follow the one it came from. It checks its
+# list like any template, and a dispatch syncs it too, through the mapping in
+# its `.github/template-derive.json`: a mapped sync amends a list rather than
+# redrawing it, so the list stays the one its own generated repositories
+# read. The two golden path templates sync from nothing here; the private one
+# follows the public one through 📐 Template Parity instead.
 #
 # ⚠️ A SYNC RUNS ONLY WHEN THE OWNER ASKS FOR ONE. The stub gives the sync job
 # `workflow_dispatch` and nothing else - no schedule - so a repository whose
@@ -126,7 +135,11 @@ jobs:
 
   sync:
     name: '🔄 Sync With The Template'
-    if: ${{ !github.event.repository.is_template }}
+    # A generated repository, on the dispatch its stub runs for. A template
+    # derived from another, on a dispatch too: its stub runs on every push
+    # for the check above, and a push must never sync it. Never one of the
+    # two golden path templates, which follow nothing here.
+    if: ${{ !github.event.repository.is_template || (github.event_name == 'workflow_dispatch' && !contains(fromJSON('["repo", "path"]'), github.event.repository.name)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -152,6 +165,30 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # ⚠️ A TEMPLATE SYNCS ONLY THROUGH ITS DERIVATION. Its list is the one
+      # its own generated repositories read, and an ordinary sync redraws a
+      # list from the template's, folding this template's own lines under
+      # Your rules, where its check refuses them. A mapped sync amends the
+      # list instead, so a derived template keeps its mapping in
+      # `.github/template-derive.json` and never syncs without it. Outside a
+      # template the file means nothing: a repository generated from a
+      # derived template syncs from that template, as any generated one does.
+      - name: '🧬 Read The Derivation'
+        id: derive
+        env:
+          IS_TEMPLATE: ${{ github.event.repository.is_template }}
+        run: |
+          set -euo pipefail
+          map=''
+          if [ "$IS_TEMPLATE" = 'true' ]; then
+            if [ ! -f .github/template-derive.json ]; then
+              echo "::error title=Template sync::This repository is a template, and a template follows the one it came from only through .github/template-derive.json, the mapping that says what it keeps different. Write it, record its lock with \`template-sync.py lock --map\`, and run this again."
+              exit 1
+            fi
+            map="${GITHUB_WORKSPACE}/.github/template-derive.json"
+          fi
+          echo "map=${map}" >> "$GITHUB_OUTPUT"
+
       # The token that can read the template asks: GitHub names a PRIVATE
       # template as this repository's origin only to a token that can see it.
       - name: '🔎 Resolve The Template'
@@ -159,11 +196,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.BOT_ACCESS_TOKEN || github.token }}
           INPUT_TEMPLATE: ${{ inputs.template }}
+          MAP: ${{ steps.derive.outputs.map }}
           REPO: ${{ github.repository }}
           OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
           template="$INPUT_TEMPLATE"
+          # A derived template's lock is its mapping's own, and it names the
+          # template followed. Only a lock under .github/ is read.
+          if [ -z "$template" ] && [ -n "$MAP" ]; then
+            lock="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("lock") or "")' "$MAP" 2>/dev/null || true)"
+            if [[ "$lock" =~ ^\.github/[A-Za-z0-9._-]+$ ]] && [ -f "$lock" ]; then
+              template="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("template") or "")' "$lock" 2>/dev/null || true)"
+            fi
+          fi
           # A lock that does not parse is left for the engine to refuse, with
           # a sentence naming what is wrong - not a traceback here.
           if [ -z "$template" ] && [ -f .github/template-sync.lock ]; then
@@ -213,6 +259,7 @@ jobs:
           workflow-files: auto
           workflow-token: ${{ secrets.BOT_ACCESS_TOKEN }}
           name: ${{ steps.resolve.outputs.name }}
+          map: ${{ steps.derive.outputs.map }}
 
       # ⚠️ AN EARLIER RUN'S AUTO-MERGE COMES OFF BEFORE THIS RUN PUSHES. It is
       # promised only to a run that asked for it with nothing waiting, and
@@ -238,9 +285,11 @@ jobs:
           commit-body: |
             Automated pass of Template Sync. Each file the template changed was
             merged with this repository's own changes, in this repository's
-            identity, and only where .github/template-sync keeps it current.
-            A file that could not merge was left untouched and is named in the
-            pull request; its baseline did not move, so it is offered again.
+            identity, and only where .github/template-sync keeps it current -
+            or, in a template derived from another, wherever its derivation
+            does not set it apart. A file that could not merge was left
+            untouched and is named in the pull request; its baseline did not
+            move, so it is offered again.
           pr-title: ${{ steps.sync.outputs.pr-title }}
           pr-body: ${{ steps.sync.outputs.report }}
 
@@ -252,6 +301,7 @@ jobs:
         with:
           mode: track
           version: ${{ steps.sync.outputs.version }}
+          map: ${{ steps.derive.outputs.map }}
 
       - name: '📝 Report Failure'
         if: ${{ failure() }}
