@@ -7,8 +7,8 @@
 #
 # GitHub's "Use this template" copies files verbatim and substitutes nothing.
 # Every generated repository therefore starts out carrying the template
-# author's licence holder, funding target, documentation footers, and contact
-# links. This rewrites them and removes the sentinel that let it run.
+# author's licence holder, funding target, documentation footers, contact
+# links, and the author a vault's notes name. This rewrites them and removes the sentinel that let it run.
 #
 # IT ALSO DELETES WHAT ONLY THE TEMPLATE NEEDS. Every file the template's
 # `.github/template-sync` names under `# --- Only ever in the template` - the

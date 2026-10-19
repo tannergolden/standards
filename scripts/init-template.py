@@ -187,6 +187,26 @@ def rewrite(
         text,
     )
 
+    # A note's author is the person it belongs to. A template of notes, such
+    # as a vault, names its author in each note's frontmatter, and a vault
+    # generated from it is its owner's from the first commit, so the author
+    # follows the owner the way the licence holder does. Only a whole
+    # `author:` value is replaced, quoted as it was and escaped for that
+    # quote, so the YAML still parses whatever the display name holds.
+    def author(match: re.Match[str]) -> str:
+        if match.group("quote") == "'":
+            value = "'" + display.replace("'", "''") + "'"
+        else:
+            value = '"' + display.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        return f"{match.group('key')}{value}{match.group('rest')}"
+
+    text = re.sub(
+        r"""^(?P<key>author:[ \t]*)(?P<quote>["']?)Tanner Golden(?P=quote)(?P<rest>[ \t]*(?:#.*)?)$""",
+        author,
+        text,
+        flags=re.M,
+    )
+
     # Any remaining handle becomes the new owner's, EXCEPT where it opens a
     # repository ADDRESS: `<template owner>/<name>`, the name included.
     #

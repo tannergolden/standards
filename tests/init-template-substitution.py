@@ -203,6 +203,31 @@ class TestTheLicenceHolder:
         )
 
 
+class TestANotesAuthor:
+    """A vault's notes name their author in frontmatter, and become the owner's."""
+
+    def test_the_author_follows_the_owner_in_its_own_quotes(self):
+        assert rewrite('author: "Tanner Golden"\n') == 'author: "New Owner"\n'
+        assert rewrite("author: 'Tanner Golden'\n") == "author: 'New Owner'\n"
+        assert rewrite("author: Tanner Golden\n") == 'author: "New Owner"\n'
+
+    def test_a_display_name_is_escaped_for_its_quote(self):
+        assert rewrite('author: "Tanner Golden"', display='Ann "AJ" O\\Neil') == 'author: "Ann \\"AJ\\" O\\\\Neil"'
+        assert rewrite("author: 'Tanner Golden'", display="Pat O'Brien") == "author: 'Pat O''Brien'"
+
+    def test_a_trailing_comment_is_kept(self):
+        assert rewrite('author: "Tanner Golden"   # who wrote it\n') == 'author: "New Owner"   # who wrote it\n'
+
+    def test_only_a_whole_author_value_moves(self):
+        for text in (
+            "Written by Tanner Golden.\n",
+            'author: "Tanner Golden and friends"\n',
+            'coauthor: "Tanner Golden"\n',
+            'author: "Someone Else"\n',
+        ):
+            assert rewrite(text) == text, text
+
+
 class TestItLeavesUnrelatedTextAlone:
     def test_text_with_no_identity_in_it_is_returned_unchanged(self):
         text = "# A heading\n\nSome prose about nothing in particular.\n"

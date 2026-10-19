@@ -92,12 +92,12 @@ A repository that needs a different value names a file of its own with `settings
 
 These are correct before Apply Standards ever runs, and running it never touches them:
 
-| Concern            | How it is set                                                                                                    |
-| :----------------- | :--------------------------------------------------------------------------------------------------------------- |
-| **Default branch** | Generated repositories inherit `Development` from the template.                                                  |
-| **Identity**       | `init-template.yml` rewrites the licence holder, funding target, documentation footers, and issue-chooser links. |
-| **Licence year**   | Stamped to the generation year by initialisation, then static - the year a work was fixed does not move.         |
-| **Template flag**  | Repositories created _from_ a template are never templates themselves; `is_template` needs no correction.        |
+| Concern            | How it is set                                                                                                                                                                                                                                          |
+| :----------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Default branch** | Generated repositories inherit `Development` from the template.                                                                                                                                                                                        |
+| **Identity**       | `init-template.yml` rewrites the licence holder, funding target, documentation footers, issue-chooser links, and a note's `author`.                                                                                                                    |
+| **Licence year**   | Stamped to the generation year by initialisation, then static - the year a work was fixed does not move.                                                                                                                                               |
+| **Template flag**  | A repository created _from_ a template starts as an ordinary one. Making it a template of its own is the owner's choice, and [Template Sync](../distribution/automation/Template-Sync.md#-a-template-derived-from-another) keeps it following its own. |
 
 ---
 
