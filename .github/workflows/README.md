@@ -88,17 +88,17 @@ labels, settings and rulesets through the API and never touches your tree. See
 
 ### Pruning and release
 
-| Workflow              | Does                                                                                                                                 |
-| :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
-| `prune.yml`           | Scheduled sweep: superseded deployments and old workflow runs                                                                        |
-| `prune-drafts.yml`    | Deletes every draft release. Dispatch only, deliberately separate                                                                    |
-| `prune-releases.yml`  | ⚠️ Deletes PUBLISHED releases a newer one supersedes. `dry-run` defaults true; `delete-tags` sweeps every superseded version tag     |
-| `prune-runs.yml`      | Deletes old workflow runs, with a day window and a recent-commit window                                                              |
-| `release-notes.yml`   | Maintains one evolving draft release per branch                                                                                      |
-| `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM                                                                           |
-| `release.yml`         | ⚠️ Cuts `vX.Y.Z`, force-moves the `vX` every consumer pins, and prunes every older release, page and tag. Refuses an unmerged commit |
-| `publish-package.yml` | Publishes to npm, PyPI, crates.io, or any OCI registry. Each opt-in. Containers go multi-arch natively                               |
-| `preview-deploy.yml`  | Builds and deploys to a preview environment                                                                                          |
+| Workflow              | Does                                                                                                                                                               |
+| :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prune.yml`           | Scheduled sweep: superseded deployments and old workflow runs                                                                                                      |
+| `prune-drafts.yml`    | Deletes every draft release. Dispatch only, deliberately separate                                                                                                  |
+| `prune-releases.yml`  | ⚠️ Deletes PUBLISHED releases a newer one supersedes. `dry-run` defaults true; `delete-tags` sweeps every superseded version tag                                   |
+| `prune-runs.yml`      | Deletes old workflow runs, with a day window and a recent-commit window                                                                                            |
+| `release-notes.yml`   | Maintains one evolving draft release per branch                                                                                                                    |
+| `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM                                                                                                         |
+| `release.yml`         | ⚠️ Cuts `vX.Y.Z`, force-moves the `vX` every consumer pins, and prunes every older release, page and tag, unless the caller keeps them. Refuses an unmerged commit |
+| `publish-package.yml` | Publishes to npm, PyPI, crates.io, or any OCI registry. Each opt-in. Containers go multi-arch natively                                                             |
+| `preview-deploy.yml`  | Builds and deploys to a preview environment                                                                                                                        |
 
 > [!IMPORTANT]
 > **`release-publish.yml` and `publish-package.yml` do different jobs.** The first cuts a
@@ -111,7 +111,8 @@ labels, settings and rulesets through the API and never touches your tree. See
 > workflow, a kit. `release-publish.yml` computes an information-rich tag and never writes a moving
 > major, so it cannot produce the `@v1` a stub resolves. This one does: the `vX.Y.Z` just cut, the
 > `vX` force-moved onto it, the release page, and every superseded release pruned, page and tag, in
-> one run. It refuses
+> one run. A stub whose own consumers pin a full version passes `keep-versions: true`, and every
+> version it cuts stays. It refuses
 > a commit that is not on the default branch and a version that does not move forward, then proves
 > the candidate with the files and the check the stub names:
 >

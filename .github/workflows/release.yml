@@ -21,7 +21,8 @@
 #           page and tag, when the next version supersedes it, so a
 #           repository carries the major and the one version it points at
 #           and nothing older. For exactness pin a commit SHA, which nothing
-#           here deletes.
+#           here deletes. A caller whose own consumers pin a full version
+#           passes `keep-versions`, and every version it cut stays.
 #   vX      moving. Re-pointed at each release in that major line. The
 #           normal pin, and the reason a fix reaches everyone.
 #
@@ -75,6 +76,15 @@ on:
         required: false
         type: string
         default: ''
+      keep-versions:
+        description: >-
+          Keep every earlier version, page and tag, instead of pruning the
+          releases this one supersedes. Only for a repository whose own
+          consumers pin a full version and fetch files at it, such as a hub
+          a machine installs from by version.
+        required: false
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -313,12 +323,19 @@ jobs:
   # nothing resolves is clutter, and the release history reads as one line:
   # the major, and the version it stands on.
   #
+  # ⚠️ A CALLER MAY KEEP EVERY VERSION, AND ONLY A CALLER. `keep-versions`
+  # skips this job for a repository whose consumers pin a full version and
+  # download files at it: pruning would delete the very tag their pin names,
+  # and their next install would fail. A dispatch here has no such input,
+  # so these standards always prune.
+  #
   # Named in full rather than as `./`: a local path resolves against the
   # repository whose workflow started the run, and when a stub elsewhere
   # calls this file that is not this repository.
   prune:
     name: '🧹 Prune Superseded Releases'
     needs: release
+    if: ${{ !inputs.keep-versions }}
     permissions:
       contents: write # deleting release pages and their tags requires write
     uses: tannergolden/standards/.github/workflows/prune-releases.yml@v1

@@ -24,7 +24,7 @@ import json
 import re
 
 import pytest
-from conftest import ROOT, load_yaml, workflow_inputs, workflow_step_shell
+from conftest import ROOT, load_yaml, workflow_inputs, workflow_on, workflow_step_shell
 
 RELEASE = ".github/workflows/release.yml"
 PRUNE = ".github/workflows/prune-releases.yml"
@@ -44,6 +44,17 @@ class TestTheReleasePipelinePrunesVersionTags:
         prune = load_yaml(RELEASE)["jobs"]["prune"]
         assert prune["with"]["keep"] == 1
         assert prune["with"]["dry-run"] is False
+
+    def test_only_a_caller_that_keeps_every_version_skips_the_prune(self):
+        # A hub whose consumers pin a full version and download files at it
+        # needs every tag it cut; everything else prunes, and a dispatch,
+        # which has no such input, always does.
+        doc = load_yaml(RELEASE)
+        assert doc["jobs"]["prune"]["if"].replace(" ", "") == "${{!inputs.keep-versions}}"
+        assert workflow_inputs(RELEASE)["keep-versions"]["default"] is False
+        assert "keep-versions" not in workflow_on(doc)["workflow_dispatch"]["inputs"], (
+            "keep-versions belongs to the call alone; these standards always prune their own releases"
+        )
 
 
 @pytest.fixture(scope="module")

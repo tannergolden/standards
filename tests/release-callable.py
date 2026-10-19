@@ -31,10 +31,15 @@ class TestTheCallMatchesTheDispatch:
 
     def test_the_call_adds_only_what_the_caller_knows(self):
         on = workflow_on(load_yaml(RELEASE))
-        extra = set(on["workflow_call"]["inputs"]) - set(on["workflow_dispatch"]["inputs"])
-        assert extra == {"required-files", "check-command"}
-        for name in extra:
-            assert on["workflow_call"]["inputs"][name].get("default") == "", name
+        call = on["workflow_call"]["inputs"]
+        extra = set(call) - set(on["workflow_dispatch"]["inputs"])
+        assert extra == {"required-files", "check-command", "keep-versions"}
+        for name in ("required-files", "check-command"):
+            assert call[name].get("default") == "", name
+        # Off unless asked: a caller that says nothing prunes, as these
+        # standards always do.
+        assert call["keep-versions"]["type"] == "boolean"
+        assert call["keep-versions"]["default"] is False
 
     def test_the_standards_only_check_is_gated_on_this_repository(self):
         doc = load_yaml(RELEASE)
