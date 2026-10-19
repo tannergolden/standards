@@ -1,8 +1,8 @@
 <!--
 title: '📝 DOCUMENT STYLING & FORMATTING'
 description: 'The binding specification for documentation styling, from headers and badges to footers.'
-tags: [documentation, styling, specification, markdown]
-category: docs
+type: standard
+keywords: [documentation, specification, markdown]
 -->
 
 <!-- markdownlint-disable MD041 -->
@@ -38,17 +38,17 @@ What it does have is `self-checks.yml`, which runs `make lint-docs` on every
 push and once a week, so the column below says where each rule is actually
 checked, and admits where the answer is nowhere:
 
-| Rule                             | Checked by                                                                 |
-| :------------------------------- | :------------------------------------------------------------------------- |
-| Machined indexes match the tree  | `scripts/update-doc-indexes.py`, via `make lint-docs` and `auto-index.yml` |
-| Label reference matches registry | `scripts/update-label-docs.py --check`, via `make lint-docs`               |
-| Spelling                         | `typos`, in `ci.yml`, in consuming repositories                            |
-| Links resolve                    | `lychee`, in `ci.yml`, in consuming repositories                           |
-| A drawn block matches its data   | Each kit's check mode, in consuming repositories                           |
-| Hidden frontmatter, comment form | Convention. Upheld by review                                               |
-| Exactly four `tags`              | Convention. Upheld by review                                               |
-| No `_` as a space in a filename  | Convention. Upheld by review                                               |
-| Plain words                      | Convention. Upheld by review, and by DOC-003 for agents                    |
+| Rule                              | Checked by                                                                 |
+| :-------------------------------- | :------------------------------------------------------------------------- |
+| Machined indexes match the tree   | `scripts/update-doc-indexes.py`, via `make lint-docs` and `auto-index.yml` |
+| Label reference matches registry  | `scripts/update-label-docs.py --check`, via `make lint-docs`               |
+| Spelling                          | `typos`, in `ci.yml`, in consuming repositories                            |
+| Links resolve                     | `lychee`, in `ci.yml`, in consuming repositories                           |
+| A drawn block matches its data    | Each kit's check mode, in consuming repositories                           |
+| Frontmatter: form, fields, values | `scripts/check-frontmatter.py`, via `make lint-docs` and `ci.yml`          |
+| A description says when to read   | Convention. Upheld by review                                               |
+| No `_` as a space in a filename   | Convention. Upheld by review                                               |
+| Plain words                       | Convention. Upheld by review, and by DOC-003 for agents                    |
 
 Everything else in this specification - the badges, the centered headers, the
 taglines, the fully-capped titles - is **convention, followed by hand**. It is
@@ -88,7 +88,7 @@ Documentation names are **Capitalized-Kebab, always** - these are substance rule
 - **Filenames** under `docs/` capitalize every hyphen-separated word - `Branching-Strategy-&-Workflow.md`, like `Example.md` - never `EXAMPLE.md`, never `example.md`, never spaces, never underscores (`RESEARCH_LOG.md` ❌). The conjunction is always the ampersand: write the word `And` as `&` (`Pull-Requests-&-Code-Reviews.md`, never `Pull-Requests-And-Code-Reviews.md`); drop parentheses. Established acronyms keep their casing: `ADR.md`, `CI-CD-Pipelines.md`, `GitHub-Concepts-Recap.md`.
 - **Fully upper or fully lower only where the platform requires it**: `README.md` as a directory index, GitHub's community-health and template names (`CONTRIBUTING.md`, `pull_request_template.md`, `ISSUE_TEMPLATE/config.yml`), discussion forms that must match their category slugs, and tool-required names (`_config.yml`). Everything with a free choice of name is Capitalized-Kebab.
 - **No `_` as a space, anywhere in the repository**: the checker walks the **entire tree** - scripts, configs, workflows, everything - and rejects any file or directory name with an internal underscore. The only exceptions are names a platform or language fixes: GitHub magic files (`pull_request_template.md`, `CODE_OF_CONDUCT.md`, `ISSUE_TEMPLATE/`), leading-underscore tool names (`_config.yml`, `_typos.toml`, `_layouts/`), and Python modules that must stay importable because module names cannot contain hyphens.
-- **Templates take their name - and their nature - from their folder**: in a repository generated from the template, every fill-in document (one carrying bracketed `REPLACE_ME`-style placeholders or either-or choices) lives under `docs/templates/`, and the location **is** the contract - so those files carry no in-file "this is a template" directive. They take the template's later fixes only when the owner runs 🔄 Template Sync, and not at all once switched off in `.github/template-sync`; a document made from one is the owner's and is never touched. Files inside `docs/templates/` never contain the word "template" in their name: `Implementation-Plan.md`, not `Implementation-Plan-Template.md`.
+- **Templates take their name - and their nature - from their folder**: in a repository generated from the template, every fill-in document (one carrying bracketed `REPLACE_ME`-style placeholders or either-or choices) lives under `docs/templates/`, and the location **is** the contract - so those files carry no in-file "this is a template" directive beyond `type: template` in their frontmatter, which a copy changes to its own type. They take the template's later fixes only when the owner runs 🔄 Template Sync, and not at all once switched off in `.github/template-sync`; a document made from one is the owner's and is never touched. Files inside `docs/templates/` never contain the word "template" in their name: `Implementation-Plan.md`, not `Implementation-Plan-Template.md`.
 - **Titles and H1s are FULLY CAPPED, with `&` as the conjunction**: `📝 DOCUMENT STYLING & FORMATTING` - never the spelled-out word `AND`. The filename stays Capitalized-Kebab while the display title carries the spec's visual weight. (`AGENTS.md` and the AI router files keep their Title-First mixed case.) Unlike the filename rules above, title capping is an **aesthetic** rule and is not machine-checked.
 - **Renames ripple**: changing a filename means updating every reference to it across the repository in the same change - raw, `%20`-encoded, and `&amp;`-escaped forms alike.
 
@@ -112,7 +112,7 @@ Lists that carry the `AUTO-INDEX` markers are **generated, never hand-maintained
 | `records` | A tracking table of a record shelf: one column per `fields=` key, read from each record's frontmatter       |
 | `log`     | A **folder log**: every file and folder directly inside `dir`, folders first, each with its own description |
 
-A folder log describes each entry by what the entry says about itself: a folder by its README's frontmatter description, or, with no README, by the note named after the folder that an Obsidian vault gives it, a document by its own, a script by its docstring, a form by its `description:`, and anything else by its leading comment. An entry that cannot carry a description, such as an image, keeps the one written in its row, and that cell is the only text inside the markers a person ever writes. `fields=name,on` adds a column for a YAML file's `name:` and for a workflow's triggers, and any other key a column read from each document's frontmatter: `fields=status,date,evidence` is how a folder of decision records logs each one's status, date and evidence.
+A folder log describes each entry by what the entry says about itself: a folder by its README's frontmatter description, or, with no README, by the note named after the folder that a vault gives it, a document by its own, a script by its docstring, a form by its `description:`, and anything else by its leading comment. An entry that cannot carry a description, such as an image, keeps the one written in its row, and that cell is the only text inside the markers a person ever writes. `fields=name,on` adds a column for a YAML file's `name:` and for a workflow's triggers, and any other key a column read from each document's frontmatter: `fields=status,date,evidence` is how a folder of decision records logs each one's status, date and evidence.
 
 `scripts/update-doc-indexes.py` regenerates every block from the tree. Run `python3 scripts/update-doc-indexes.py --write` after adding, renaming, or removing a doc, and `--check` to fail on a stale index, so an index need never silently disagree with the tree. `--tree` widens the search from `docs/` to every Markdown file in the repository, which is how a consuming repository runs it: the templates ship an `auto-index.yml` stub that calls the reusable `auto-index.yml` here after every push to the default branch, and that workflow proposes whatever changed as one evolving pull request. Never edit between the markers by hand - edit the surrounding prose freely.
 
@@ -120,15 +120,16 @@ A folder log describes each entry by what the entry says about itself: a folder 
 
 ## 🗂️ Frontmatter Metadata
 
-Every Markdown document MUST begin with metadata carrying machine-readable
-information for search and AI discovery, **wrapped in an HTML comment**:
+Every Markdown document MUST open with frontmatter that tells a reader, above all an AI agent, what
+the document is before the body is opened: what it covers and when to read it, how to treat it,
+which words find it, and whether it still holds. It is **wrapped in an HTML comment**:
 
 ```markdown
 <!--
 title: '📝 DOCUMENT TITLE'
-description: 'A single, specific sentence describing what this document covers.'
-tags: [topic-one, topic-two, topic-three]
-category: docs
+description: 'What this document covers, and when to read it, in one or two specific sentences.'
+type: guide
+keywords: [search term, another name, acronym]
 -->
 ```
 
@@ -144,21 +145,48 @@ category: docs
 > generator that can be configured to read the comment form instead. The
 > renderer nobody configures wins.
 
-- **The delimiters are `<!--` and `-->`**, each alone on its own line, opening
-  the file with no blank line before them.
-- **The body is YAML** and is parsed as YAML by anything that reads it, so the
-  same key rules apply as they always did.
-- **description**: one specific sentence (never empty, never generic).
-- **tags**: **exactly four** kebab-case topical tags - no more, no fewer.
-  Four is enough to place a document on more than one axis (subject, area,
-  mechanism, audience) and few enough that the list stays a classification
-  rather than a keyword dump. An open-ended list drifts: documents accrete
-  tags nobody prunes until the vocabulary means nothing.
-- **No `-->` inside the block**, which would terminate the comment early. In
-  practice nothing legitimate in a title, description, or tag list contains it.
-- **Exemption**: `.github/pull_request_template.md` carries no frontmatter **and no decorative header/footer** - GitHub inserts the template verbatim into every new pull-request body, where frontmatter, badges, and taglines would appear as noise. Only the integrity rules (encoding, prompt hygiene, alt text) apply to it.
-- **Exemption**: files an AI agent loads as a skill, subagent or custom agent - `SKILL.md` and every file in its folder, `.claude/agents/*.md`, `*.agent.md` - open with the `---` YAML frontmatter their loaders read, **and carry no decorative header/footer**. A loader reads frontmatter only from a `---` fence on the first line, so the comment form would leave the skill without a name or description, and every line is loaded into the agent's context, where a header is cost without meaning. A skill's folder carries no `README.md` for the same reason: it would ship with the skill. Only the integrity rules (encoding, prompt hygiene, alt text) apply to them.
-- **Exemption**: the notes of an Obsidian vault - the Markdown files in a repository that is one, folder notes included - open with the `---` YAML properties Obsidian reads, **and carry no decorative header, footer or fully-capped title**. Obsidian reads a note's properties only from a `---` fence on its first line, so the comment form would leave every note without its tags and the fields its search and the vault's own checks read. A vault's `README.md` files, its root `AGENTS.md` and its community health files are pages for GitHub and for agents, not notes, and follow this specification in full. Only the integrity rules (encoding, no em dashes, plain words, prompt hygiene, alt text) apply to a note.
+| Field         | Required | Rule                                                                                                                                                                                                                 |
+| :------------ | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`       | Yes      | The document's display title, as its Heading 1 shows it                                                                                                                                                              |
+| `description` | Yes      | One or two specific sentences: what the document is, and when to read it. Never the title again, never generic. Every folder log shows it, so each README becomes a map an agent can route by                        |
+| `type`        | Yes      | What kind of document this is, from the six below                                                                                                                                                                    |
+| `keywords`    | No       | Up to eight lowercase search terms that are not already in the title: other names, acronyms, the words someone would type looking for this document. Subject matter goes here, never into a new field                |
+| `status`      | No       | Left out while the document holds. `draft` before it applies, `deprecated` once it should no longer be followed, `archived` when it is kept only as history. An agent reads a document with a status last, if at all |
+
+| `type`      | The document is                                                      | An agent                                  |
+| :---------- | :------------------------------------------------------------------- | :---------------------------------------- |
+| `index`     | A README that maps its folder                                        | Finds its way from it                     |
+| `guide`     | How something works, or how to do something                          | Follows it to do the task                 |
+| `standard`  | Rules the reader must follow                                         | Obeys it                                  |
+| `reference` | Something to look up: a catalogue, a glossary, a table of values     | Consults it                               |
+| `record`    | A dated account: a decision, a research log, a post-mortem, a design | Reads it for the reasoning, at its status |
+| `template`  | A fill-in document, to be copied                                     | Copies it, and never follows it as it is  |
+
+**A field one kind of document needs stays on that kind.** A record or a template may add the fields
+its kind needs, each defined once in its template: a decision record carries `status` as `Proposed`,
+`Accepted`, `Superseded` or `Deprecated`, with its `date` and `evidence`; a research log carries
+`verified`, `focus` and `decision`. A folder log can draw them as columns with `fields=`. Every other
+type carries the five fields above and no more. A copy of a template changes its `type` to its own.
+A field that would only repeat what the path or git already records - the folder, the author, the date
+of the last change - is never added.
+
+- **The delimiters are `<!--` and `-->`**, each alone on its own line, opening the file with no
+  blank line before them.
+- **The body is YAML**, one field to a line, with a list written inline as `[a, b]`. Nothing nests.
+- **No `-->` inside the block**, which would terminate the comment early. In practice nothing
+  legitimate in a title, description, or keyword contains it.
+- **Exemption**: `.github/pull_request_template.md` carries no frontmatter **and no decorative header/footer** - GitHub inserts the template verbatim into every new pull-request body, where frontmatter, badges, and taglines would appear as noise. Only the integrity rules (encoding, prompt hygiene, alt text) apply to it. A Markdown issue template is read the same way and keeps the `---` block GitHub asks of it.
+- **Exemption**: files an AI tool loads in its own format - `SKILL.md` and every file in its folder, anything under `.claude/`, `*.agent.md`, `*.instructions.md`, `*.prompt.md`, `*.chatmode.md`, and any agent definition whose `---` block names it - open with the `---` YAML frontmatter their loaders read, **and carry no decorative header/footer**. A loader reads frontmatter only from a `---` fence on the first line, so the comment form would leave the skill without a name or description, and every line is loaded into the agent's context, where a header is cost without meaning. A skill's folder carries no `README.md` for the same reason: it would ship with the skill. Only the integrity rules (encoding, prompt hygiene, alt text) apply to them.
+- **Exemption**: an agent instruction file - `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md` - may leave frontmatter out, because its tool loads every line of it into every session, where frontmatter helps nobody find anything. One that carries frontmatter, as the `AGENTS.md` [tannergolden/intelligence](https://github.com/tannergolden/intelligence) delivers does, follows this section.
+- **Exemption**: the notes of a vault, a repository of notes such as a BRAIN, open with the hidden frontmatter like every document, **but carry no decorative header, footer or fully-capped title**: an agent reads a note and a search finds it, so its single Heading 1 and its body are the whole page. The vault's `README.md` pages, its root `AGENTS.md` and its community health files follow this specification in full, and a vault may add rules of its own for its notes, such as fields of a kind or the types they use.
+- **Exemption**: a test fixture is data, kept exactly as its test needs it, and a file `.gitattributes` marks `linguist-generated` belongs to the generator that writes it.
+
+`scripts/check-frontmatter.py` checks every rule above a machine can: the hidden form, the required
+fields, the fields and values allowed, and the keyword limits. Whether a description really says when
+to read its document is left to review. `make lint-docs` runs the check here, and `ci.yml` runs it in
+every repository as **🗂️ Check Frontmatter**, inside `🧪 Lint, Test & Build`. Its `frontmatter` input
+decides what a broken document does there: `enforce` fails the job, `warn` (the default while
+repositories adopt this section) reports each problem and passes, and `off` skips the check.
 
 ---
 
@@ -428,13 +456,13 @@ Apart from the description's length, which
 [has a rule of its own](#the-repository-description), the drawing changes the
 medium and nothing else:
 
-| Rule above          | On a drawn page                                                                                                                                                                                                                                                                                                                                        |
-| :------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Header matrix       | The header block carries `<!-- markdownlint-disable MD041 -->` and `<a name="top"></a>`. The sheet letters the title (the repository's name), the description (its description on GitHub) and the tagline (`motto` under `banners:` in `.github/markdown.yaml`), and rules the release, stars, forks, open issues, language and licence along the foot |
-| Badges              | The identity row sits under the header block, static before dynamic, exactly as above. A page drawn in a print carries **blueprint plates** in that print, and the sheet's figures already show the live state, so a health row is redundant there                                                                                                     |
-| Footer              | The footer block is the footer. `closing` under `banners:` is the Document Summary Phrase, unique to the page as always, and the whole sheet links to `#top`, with up to four link buttons under it                                                                                                                                                    |
-| Alt text            | Every image the kit writes carries alt text built from what it shows. Never edit it: the next run writes it again                                                                                                                                                                                                                                      |
-| Exactly four `tags` | The frontmatter stays the author's. The kit never touches it                                                                                                                                                                                                                                                                                           |
+| Rule above    | On a drawn page                                                                                                                                                                                                                                                                                                                                        |
+| :------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header matrix | The header block carries `<!-- markdownlint-disable MD041 -->` and `<a name="top"></a>`. The sheet letters the title (the repository's name), the description (its description on GitHub) and the tagline (`motto` under `banners:` in `.github/markdown.yaml`), and rules the release, stars, forks, open issues, language and licence along the foot |
+| Badges        | The identity row sits under the header block, static before dynamic, exactly as above. A page drawn in a print carries **blueprint plates** in that print, and the sheet's figures already show the live state, so a health row is redundant there                                                                                                     |
+| Footer        | The footer block is the footer. `closing` under `banners:` is the Document Summary Phrase, unique to the page as always, and the whole sheet links to `#top`, with up to four link buttons under it                                                                                                                                                    |
+| Alt text      | Every image the kit writes carries alt text built from what it shows. Never edit it: the next run writes it again                                                                                                                                                                                                                                      |
+| Frontmatter   | The frontmatter stays the author's. The kit never touches it                                                                                                                                                                                                                                                                                           |
 
 ### The Repository Description
 

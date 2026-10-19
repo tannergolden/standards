@@ -1,8 +1,8 @@
 <!--
 title: '🧩 REPOSITORY HYGIENE'
 description: 'Practices that keep the repository clean and healthy over time.'
-tags: [hygiene, maintenance, governance, structure]
-category: docs
+type: standard
+keywords: [maintenance, governance, structure]
 -->
 
 <!-- markdownlint-disable MD041 -->
@@ -40,7 +40,7 @@ We adhere to a standardized structure so that any developer - or agent - can nav
 │   ├── workflows/         # 22 reusable definitions + release.yml and self-checks.yml, local to here
 │   ├── dependabot.yml     # Keeps every pinned action current. Read only from the owning repo
 │   └── CODEOWNERS         # Read only from the owning repo
-├── actions/               # 18 composite actions, each shipping the files it needs
+├── actions/               # 19 composite actions, each shipping the files it needs
 ├── config/                # Tool configuration read BY a tool during a run
 ├── data/                  # Rulesets and the label taxonomy, written TO a repository
 ├── docs/                  # The standards themselves, followed by link

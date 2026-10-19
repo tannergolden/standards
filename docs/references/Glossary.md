@@ -1,8 +1,8 @@
 <!--
 title: '📘 GLOSSARY'
 description: 'Definitions for the engineering, Git, and automation terms used throughout the repository.'
-tags: [glossary, terminology, reference, definitions]
-category: docs
+type: reference
+keywords: [terminology, definitions]
 -->
 
 <!-- markdownlint-disable MD041 -->

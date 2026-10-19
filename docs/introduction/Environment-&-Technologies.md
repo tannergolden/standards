@@ -1,8 +1,8 @@
 <!--
 title: '📝 ENVIRONMENT & TECHNOLOGIES'
 description: 'Environment setup and the language-agnostic tooling contract every stack must satisfy.'
-tags: [environment, setup, tooling, onboarding]
-category: docs
+type: standard
+keywords: [setup, tooling, onboarding]
 -->
 
 <!-- markdownlint-disable MD041 -->

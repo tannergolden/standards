@@ -134,6 +134,14 @@ on:
         required: false
         type: boolean
         default: false
+      frontmatter:
+        description: >-
+          What a document whose hidden frontmatter breaks the documentation
+          standard does to this job: enforce fails it, warn reports the
+          problem and passes, off skips the check.
+        required: false
+        type: string
+        default: 'warn'
 
 permissions: {}
 
@@ -229,6 +237,18 @@ jobs:
       # pull request that makes one. A repository with no such block passes.
       - name: '🧠 Verify Machined Blocks'
         uses: tannergolden/standards/actions/machined-blocks@v1
+
+      # Every document's hidden frontmatter tells an agent what it is before
+      # the body is opened: what it covers and when to read it, how to treat
+      # it, which words find it, and whether it is still current. The rules
+      # are in Document Styling & Formatting. `frontmatter` decides what a
+      # broken one does here; it reports without failing while repositories
+      # adopt the standard.
+      - name: '🗂️ Check Frontmatter'
+        if: ${{ inputs.frontmatter != 'off' }}
+        uses: tannergolden/standards/actions/check-frontmatter@v1
+        with:
+          mode: ${{ inputs.frontmatter }}
 
       - name: '🧪 Run Tests'
         id: test

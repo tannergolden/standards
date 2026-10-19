@@ -1,8 +1,8 @@
 <!--
 title: '📚 LEARNING & DEVELOPMENT'
 description: 'Curated learning resources for the tools and practices used in this repository.'
-tags: [learning, resources, onboarding, reference]
-category: docs
+type: reference
+keywords: [resources, onboarding]
 -->
 
 <!-- markdownlint-disable MD041 -->

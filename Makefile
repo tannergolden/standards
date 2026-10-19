@@ -45,9 +45,10 @@ lint-fix: ## Apply the lint fixes ruff can make automatically
 
 # The generators are the gate. Each reports drift and changes nothing, so
 # this target is safe to run anywhere and is what CI calls.
-lint-docs: ## Fail when a generated document or the commit-type list has drifted
+lint-docs: ## Fail when a generated document, a document's frontmatter or the commit-type list has drifted
 	python3 scripts/update-doc-indexes.py --check
 	python3 scripts/update-label-docs.py --check
+	python3 scripts/check-frontmatter.py
 	python3 scripts/check-type-parity.py
 
 lint-format: ## Check formatting against the published Prettier config

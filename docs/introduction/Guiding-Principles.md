@@ -1,8 +1,8 @@
 <!--
 title: '🌟 GUIDING PRINCIPLES'
 description: 'The engineering principles that govern how repositories on these standards are built and maintained.'
-tags: [principles, culture, standards, engineering]
-category: docs
+type: standard
+keywords: [culture, engineering]
 -->
 
 <!-- markdownlint-disable MD041 -->

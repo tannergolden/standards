@@ -1,9 +1,8 @@
 <!--
 title: '🌿 DISTRIBUTION & WORKFLOW'
 description: 'Overview of the distribution and workflow documentation.'
-tags: [distribution, workflow, index, delivery]
-category: docs
-index: true # pins this page to the top of its sidebar folder
+type: index
+keywords: [delivery]
 -->
 
 <!-- markdownlint-disable MD041 -->

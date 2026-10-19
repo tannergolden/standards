@@ -1,8 +1,8 @@
 <!--
 title: '🗂️ REPOSITORY DATA'
 description: 'Rulesets and the label taxonomy applied to a target repository, and the naming contract that keeps branch protection matching.'
-tags: [rulesets, labels, branch-protection, governance]
-category: docs
+type: index
+keywords: [rulesets, labels, branch-protection, governance]
 -->
 
 <!-- markdownlint-disable MD041 -->

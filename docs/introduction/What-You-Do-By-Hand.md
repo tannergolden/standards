@@ -1,8 +1,8 @@
 <!--
 title: '🙋 WHAT YOU DO BY HAND'
 description: 'Every step automation cannot take for you, in the order you meet them, from generating a repository to signing a commit.'
-tags: [onboarding, setup, manual, checklist]
-category: docs
+type: guide
+keywords: [onboarding, setup, manual, checklist]
 -->
 
 <!-- markdownlint-disable MD041 -->

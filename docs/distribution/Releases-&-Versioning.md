@@ -1,8 +1,8 @@
 <!--
 title: '🚢 RELEASES & VERSIONING'
 description: 'How releases are cut, versioned, and published.'
-tags: [releases, versioning, semver, changelog]
-category: docs
+type: guide
+keywords: [semver, changelog]
 -->
 
 <!-- markdownlint-disable MD041 -->

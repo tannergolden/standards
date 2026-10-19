@@ -1,8 +1,8 @@
 <!--
 title: '🧪 TESTING STRATEGY'
 description: 'The layered testing strategy from unit tests to end-to-end validation.'
-tags: [testing, strategy, quality, coverage]
-category: docs
+type: standard
+keywords: [quality, coverage]
 -->
 
 <!-- markdownlint-disable MD041 -->

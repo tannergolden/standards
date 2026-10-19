@@ -1,8 +1,8 @@
 <!--
 title: '📦 DEPENDENCY MANAGEMENT'
 description: 'How dependencies are updated, reviewed, and kept secure.'
-tags: [dependencies, dependabot, security, supply-chain]
-category: docs
+type: guide
+keywords: [dependencies, dependabot, security, supply-chain]
 -->
 
 <!-- markdownlint-disable MD041 -->

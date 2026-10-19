@@ -1,8 +1,8 @@
 <!--
 title: '🧩 COMPOSITE ACTIONS'
 description: 'Step-level building blocks called with uses:, and the rule that decides what belongs here rather than in a workflow.'
-tags: [actions, composite, reusable, github-actions]
-category: docs
+type: index
+keywords: [reusable, github-actions]
 -->
 
 <!-- markdownlint-disable MD041 -->
@@ -63,6 +63,7 @@ only describes jobs is a workflow.
 | `apply-settings`      | `data/repository-settings.json`, script | Brings every repository setting with a standard value in line with the published set, comparing first |
 | `update-indexes`      | script                                  | Regenerates, or checks, every machined index in a repository                                          |
 | `machined-blocks`     | script                                  | Fails when a block marked with its own hash, such as `INTELLIGENCE`, was edited by hand               |
+| `check-frontmatter`   | script                                  | Checks every document opens with the hidden frontmatter the documentation standard defines            |
 | `template-sync`       | script                                  | Brings a generated repository up to date with its template, on request; checks a template's list      |
 
 ---

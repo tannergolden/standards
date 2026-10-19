@@ -1,8 +1,8 @@
 <!--
 title: '🤝 PULL REQUESTS & CODE REVIEWS'
 description: 'Pull-request etiquette and the code review rubric.'
-tags: [pull-requests, reviews, workflow, quality]
-category: docs
+type: standard
+keywords: [workflow, quality]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -1,8 +1,8 @@
 <!--
 title: '🌿 BRANCHING STRATEGY & WORKFLOW'
 description: 'The quad-tier branching model and the workflow for moving code to production.'
-tags: [branching, workflow, git, conventions]
-category: docs
+type: standard
+keywords: [git, conventions]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -1,8 +1,8 @@
 <!--
 title: '📚 STANDARDS INDEX'
 description: 'The index of every engineering standard published by this repository, grouped by the part of the lifecycle it governs.'
-tags: [standards, documentation, index, engineering]
-category: docs
+type: index
+keywords: [documentation, engineering]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -1,8 +1,8 @@
 <!--
 title: '🧯 TROUBLESHOOTING'
 description: 'Playbook for diagnosing common repository and pipeline issues.'
-tags: [troubleshooting, playbook, operations, debugging]
-category: docs
+type: guide
+keywords: [playbook, operations, debugging]
 -->
 
 <!-- markdownlint-disable MD041 -->

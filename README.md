@@ -1,8 +1,8 @@
 <!--
 title: '📐 ENGINEERING STANDARDS'
 description: 'Documented engineering standards, plus the reusable workflows and composite actions that enforce them for any toolchain. Called, never copied, so a fix lands once and reaches every repository pinned to it.'
-tags: [github-actions, reusable-workflows, ci-cd, engineering-standards]
-category: docs
+type: index
+keywords: [github-actions, reusable-workflows, ci-cd]
 -->
 
 <!-- markdownlint-disable MD041 -->
@@ -69,7 +69,7 @@ the template alone needs, which its list names.
 | Path                                                | Purpose                                                                                                                                     |
 | :-------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
 | [`.github/workflows/`](.github/workflows/README.md) | 24 reusable workflows, called with `uses:` at the job level, plus two local to this repository: `self-checks.yml` and `self-dependabot.yml` |
-| [`actions/`](actions/README.md)                     | 18 composite actions, called with `uses:` at the step level                                                                                 |
+| [`actions/`](actions/README.md)                     | 19 composite actions, called with `uses:` at the step level                                                                                 |
 | [`data/`](data/README.md)                           | Rulesets, the label taxonomy and the repository settings, written **to** a repository                                                       |
 | `config/`                                           | Linter and tooling configuration, read **by** a tool during a run                                                                           |
 | `docs/`                                             | The standards themselves, followed by link. Start at the standards index                                                                    |

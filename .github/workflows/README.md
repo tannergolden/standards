@@ -1,8 +1,8 @@
 <!--
 title: '⚙️ REUSABLE WORKFLOWS'
 description: 'Every callable workflow, the stub that calls it, and what any repository needs to adopt them.'
-tags: [workflows, reusable, ci-cd, adoption]
-category: docs
+type: index
+keywords: [ci-cd, adoption]
 -->
 
 <!-- markdownlint-disable MD041 -->
@@ -63,13 +63,13 @@ labels, settings and rulesets through the API and never touches your tree. See
 
 ### Gates
 
-| Workflow             | Job name                  | Notes                                                                     |
-| :------------------- | :------------------------ | :------------------------------------------------------------------------ |
-| `ci.yml`             | `🧪 Lint, Test & Build`   | Required check. Also spelling, links, dependency review                   |
-| `gitleaks.yml`       | `🔍 Scan for Secrets`     | Required check. Full history                                              |
-| `semantic-pr.yml`    | `✍️ DCO Sign-Off`         | Required check, plus title, branch-name and per-commit message validation |
-| `lint-workflows.yml` | `🧰 Actionlint + zizmor`  | Workflows are code with credentials attached                              |
-| `codeql.yml`         | `🔍 Analyze (<language>)` | Languages detected, not declared. Public repositories                     |
+| Workflow             | Job name                  | Notes                                                                         |
+| :------------------- | :------------------------ | :---------------------------------------------------------------------------- |
+| `ci.yml`             | `🧪 Lint, Test & Build`   | Required check, frontmatter included. Also spelling, links, dependency review |
+| `gitleaks.yml`       | `🔍 Scan for Secrets`     | Required check. Full history                                                  |
+| `semantic-pr.yml`    | `✍️ DCO Sign-Off`         | Required check, plus title, branch-name and per-commit message validation     |
+| `lint-workflows.yml` | `🧰 Actionlint + zizmor`  | Workflows are code with credentials attached                                  |
+| `codeql.yml`         | `🔍 Analyze (<language>)` | Languages detected, not declared. Public repositories                         |
 
 ### Operations
 

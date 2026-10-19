@@ -1,8 +1,8 @@
 <!--
 title: '🧠 GITHUB CONCEPTS RECAP'
 description: 'A primer on the GitHub concepts, from branches to checks, that power this workflow.'
-tags: [github, primer, workflow, reference]
-category: docs
+type: guide
+keywords: [primer, workflow, reference]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -1,8 +1,8 @@
 <!--
 title: '📝 BRANCH PROTECTION'
 description: 'Branch protection rules and the rulesets that apply them as code.'
-tags: [branch-protection, rulesets, governance, security]
-category: docs
+type: standard
+keywords: [rulesets, governance, security]
 -->
 
 <!-- markdownlint-disable MD041 -->

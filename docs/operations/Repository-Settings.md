@@ -1,8 +1,8 @@
 <!--
 title: '⚙️ REPOSITORY SETTINGS'
 description: 'The complete map of repository settings: what automation writes, what generation sets, what lives in files, and what stays deliberately manual.'
-tags: [settings, automation, governance, security]
-category: docs
+type: reference
+keywords: [automation, governance, security]
 -->
 
 <!-- markdownlint-disable MD041 -->

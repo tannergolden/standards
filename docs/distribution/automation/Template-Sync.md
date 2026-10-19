@@ -1,8 +1,8 @@
 <!--
 title: '🔄 TEMPLATE SYNC'
 description: 'How a repository generated from a template takes its later fixes when its owner runs the sync: what syncs, how an owner opts out, how conflicts are kept, and what it never does.'
-tags: [automation, templates, sync, workflows]
-category: docs
+type: guide
+keywords: [automation, templates, workflows]
 -->
 
 <!-- markdownlint-disable MD041 -->

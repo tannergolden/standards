@@ -1,9 +1,8 @@
 <!--
 title: '📘 REFERENCES'
 description: 'Curated index of the reference material for fast daily lookups.'
-tags: [reference, index, navigation, resources]
-category: docs
-index: true # pins this page to the top of its sidebar folder
+type: index
+keywords: [reference, navigation, resources]
 -->
 
 <!-- markdownlint-disable MD041 -->

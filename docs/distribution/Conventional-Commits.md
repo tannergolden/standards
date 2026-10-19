@@ -1,8 +1,8 @@
 <!--
 title: '🌿 CONVENTIONAL COMMITS'
 description: 'The commit message standard every repository on these standards follows, including the two places it deliberately diverges from the specification.'
-tags: [commits, conventional-commits, git, standards]
-category: docs
+type: standard
+keywords: [git]
 -->
 
 <!-- markdownlint-disable MD041 -->

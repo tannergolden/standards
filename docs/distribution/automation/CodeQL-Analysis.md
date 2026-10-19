@@ -1,8 +1,8 @@
 <!--
 title: '🔒 CODEQL SECURITY ANALYSIS'
 description: 'How the CodeQL static-analysis security workflow operates.'
-tags: [codeql, security, automation, static-analysis]
-category: docs
+type: guide
+keywords: [automation, static-analysis]
 -->
 
 <!-- markdownlint-disable MD041 -->

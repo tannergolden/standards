@@ -1,8 +1,8 @@
 <!--
 title: '🔐 SECURITY & SECRETS'
 description: 'Secret handling, scanning, and incident response for the repository.'
-tags: [security, secrets, incident-response, operations]
-category: docs
+type: standard
+keywords: [incident-response, operations]
 -->
 
 <!-- markdownlint-disable MD041 -->

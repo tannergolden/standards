@@ -1,8 +1,8 @@
 <!--
 title: '🔗 LINK CHECKER'
 description: 'The scheduled link-integrity check for the documentation.'
-tags: [links, automation, quality, documentation]
-category: docs
+type: guide
+keywords: [links, automation, quality, documentation]
 -->
 
 <!-- markdownlint-disable MD041 -->

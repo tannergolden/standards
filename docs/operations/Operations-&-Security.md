@@ -1,9 +1,8 @@
 <!--
 title: '📝 OPERATIONS & SECURITY'
 description: 'Overview of the operations and security documentation.'
-tags: [operations, security, index, governance]
-category: docs
-index: true # pins this page to the top of its sidebar folder
+type: index
+keywords: [governance]
 -->
 
 <!-- markdownlint-disable MD041 -->

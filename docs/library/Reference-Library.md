@@ -1,9 +1,8 @@
 <!--
 title: '📝 REFERENCE LIBRARY'
 description: 'Index of the educational guides and high-signal references in the library.'
-tags: [library, index, learning, resources]
-category: docs
-index: true # pins this page to the top of its sidebar folder
+type: index
+keywords: [learning, resources]
 -->
 
 <!-- markdownlint-disable MD041 -->

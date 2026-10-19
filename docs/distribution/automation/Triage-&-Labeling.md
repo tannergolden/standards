@@ -1,8 +1,8 @@
 <!--
 title: '🚦 TRIAGE & LABELING'
 description: 'Automated triage, sizing, and labeling of issues and pull requests.'
-tags: [triage, labels, automation, issues]
-category: docs
+type: guide
+keywords: [labels, automation, issues]
 -->
 
 <!-- markdownlint-disable MD041 -->
