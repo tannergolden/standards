@@ -406,6 +406,57 @@ class TestAMachinedIndexIsNeverMerged:
         assert sync_world.read(".github/workflows/README.md") == before
 
 
+def sealed(rules: str, digest: str) -> str:
+    """An AGENTS.md block sealed with a hash, as tannergolden/intelligence delivers one."""
+    return f"<!-- INTELLIGENCE:BEGIN sha256:{digest * 64} -->\n\n## Constitution\n\n{rules}\n<!-- INTELLIGENCE:END -->\n"
+
+
+def agents(intro: str, block: str, mine: str = "") -> bytes:
+    return (f"# Agents\n\n{intro}\n\n{block}\n## Commands\n\n- make test\n{mine}").encode()
+
+
+class TestASealedBlockIsNeverMerged:
+    """A block another machine seals with its hash is that machine's to keep current."""
+
+    def decide(self, base: bytes, target: bytes, ours: bytes):
+        return sync.decide("AGENTS.md", sync.Side("100644", base), sync.Side("100644", target),
+                           sync.Side("100644", ours), synced=True, was_deleted=False)
+
+    def test_masking_takes_the_marker_with_it_and_refilling_puts_it_back(self):
+        data = agents("Intro.", sealed("- SEC-001: Never.", "a"))
+        text, rows = sync.masked("AGENTS.md", data)
+        assert b"sha256:" not in text and b"SEC-001" not in text
+        assert b"<!-- INTELLIGENCE:BEGIN -->" in text and b"<!-- INTELLIGENCE:END -->" in text
+        assert rows[0][0] == b"sealed INTELLIGENCE"
+        assert sync.refilled(text, rows) == data
+
+    def test_two_releases_of_the_block_merge_the_prose_and_keep_the_repositorys_block(self):
+        base = agents("The template's intro.", sealed("- SEC-001: First.", "a"))
+        target = agents("The template's intro, now longer.", sealed("- SEC-001: Third.", "c"))
+        ours = agents("The template's intro.", sealed("- SEC-001: Second.", "b"), "\n## Overrides\n\nNone.\n")
+        decision = self.decide(base, target, ours)
+        assert decision.outcome == "merged", decision.detail
+        written = decision.write.data
+        assert b"intro, now longer." in written and b"## Overrides" in written
+        assert sealed("- SEC-001: Second.", "b").encode() in written
+        assert b"Third" not in written and b"sha256:" + b"c" * 64 not in written
+
+    def test_a_file_that_differs_only_in_its_block_is_current(self):
+        base = agents("Intro.", sealed("- SEC-001: First.", "a"))
+        target = agents("Intro.", sealed("- SEC-001: Third.", "c"))
+        ours = agents("Intro.", sealed("- SEC-001: Second.", "b"))
+        assert self.decide(base, target, ours).outcome in ("unchanged", "current")
+
+    def test_a_sealed_marker_in_a_fence_is_an_example_and_merges_as_text(self):
+        example = ("# Spec\n\n```markdown\n" + sealed("- X: Y.", "a") + "```\n").encode()
+        assert sync.masked("docs/Spec.md", example) == (example, [])
+
+    def test_an_unsealed_block_is_left_as_text(self):
+        plain = b"# Notes\n\n<!-- INTELLIGENCE:BEGIN -->\nWritten by hand.\n<!-- INTELLIGENCE:END -->\n"
+        assert sync.masked("docs/Notes.md", plain) == (plain, [])
+        assert sync.refilled(plain) == plain
+
+
 GITIGNORE = "# Built\n/build/\n/dist/\n"
 
 

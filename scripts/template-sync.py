@@ -1169,24 +1169,48 @@ INDEX_BEGIN = re.compile(rb"<!--\s*AUTO-INDEX:BEGIN\s+(.*?)\s*-->")
 INDEX_END = b"<!-- AUTO-INDEX:END -->"
 INDEX_FENCE = re.compile(rb"^(?:```|~~~)")
 
+# ⚠️ A SEALED BLOCK BELONGS TO THE MACHINE THAT SEALED IT, NOT TO THIS SYNC. A
+# block marked `<!-- NAME:BEGIN sha256:<hash> -->`, such as the INTELLIGENCE
+# block tannergolden/intelligence delivers into AGENTS.md, is rewritten by its
+# own sync on every release, and its marker line changes with it. A template
+# that ships the file and a repository that took its own sync since would
+# conflict over that line and that text on every release. So a sealed block is
+# masked whole, marker line included, and always filled again from the
+# repository's own copy: the machine that sealed it keeps it current.
+SEALED_BEGIN = re.compile(rb"<!--\s*(?P<name>[A-Z][A-Z0-9_-]*(?::[A-Z][A-Z0-9_-]*)*):BEGIN"
+                          rb"(?P<seal>\s+sha256:[0-9a-f]{64})?\s*-->")
 
-def index_blocks(lines: list[bytes]) -> list[tuple[int, int]]:
-    """Each live block as (its BEGIN line, its END line), found as the indexer finds them.
+
+def machined_blocks(lines: list[bytes], *, sealed_only_with_hash: bool = True) -> list[tuple[int, int, bytes, bool]]:
+    """Each live block as (its BEGIN line, its END line, its key, whether it is sealed).
 
     A marker inside a fenced code block is an example, not a block, and a
-    BEGIN that never closes is no block either.
+    BEGIN that never closes is no block either. A masked file carries a
+    sealed block's marker without its hash, so refilling one finds it by
+    name alone.
     """
-    blocks: list[tuple[int, int]] = []
+    blocks: list[tuple[int, int, bytes, bool]] = []
     fenced, i = False, 0
     while i < len(lines):
         if INDEX_FENCE.match(lines[i].strip()):
             fenced = not fenced
-        elif not fenced and INDEX_BEGIN.search(lines[i]):
+            i += 1
+            continue
+        if not fenced and INDEX_BEGIN.search(lines[i]):
             end = next((j for j in range(i + 1, len(lines)) if INDEX_END in lines[j]), None)
             if end is None:
                 break
-            blocks.append((i, end))
-            i = end
+            blocks.append((i, end, b"index " + _marker(lines[i]), False))
+            i = end + 1
+            continue
+        sealed = None if fenced else SEALED_BEGIN.search(lines[i])
+        if sealed and sealed.group("name") != b"AUTO-INDEX" and (sealed.group("seal") or not sealed_only_with_hash):
+            closing = re.compile(rb"<!--\s*" + re.escape(sealed.group("name")) + rb":END\s*-->")
+            end = next((j for j in range(i + 1, len(lines)) if closing.search(lines[j])), None)
+            if end is not None:
+                blocks.append((i, end, b"sealed " + sealed.group("name"), True))
+                i = end + 1
+                continue
         i += 1
     return blocks
 
@@ -1196,20 +1220,35 @@ def _marker(line: bytes) -> bytes:
     return b" ".join(found.group(1).split()) if found else b""
 
 
+def _unsealed(line: bytes) -> bytes:
+    """A sealed block's marker line without its hash, the same on every side of a merge."""
+    found = SEALED_BEGIN.search(line)
+    return b"<!-- " + found.group("name") + b":BEGIN -->" if found else line
+
+
 def masked(path: str, data: bytes) -> tuple[bytes, list[tuple[bytes, list[bytes]]]]:
-    """A Markdown file with each block's rows taken out, and the rows each block held."""
-    if not path.endswith(".md") or b"AUTO-INDEX:BEGIN" not in data:
+    """A Markdown file with each block's rows taken out, and the rows each block held.
+
+    A machined index keeps its marker line, which only says what to draw. A
+    sealed block gives up its marker line too, hash and all, so it travels
+    with the rows and comes back with them.
+    """
+    if not path.endswith(".md") or (b"AUTO-INDEX:BEGIN" not in data and b":BEGIN sha256:" not in data):
         return data, []
     lines = data.split(b"\n")
-    blocks = index_blocks(lines)
+    blocks = machined_blocks(lines)
     if not blocks:
         return data, []
     out: list[bytes] = []
     rows: list[tuple[bytes, list[bytes]]] = []
     at = 0
-    for begin, end in blocks:
-        out += lines[at:begin + 1]
-        rows.append((_marker(lines[begin]), lines[begin + 1:end]))
+    for begin, end, key, sealed in blocks:
+        if sealed:
+            out += [*lines[at:begin], _unsealed(lines[begin])]
+            rows.append((key, lines[begin:end]))
+        else:
+            out += lines[at:begin + 1]
+            rows.append((key, lines[begin + 1:end]))
         at = end
     out += lines[at:]
     return b"\n".join(out), rows
@@ -1218,21 +1257,24 @@ def masked(path: str, data: bytes) -> tuple[bytes, list[tuple[bytes, list[bytes]
 def refilled(data: bytes, *sources: list[tuple[bytes, list[bytes]]]) -> bytes:
     """Masked `data` with each block filled from the first source that has a block of the same marker."""
     lines = data.split(b"\n")
-    blocks = index_blocks(lines)
+    blocks = machined_blocks(lines, sealed_only_with_hash=False)
     if not blocks:
         return data
     pools = [list(source) for source in sources]
     out: list[bytes] = []
     at = 0
-    for begin, end in blocks:
-        out += lines[at:begin + 1]
-        marker, found = _marker(lines[begin]), None
+    for begin, end, marker, sealed in blocks:
+        found = None
         for pool in pools:  # each source gives up its block, so a repeated marker stays in step
             hit = next((k for k, (key, _) in enumerate(pool) if key == marker), None)
             if hit is not None:
                 rows = pool.pop(hit)[1]
                 found = rows if found is None else found
-        out += found or []
+        if sealed:
+            # No side held it masked: it was written that way, so it stays as it is.
+            out += lines[at:begin] + (found if found is not None else lines[begin:end])
+        else:
+            out += lines[at:begin + 1] + (found or [])
         at = end
     out += lines[at:]
     return b"\n".join(out)

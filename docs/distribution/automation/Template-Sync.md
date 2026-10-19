@@ -173,6 +173,13 @@ and markers around a block are compared and merged; the rows are yours as they s
 sync has written anything, every block in every file it keeps current is redrawn from the tree it
 leaves, by the same indexer 🗂️ Machined Indexes runs. Its pull request needs no index fix after it.
 
+**A sealed block is never merged either.** A block marked `<!-- NAME:BEGIN sha256:<hash> -->`, such
+as the `INTELLIGENCE` block tannergolden/intelligence delivers into `AGENTS.md`, belongs to the
+machine that sealed it, which rewrites it and its marker line on every release. So the whole block,
+marker line included, is taken out of all three sides, the rest of the file merges, and the block
+comes back exactly as your repository holds it. Your own sync keeps it current; Template Sync never
+offers the template's copy of it, and never conflicts over it.
+
 **In `.gitignore`, other ignore files and `.gitattributes`, two additions in one place are kept.**
 Both appending to the end of `.gitignore` is the commonest change either side makes, and git calls
 it a conflict only because both landed after the same line. The template's lines go first and
