@@ -61,7 +61,10 @@ what the entry says about itself:
 
 In a leading comment, separator lines, bare URLs and the file's own name are
 skipped, as is the "Installed from" banner every standards stub carries; a
-paragraph labelled `Purpose:` wins over the ones before it. An entry that
+paragraph labelled `Purpose:` wins over the ones before it. A rule drawn in
+box-drawing characters (`═══`) separates like one drawn in `===`, and a title
+line that opens with the file's own path (`scripts/run.sh · the runner`) keeps
+only the title. An entry that
 cannot describe itself (an image, a folder with neither) keeps the
 description already in its row, so it is written once, by hand, and survives
 every regeneration; until then it reads `-`. `fields=name,on` adds a column
@@ -265,7 +268,7 @@ FIELD_HEADERS = {"name": "Name", "on": "Triggers"}
 FIELD_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*$")
 
 # A line that only draws a rule (`# =====`, `# --- Reusable Workflow ---`).
-RULE = re.compile(r"^(?:[=\-#*_~+]{3,}|-{2,3}\s.*\s-{2,3})$")
+RULE = re.compile(r"^(?:[=\-#*_~+\u2500-\u257f]{3,}|-{2,3}\s.*\s-{2,3})$")
 URL_ONLY = re.compile(r"^(?:https?://|www\.)\S+$")
 SENTENCE = re.compile(r"(.+?[.!?])(?=\s|$)")
 TABLE_DELIMITER = re.compile(r"\|(?:\s*:?-+:?\s*\|)+")
@@ -388,7 +391,8 @@ def leading_comment(text: str, marker: str, name: str) -> str:
         names_itself = body == name or body.endswith("/" + name)
         if URL_ONLY.match(body) or names_itself or body.startswith("SPDX-"):
             continue
-        current.append(body)
+        titled = re.match(rf"^(?:\S*/)?{re.escape(name)}\s+[\u00b7:|-]\s+(\S.*)$", body)
+        current.append(titled.group(1) if titled else body)
     if current:
         paragraphs.append(current)
     texts = [" ".join(p) for p in paragraphs]

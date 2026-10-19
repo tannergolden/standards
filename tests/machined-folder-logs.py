@@ -180,6 +180,19 @@ class TestEachEntryDescribesItself:
         )
         assert indexes.describe(str(path)) == "Dependabot - automated updates"
 
+    def test_a_box_drawn_rule_separates_and_a_path_title_keeps_its_title(self, tmp_path):
+        path = write(
+            tmp_path / "bootstrap.zsh",
+            "#!/usr/bin/env zsh\n# \u2550\u2550\u2550\u2550\u2550\u2550\n"
+            "# scripts/bootstrap.zsh \u00b7 the hook, installed \u00b7 and the tools under it\n"
+            "# \u2550\u2550\u2550\u2550\u2550\u2550\n# TWO JOBS.  The first: make Terminal.app open it.\n",
+        )
+        assert indexes.describe(str(path)) == "The hook, installed \u00b7 and the tools under it"
+
+    def test_a_line_that_only_starts_with_the_files_name_is_kept_whole(self, tmp_path):
+        path = write(tmp_path / "run.sh", "# run.sh is called by cron, never by hand.\n")
+        assert indexes.describe(str(path)) == "Run.sh is called by cron, never by hand."
+
     def test_jsonc_reads_the_comment_inside_its_braces(self, tmp_path):
         path = write(tmp_path / "extensions.json", '{\n  // Recommended for everyone.\n  "x": []\n}\n')
         assert indexes.describe(str(path)) == "Recommended for everyone."
