@@ -183,16 +183,16 @@ _[Tagline in italics.]_
 [Badges]
 ```
 
-| Element               | Specification                         | Description                                                                                                             |
-| :-------------------- | :------------------------------------ | :---------------------------------------------------------------------------------------------------------------------- |
-| **Lint Suppression**  | `<!-- markdownlint-disable MD041 -->` | Required as the first line after the frontmatter comment, allowing the centered `div` before Heading 1.                 |
-| **Div Open**          | `<div align="center">`                | Centers all contained elements.                                                                                         |
-| **Emoji + Heading 1** | `# 🚀 Feature Name`                   | The primary document title.                                                                                             |
-| **Top Anchor**        | `<a name="top"></a>`                  | Enables the "Back to Top" footer links.                                                                                 |
-| **Description**       | `**Bold Text**`                       | **One sentence, on one rendered line.** Aim for 90 characters or fewer, and keep it longer than the tagline beneath it. |
-| **Tagline**           | `_Italicized Text_`                   | **Unique Requirement:** A high-level principle specific to _this_ file. Do not reuse generic taglines.                  |
-| **Badges**            | Shields.io Images                     | **Optional.** If a document carries them, the palette and placement rules below apply.                                  |
-| **Div Close**         | `</div>`                              | Closes the centered block, after the badges where there are any.                                                        |
+| Element               | Specification                         | Description                                                                                                                                                                                                                   |
+| :-------------------- | :------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lint Suppression**  | `<!-- markdownlint-disable MD041 -->` | Required as the first line after the frontmatter comment, allowing the centered `div` before Heading 1, unless the repository's root `.markdownlint.json` turns MD041 off for every file, as the golden path templates' does. |
+| **Div Open**          | `<div align="center">`                | Centers all contained elements.                                                                                                                                                                                               |
+| **Emoji + Heading 1** | `# 🚀 Feature Name`                   | The primary document title.                                                                                                                                                                                                   |
+| **Top Anchor**        | `<a name="top"></a>`                  | Enables the "Back to Top" footer links.                                                                                                                                                                                       |
+| **Description**       | `**Bold Text**`                       | **One sentence, on one rendered line.** Aim for 90 characters or fewer, and keep it longer than the tagline beneath it.                                                                                                       |
+| **Tagline**           | `_Italicized Text_`                   | **Unique Requirement:** A high-level principle specific to _this_ file. Do not reuse generic taglines.                                                                                                                        |
+| **Badges**            | Shields.io Images                     | **Optional.** If a document carries them, the palette and placement rules below apply.                                                                                                                                        |
+| **Div Close**         | `</div>`                              | Closes the centered block, after the badges where there are any.                                                                                                                                                              |
 
 > [!NOTE]
 > **The description is one line because it is read as a masthead, not as prose.** A
@@ -519,7 +519,7 @@ Root Artificial Intelligence router files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`
 ### Core Specifications
 
 1.  **Uniform Header Alignment**: Every documentation file MUST follow the standard header structure to ensure titles are centered.
-2.  **Lint Suppression**: The first line after the frontmatter comment MUST be `<!-- markdownlint-disable MD041 -->`.
+2.  **Lint Suppression**: The first line after the frontmatter comment MUST be `<!-- markdownlint-disable MD041 -->`, unless the repository's root `.markdownlint.json` turns MD041 off for every file.
 3.  **Centered Title**: Heading 1 MUST be positioned inside the `<div align="center">` block.
 
 ### Visual Blueprint
