@@ -48,7 +48,8 @@ inside `dir`, folders first, ignored files left out the way git leaves them
 out, and the hosting file listed as "This file.". Each row's description is
 what the entry says about itself:
 
-  - a folder: its README.md's frontmatter description
+  - a folder: its README.md's frontmatter description, else that of the note
+    named after the folder, the way an Obsidian vault describes a folder
   - Markdown: the frontmatter description, else the opening comment's first
     sentence
   - Python: the first sentence of the module docstring
@@ -61,7 +62,7 @@ what the entry says about itself:
 In a leading comment, separator lines, bare URLs and the file's own name are
 skipped, as is the "Installed from" banner every standards stub carries; a
 paragraph labelled `Purpose:` wins over the ones before it. An entry that
-cannot describe itself (an image, a folder with no README) keeps the
+cannot describe itself (an image, a folder with neither) keeps the
 description already in its row, so it is written once, by hand, and survives
 every regeneration; until then it reads `-`. `fields=name,on` adds a column
 for each: `name` is a YAML `name:` or a Markdown title, `on` is a workflow's
@@ -437,8 +438,15 @@ def form_markdown(text: str) -> str:
 def describe(path: str) -> str:
     """What a file or folder says about itself, in one sentence, or ''."""
     if os.path.isdir(path):
+        # A folder speaks through its README. An Obsidian vault gives each
+        # folder a note named after it instead, and a README only to its top
+        # folders, so a folder without one is described by that note.
         readme = os.path.join(path, "README.md")
-        return describe(readme) if os.path.isfile(readme) else ""
+        note = os.path.join(path, os.path.basename(os.path.normpath(path)) + ".md")
+        for candidate in (readme, note):
+            if os.path.isfile(candidate):
+                return describe(candidate)
+        return ""
     text = read_text(path)
     if not text:
         return ""

@@ -224,6 +224,21 @@ class TestEachEntryDescribesItself:
         write(tmp_path / "src/README.md", "<!--\ndescription: 'The source.'\n-->\n")
         assert indexes.describe(str(tmp_path / "src")) == "The source."
 
+    def test_a_folder_without_a_readme_is_described_by_its_folder_note(self, tmp_path):
+        # An Obsidian vault names each folder's note after the folder, and
+        # keeps README files for its top folders alone.
+        write(tmp_path / "Memory/Context/Context.md", "---\ndescription: \"The session summaries.\"\n---\n")
+        assert indexes.describe(str(tmp_path / "Memory/Context")) == "The session summaries."
+
+    def test_a_readme_wins_over_a_folder_note(self, tmp_path):
+        write(tmp_path / "Memory/README.md", "<!--\ndescription: 'The GitHub page.'\n-->\n")
+        write(tmp_path / "Memory/Memory.md", "---\ndescription: \"The folder note.\"\n---\n")
+        assert indexes.describe(str(tmp_path / "Memory")) == "The GitHub page."
+
+    def test_a_folder_with_neither_says_nothing(self, tmp_path):
+        write(tmp_path / "loose/notes.md", "---\ndescription: \"A note.\"\n---\n")
+        assert indexes.describe(str(tmp_path / "loose")) == ""
+
 
 class TestADescriptionNothingCanSupplySurvives:
     def test_a_hand_written_row_is_kept(self, tmp_path, monkeypatch):
