@@ -15,7 +15,7 @@ import json
 import pytest
 from conftest import load_script
 
-sync = load_script("scripts/template-sync.py")
+sync = load_script(".github/scripts/template-sync.py")
 
 BLOB = "a" * 40
 

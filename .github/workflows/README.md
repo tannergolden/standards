@@ -236,7 +236,7 @@ one in the diff under review, while the actions inside it resolve their publishe
 they would for a consumer.
 
 Check a change against the working tree before it ships: `actionlint` over `.github/workflows/`,
-`shellcheck` over `scripts/`, `ruff` over the Python, and the generators under `scripts/` run with
+`shellcheck` over `.github/scripts/`, `ruff` over the Python, and the generators under `.github/scripts/` run with
 `--check`. Reading the tree directly is the only way to validate a change **to** an action, since
 every published path resolves a pin and would exercise the released copy rather than the diff.
 

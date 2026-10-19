@@ -1,30 +1,15 @@
-# --- Composite Action ---
+# --- Composite Action (forwarder) ---
 #
-# 🚨 Escalate or Resolve a CI Failure
+# 🚨 Escalate or Resolve a CI Failure, at its old address
 #
-# Purpose: opens a labeled issue when a watched workflow fails, and closes it
-# when the same workflow recovers. Deduplicated per workflow, so a
-# repeatedly failing job produces one issue that stays open rather than a
-# new one every run.
+# This action moved to .github/actions/ci-failure-alert/, where every repository keeps
+# its composite actions. This forwarder keeps the old address working for a
+# caller pinned to v1: it passes every input on and hands every output back.
+# Call the new address instead. The forwarder goes at the next major version.
 #
-# The point is that nobody has to remember to check the Actions tab. A
-# scheduled job that quietly breaks is the failure mode this exists for: it
-# can go unnoticed for weeks precisely because nothing about it is on
-# anyone's screen.
-#
-# Used as:
-#
-#   - uses: tannergolden/standards/actions/ci-failure-alert@v1
-#     with:
-#       token: ${{ secrets.GITHUB_TOKEN }}
-#       workflow-name: ${{ github.event.workflow_run.name }}
-#       conclusion: ${{ github.event.workflow_run.conclusion }}
-#       branch: ${{ github.event.workflow_run.head_branch }}
-#       run-url: ${{ github.event.workflow_run.html_url }}
-#       head-sha: ${{ github.event.workflow_run.head_sha }}
+#   - uses: tannergolden/standards/.github/actions/ci-failure-alert@v1
 #
 # ---
-
 name: '🚨 Escalate or Resolve a CI Failure'
 description: 'Opens an issue when a watched workflow fails and closes it when the workflow recovers.'
 
@@ -35,7 +20,7 @@ inputs:
   repository:
     description: 'Repository the issue belongs to, as owner/repo.'
     required: false
-    default: ${{ github.repository }}
+    default: '${{ github.repository }}'
   workflow-name:
     description: 'Name of the workflow that completed. Deduplication is keyed to it.'
     required: true
@@ -53,16 +38,15 @@ inputs:
     required: true
 
 runs:
-  using: composite
+  using: 'composite'
   steps:
-    - name: '🚨 Open or close the failure issue'
-      shell: bash
-      env:
-        GH_TOKEN: ${{ inputs.token }}
-        GH_REPO: ${{ inputs.repository }}
-        WORKFLOW_NAME: ${{ inputs.workflow-name }}
-        CONCLUSION: ${{ inputs.conclusion }}
-        BRANCH: ${{ inputs.branch }}
-        RUN_URL: ${{ inputs.run-url }}
-        HEAD_SHA: ${{ inputs.head-sha }}
-      run: bash "${GITHUB_ACTION_PATH}/../../scripts/ci-failure-alert.sh"
+    - name: '↪️ Forward to .github/actions/ci-failure-alert'
+      uses: 'tannergolden/standards/.github/actions/ci-failure-alert@v1'
+      with:
+        token: '${{ inputs.token }}'
+        repository: '${{ inputs.repository }}'
+        workflow-name: '${{ inputs.workflow-name }}'
+        conclusion: '${{ inputs.conclusion }}'
+        branch: '${{ inputs.branch }}'
+        run-url: '${{ inputs.run-url }}'
+        head-sha: '${{ inputs.head-sha }}'

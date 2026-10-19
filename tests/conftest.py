@@ -6,7 +6,7 @@ THE HARD PART OF TESTING THIS REPOSITORY is that most of its logic does not
 live in a file you can import. It lives in `run:` blocks inside reusable
 workflows, and a reusable workflow cannot call a script from its own
 repository: its checkout resolves to the CALLING repository, which is the
-whole reason `actions/` exists. Factoring that shell out to `scripts/` to
+whole reason `.github/actions/` exists. Factoring that shell out to `.github/scripts/` to
 make it testable would break the architecture the README sets out.
 
 So the shell is not copied here. `workflow_step_shell()` reads the `run:`
@@ -482,7 +482,7 @@ class SyncWorld:
         self.root = root
         self.template = root / "template"
         self.repo = root / "derived"
-        self.sync = load_script("scripts/template-sync.py")
+        self.sync = load_script(".github/scripts/template-sync.py")
         self.init = self.sync.INIT
         self.versions: list[str] = []
         self.template.mkdir()

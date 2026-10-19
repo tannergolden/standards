@@ -104,7 +104,7 @@ jobs:
       contents: write # rewrite the identity and push the result
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🎉 Init: claiming this generated repository for its owner.'
@@ -119,7 +119,7 @@ jobs:
           fetch-depth: 0
 
       - name: '🎉 Initialise from template'
-        uses: tannergolden/standards/actions/init-template@v1
+        uses: tannergolden/standards/.github/actions/init-template@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           sentinel: ${{ inputs.sentinel }}

@@ -1,27 +1,15 @@
-# --- Composite Action ---
+# --- Composite Action (forwarder) ---
 #
-# 🧹 Prune Workflow Runs
+# 🧹 Prune Workflow Runs, at its old address
 #
-# Purpose: keeps the Actions history lean. For each workflow it keeps the
-# most recent runs and deletes the rest, which removes their logs and
-# artifacts too.
+# This action moved to .github/actions/prune-workflow-runs/, where every repository keeps
+# its composite actions. This forwarder keeps the old address working for a
+# caller pinned to v1: it passes every input on and hands every output back.
+# Call the new address instead. The forwarder goes at the next major version.
 #
-# Three protections stop this from eating history that still matters. A
-# COMMIT-TRIGGERED run inside `keep-recent-days` is kept, so recent work
-# stays explicable. Runs tied to any of the last N default-branch commits
-# are kept, for repositories that go quiet. And in-flight runs are never
-# deleted, which includes the run executing this action, so it cannot
-# delete the job it is running in.
-#
-# Used as:
-#
-#   - uses: tannergolden/standards/actions/prune-workflow-runs@v1
-#     with:
-#       token: ${{ secrets.GITHUB_TOKEN }}
-#       dry-run: true
+#   - uses: tannergolden/standards/.github/actions/prune-workflow-runs@v1
 #
 # ---
-
 name: '🧹 Prune Workflow Runs'
 description: 'Deletes old workflow runs, keeping recent ones and anything tied to recent commits.'
 
@@ -32,22 +20,17 @@ inputs:
   repository:
     description: 'Repository to prune, as owner/repo.'
     required: false
-    default: ${{ github.repository }}
+    default: '${{ github.repository }}'
   keep:
     description: 'How many recent runs to keep per workflow.'
     required: false
     default: '1'
   keep-recent-days:
-    description: >-
-      Never delete a COMMIT-TRIGGERED run started within this many days.
-      Time alone is not enough: a schedule or a dispatch fires without
-      anyone committing, and that is the history this clears. 0 disables.
+    description: 'Never delete a COMMIT-TRIGGERED run started within this many days. Time alone is not enough: a schedule or a dispatch fires without anyone committing, and that is the history this clears. 0 disables.'
     required: false
     default: '0'
   keep-recent-commits:
-    description: >-
-      Never delete runs from this many latest default-branch commits.
-      The default of 35 is one page of the commit-history view.
+    description: 'Never delete runs from this many latest default-branch commits. The default of 35 is one page of the commit-history view.'
     required: false
     default: '35'
   dry-run:
@@ -56,15 +39,14 @@ inputs:
     default: 'false'
 
 runs:
-  using: composite
+  using: 'composite'
   steps:
-    - name: '🧹 Prune workflow runs'
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ inputs.token }}
-        GITHUB_REPOSITORY: ${{ inputs.repository }}
-        KEEP_PER_WORKFLOW: ${{ inputs.keep }}
-        KEEP_RECENT_DAYS: ${{ inputs.keep-recent-days }}
-        KEEP_RECENT_COMMITS: ${{ inputs.keep-recent-commits }}
-        DRY_RUN: ${{ inputs.dry-run }}
-      run: python3 "${GITHUB_ACTION_PATH}/../../scripts/prune-workflow-runs.py"
+    - name: '↪️ Forward to .github/actions/prune-workflow-runs'
+      uses: 'tannergolden/standards/.github/actions/prune-workflow-runs@v1'
+      with:
+        token: '${{ inputs.token }}'
+        repository: '${{ inputs.repository }}'
+        keep: '${{ inputs.keep }}'
+        keep-recent-days: '${{ inputs.keep-recent-days }}'
+        keep-recent-commits: '${{ inputs.keep-recent-commits }}'
+        dry-run: '${{ inputs.dry-run }}'

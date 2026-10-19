@@ -23,11 +23,11 @@ import pytest
 from conftest import load_script, load_yaml, workflow_inputs
 
 WORKFLOW = ".github/workflows/prune.yml"
-prune = load_script("scripts/prune-deployments.py")
+prune = load_script(".github/scripts/prune-deployments.py")
 
 
 class TestTheScriptContractIsUnchanged:
-    """Documented at scripts/prune-deployments.py, lines 17-21."""
+    """Documented at .github/scripts/prune-deployments.py, lines 17-21."""
 
     def test_an_allowlist_selects_only_those(self):
         assert prune.in_scope("github-pages", only={"github-pages"}, exclude=set())

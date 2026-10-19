@@ -1,0 +1,41 @@
+# --- Composite Action ---
+#
+# 🗂️ Frontmatter Check
+#
+# Purpose: checks that every Markdown document opens with the hidden
+# frontmatter Document Styling & Formatting defines: the comment form, a
+# title, a description and a type, and only the fields and values the
+# standard allows. An agent reads that block to decide what a document is
+# before it opens the body, so a missing or malformed one costs every reader
+# a guess.
+#
+# An action rather than a workflow step, because it ships a file: the
+# script runs from `$GITHUB_ACTION_PATH`, against the calling repository's
+# checkout. `mode: warn` reports each problem without failing, which is how
+# a repository adopts the standard before every document follows it.
+#
+# Used as:
+#
+#   - uses: tannergolden/standards/.github/actions/check-frontmatter@v1
+#     with:
+#       mode: enforce
+#
+# ---
+
+name: '🗂️ Frontmatter Check'
+description: 'Verifies every Markdown document opens with the hidden frontmatter the documentation standard defines.'
+
+inputs:
+  mode:
+    description: 'enforce fails on a document that breaks the standard; warn reports it and passes.'
+    required: false
+    default: 'enforce'
+
+runs:
+  using: composite
+  steps:
+    - name: '🗂️ Check frontmatter'
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+      run: python3 "${GITHUB_ACTION_PATH}/../../scripts/check-frontmatter.py" --mode "$MODE"

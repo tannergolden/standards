@@ -17,7 +17,7 @@ import subprocess
 
 from conftest import load_script
 
-blocks = load_script("scripts/machined-blocks.py")
+blocks = load_script(".github/scripts/machined-blocks.py")
 
 RULES = "## Working rules\n\n- SEC-001: Never put a credential in a file.\n"
 
@@ -34,7 +34,7 @@ def run_in(repo, files: dict[str, str], run_script):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(text.encode("utf-8"))
     subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
-    return run_script("scripts/machined-blocks.py", cwd=repo)
+    return run_script(".github/scripts/machined-blocks.py", cwd=repo)
 
 
 class TestTheHash:
@@ -86,7 +86,7 @@ class TestTheGate:
 
     def test_untracked_files_are_not_read(self, git_repo, run_script):
         (git_repo / "scratch.md").write_text(region(RULES).replace("credential", "x"), encoding="utf-8")
-        result = run_script("scripts/machined-blocks.py", cwd=git_repo)
+        result = run_script(".github/scripts/machined-blocks.py", cwd=git_repo)
         assert result.returncode == 0, result.output
 
 
@@ -94,14 +94,14 @@ class TestTheWiring:
     def test_ci_runs_the_action(self):
         from conftest import ROOT
 
-        assert "uses: tannergolden/standards/actions/machined-blocks@v1" in (
+        assert "uses: tannergolden/standards/.github/actions/machined-blocks@v1" in (
             ROOT / ".github/workflows/ci.yml"
         ).read_text(encoding="utf-8")
 
     def test_the_action_runs_the_script(self):
         from conftest import ROOT, load_yaml
 
-        action = load_yaml("actions/machined-blocks/action.yml")
+        action = load_yaml(".github/actions/machined-blocks/action.yml")
         run = action["runs"]["steps"][0]["run"]
-        assert "scripts/machined-blocks.py" in run
-        assert (ROOT / "scripts/machined-blocks.py").is_file()
+        assert "../../scripts/machined-blocks.py" in run
+        assert (ROOT / ".github/scripts/machined-blocks.py").is_file()

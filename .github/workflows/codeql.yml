@@ -68,7 +68,7 @@ jobs:
       is_public: ${{ steps.visibility.outputs.is_public }}
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🔓 Security Audit: performs CodeQL static analysis.'
@@ -163,7 +163,7 @@ jobs:
 
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
 

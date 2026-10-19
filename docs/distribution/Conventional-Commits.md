@@ -41,7 +41,7 @@ Two rules below are **stricter than the Conventional Commits specification**, de
 ```
 
 - **Type**: one of `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`, `security`.
-- **Scope**: a short identifier for the area changed (`auth`, `api`, `ui`). **REQUIRED, and enforced** by `scripts/commit-check.py`. The specification treats the scope as optional; this standard does not, because `docs: add the seed` repeated across a hundred commits answers "where?" nowhere, while `docs(templates): add the seed` makes the log navigable. Use the area actually touched: `workflows`, `scripts`, `docs`, `deps`, `readme`, `config`, `operations`.
+- **Scope**: a short identifier for the area changed (`auth`, `api`, `ui`). **REQUIRED, and enforced** by `.github/scripts/commit-check.py`. The specification treats the scope as optional; this standard does not, because `docs: add the seed` repeated across a hundred commits answers "where?" nowhere, while `docs(templates): add the seed` makes the log navigable. Use the area actually touched: `workflows`, `scripts`, `docs`, `deps`, `readme`, `config`, `operations`.
 - **Subject**: a brief summary in lowercase, imperative mood. It may begin with an emoji.
 - **Body**: **REQUIRED, on every commit, without exception.** One blank line after the subject, wrapped at 72 characters. Full sentences explaining **why** this change, and why this way rather than the obvious alternative.
 - **Author**: whoever is writing the commit. An AI is the one exception, recorded as a co-author and never as the author, under **Who The Commit Is By** below.
@@ -65,7 +65,7 @@ This binds every commit that lands in a repository on these standards:
 | Commit                                                       | Body required                                             |
 | :----------------------------------------------------------- | :-------------------------------------------------------- |
 | Ordinary human-authored work                                 | Yes                                                       |
-| The initial commit written at repository generation          | Yes, and `scripts/init-template.py` writes one            |
+| The initial commit written at repository generation          | Yes, and `.github/scripts/init-template.py` writes one    |
 | Automated maintenance commits (formatting, dependency bumps) | Yes, from the workflow that opens them                    |
 | A squash merge                                               | Yes. The pull request body becomes it, so write that body |
 | A revert                                                     | Yes. State what broke, not only what is being undone      |
@@ -278,11 +278,11 @@ same expiry that already applies.
 - **CI, per commit**: the same workflow's `✍️ Commit Messages` job validates **every human-authored commit** in the pull request. This covers a repository that merges or rebases instead of squashing, where each message lands on the default branch in its own right. Bot-authored and merge commits are exempt, matching the DCO check exactly.
 - **Local, optional**: `config/commitlint.config.js` encodes the same rules for anyone running commitlint in a Node toolchain. It is not required, and nothing in CI depends on it. The CI gate reads commits through the GitHub API instead, because the workflow runs on `pull_request_target` and installing packages from the pull request's own manifest would hand an elevated token to whoever opened it.
 - **Changelogs**: `release-notes.yml` parses the resulting history with git-cliff to draft notes automatically.
-- **Authorship: nowhere.** `scripts/commit-check.py` reads the message and never the author field, so the rule above is a convention rather than a gate. It is stated here because the failure it prevents is invisible: a commit authored by an agent looks correct in every log that shows only the subject, and the contradiction is visible only to somebody who thinks to run `git log --format='%an'`.
+- **Authorship: nowhere.** `.github/scripts/commit-check.py` reads the message and never the author field, so the rule above is a convention rather than a gate. It is stated here because the failure it prevents is invisible: a commit authored by an agent looks correct in every log that shows only the subject, and the contradiction is visible only to somebody who thinks to run `git log --format='%an'`.
 - **Verification: nowhere mechanically.** The shipped rulesets carry no **Require signed commits** rule, and it cannot be switched on as this standard is written: a ruleset refuses an unsigned push whoever made it, so it would refuse every refresh the kits commit to `Development` as `github-actions[bot]`, and a ruleset exempts an actor from all of its rules or from none. Until that changes the rule is upheld the way authorship is, by the badge on the commit and by anyone who looks. `git log --format='%h %cn %G?'` prints `N` beside a commit that carries no signature at all; whether GitHub accepts a signature is a question only GitHub answers, which is why the check above goes through its API.
 
 > [!IMPORTANT]
-> **One rule set, three encodings.** The type list is written out in `scripts/commit-check.py`, in `config/commitlint.config.js`, and as the `commit-types` default in `semantic-pr.yml`. Changing one without the others produces a rule nobody enforces, or a message that passes one gate and fails another. This repository publishes its workflows rather than running them on itself, so nothing catches that automatically: run `python3 scripts/check-type-parity.py` before touching any of the three.
+> **One rule set, three encodings.** The type list is written out in `.github/scripts/commit-check.py`, in `config/commitlint.config.js`, and as the `commit-types` default in `semantic-pr.yml`. Changing one without the others produces a rule nobody enforces, or a message that passes one gate and fails another. This repository publishes its workflows rather than running them on itself, so nothing catches that automatically: run `python3 .github/scripts/check-type-parity.py` before touching any of the three.
 
 ---
 

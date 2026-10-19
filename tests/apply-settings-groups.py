@@ -29,10 +29,10 @@ import json
 import pytest
 from conftest import ROOT, load_script, load_yaml
 
-SCRIPT = "scripts/apply-settings.py"
+SCRIPT = ".github/scripts/apply-settings.py"
 SHIPPED = ROOT / "data/repository-settings.json"
 WORKFLOW = ".github/workflows/apply-standards.yml"
-ACTION = "actions/apply-settings/action.yml"
+ACTION = ".github/actions/apply-settings/action.yml"
 
 module = load_script(SCRIPT)
 

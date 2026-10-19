@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """A non-integer java-version must fall back, not crash the step.
 
-`actions/setup` builds a shell VARIABLE NAME from the input:
+`.github/actions/setup` builds a shell VARIABLE NAME from the input:
 
     VAR="JAVA_HOME_${WANTED}_X64"
     SELECTED="${!VAR:-}"
@@ -13,7 +13,7 @@ input's own description promises the opposite: "Falls back to the image
 default if the runner does not carry it."
 
 So `java-version: '21.0.5'`, which is how most people write a Java version,
-failed every job calling `actions/setup` in a repository with a pom.xml.
+failed every job calling `.github/actions/setup` in a repository with a pom.xml.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from __future__ import annotations
 import pytest
 from conftest import workflow_step_shell
 
-ACTION = "actions/setup/action.yml"
+ACTION = ".github/actions/setup/action.yml"
 STEP = "☕ Select Java"
 
 # Runner images expose preinstalled JDKs as JAVA_HOME_<major>_X64.

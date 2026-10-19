@@ -251,7 +251,7 @@ jobs:
       id-token: write # signs the provenance statement npm attaches
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '📦 Publishing to npm.'
@@ -422,7 +422,7 @@ jobs:
       id-token: write # exchanged for a short-lived token under Trusted Publishing
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🐍 Publishing to PyPI.'
@@ -572,7 +572,7 @@ jobs:
       contents: read
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🦀 Publishing to crates.io.'
@@ -732,7 +732,7 @@ jobs:
       suffixes: ${{ steps.resolve.outputs.suffixes }}
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🐳 Resolving the image to build.'
@@ -874,7 +874,7 @@ jobs:
       attestations: write # record it
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🐳 Building a container image.'
@@ -1040,7 +1040,7 @@ jobs:
       attestations: write # record it
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🐳 Combining architectures into one image.'

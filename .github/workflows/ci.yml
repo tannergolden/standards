@@ -155,7 +155,7 @@ jobs:
 
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '👷 Primary CI: validates the repository via lint, test, and build.'
@@ -167,7 +167,7 @@ jobs:
 
       - name: '🧰 Setup Toolchain'
         id: setup
-        uses: tannergolden/standards/actions/setup@v1
+        uses: tannergolden/standards/.github/actions/setup@v1
         with:
           node-version: ${{ inputs.node-version }}
           python-version: ${{ inputs.python-version }}
@@ -236,7 +236,7 @@ jobs:
       # The next delivery overwrites a hand edit silently; this fails the
       # pull request that makes one. A repository with no such block passes.
       - name: '🧠 Verify Machined Blocks'
-        uses: tannergolden/standards/actions/machined-blocks@v1
+        uses: tannergolden/standards/.github/actions/machined-blocks@v1
 
       # Every document's hidden frontmatter tells an agent what it is before
       # the body is opened: what it covers and when to read it, how to treat
@@ -246,7 +246,7 @@ jobs:
       # adopt the standard.
       - name: '🗂️ Check Frontmatter'
         if: ${{ inputs.frontmatter != 'off' }}
-        uses: tannergolden/standards/actions/check-frontmatter@v1
+        uses: tannergolden/standards/.github/actions/check-frontmatter@v1
         with:
           mode: ${{ inputs.frontmatter }}
 
@@ -388,7 +388,7 @@ jobs:
       contents: read
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '📝 Spell Check: validates spelling across the repository.'
@@ -400,7 +400,7 @@ jobs:
 
       - name: '📄 Resolve typos configuration'
         id: typos-config
-        uses: tannergolden/standards/actions/config@v1
+        uses: tannergolden/standards/.github/actions/config@v1
         with:
           name: _typos.toml
           override: ${{ inputs.typos-config }}
@@ -419,7 +419,7 @@ jobs:
       contents: read
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🔗 Quality: checks for broken links in documentation.'
@@ -431,7 +431,7 @@ jobs:
 
       - name: '📄 Resolve lychee configuration'
         id: lychee-config
-        uses: tannergolden/standards/actions/config@v1
+        uses: tannergolden/standards/.github/actions/config@v1
         with:
           name: lychee.toml
           override: ${{ inputs.lychee-config }}
@@ -475,7 +475,7 @@ jobs:
       contents: read
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🕵️ Supply Chain: scans dependency changes for known vulnerabilities.'
@@ -522,7 +522,7 @@ jobs:
       contents: read
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '📄 REUSE: verifies every file has copyright and license metadata.'

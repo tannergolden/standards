@@ -37,8 +37,8 @@ _PR-only merges. Linear history. Restricted pushes._
 >
 > ```bash
 > gh auth login                                    # once
-> bash scripts/apply-rulesets.sh                   # previews; changes nothing
-> DRY_RUN=false bash scripts/apply-rulesets.sh     # applies
+> bash .github/scripts/apply-rulesets.sh                   # previews; changes nothing
+> DRY_RUN=false bash .github/scripts/apply-rulesets.sh     # applies
 > ```
 >
 > Or paste each file into **Settings → Rules → Rulesets → Import a ruleset**; they are already in GitHub's import shape.
@@ -108,9 +108,9 @@ The JSON in [`data/rulesets/`](../../data/rulesets/) is the source of truth: PR-
 
 ```bash
 # From a clone of the standards repository, with `gh auth login` done.
-bash scripts/apply-rulesets.sh                        # preview this repo
-DRY_RUN=false bash scripts/apply-rulesets.sh          # apply
-TARGET_REPO=owner/name DRY_RUN=false bash scripts/apply-rulesets.sh
+bash .github/scripts/apply-rulesets.sh                        # preview this repo
+DRY_RUN=false bash .github/scripts/apply-rulesets.sh          # apply
+TARGET_REPO=owner/name DRY_RUN=false bash .github/scripts/apply-rulesets.sh
 ```
 
 > [!WARNING]

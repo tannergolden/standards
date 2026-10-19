@@ -2,13 +2,13 @@
 # SPDX-License-Identifier: MIT
 """Two wrappers around one destructive action must not disagree on safety.
 
-`prune.yml` and `prune-runs.yml` both call `actions/prune-workflow-runs`,
+`prune.yml` and `prune-runs.yml` both call `.github/actions/prune-workflow-runs`,
 and both expose the same two protections with OPPOSITE defaults:
 
   prune.yml        keep-recent-days: 0   keep-recent-commits: 35
   prune-runs.yml   keep-recent-days: 7   keep-recent-commits: 0
 
-`scripts/prune-workflow-runs.py` says of them "either may be 0 to disable
+`.github/scripts/prune-workflow-runs.py` says of them "either may be 0 to disable
 it; both may be on at once". They protect different things.
 KEEP_RECENT_COMMITS matches a run's `head_sha` against the last N
 DEFAULT-BRANCH commits, so it protects nothing on a pull request branch.
@@ -27,7 +27,7 @@ import pytest
 from conftest import load_script, workflow_inputs
 
 WRAPPERS = [".github/workflows/prune.yml", ".github/workflows/prune-runs.yml"]
-prune = load_script("scripts/prune-workflow-runs.py")
+prune = load_script(".github/scripts/prune-workflow-runs.py")
 
 
 class TestBothProtectionsAreOnByDefault:
@@ -69,7 +69,7 @@ class TestTheScriptStillSupportsBoth:
         assert prune.KEEP_RECENT_DAYS is not None
 
     def test_the_two_protections_are_independent(self):
-        # Documented at scripts/prune-workflow-runs.py: "both may be on at
+        # Documented at .github/scripts/prune-workflow-runs.py: "both may be on at
         # once". If that ever stopped being true, aligning the defaults
         # would be the wrong fix.
         source = (prune.__doc__ or "").lower()

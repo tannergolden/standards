@@ -14,7 +14,7 @@
 #
 # WHAT IT REGENERATES IS DECIDED BY THE REPOSITORY, NOT BY THIS WORKFLOW.
 # Every `<!-- AUTO-INDEX:BEGIN ... -->` block in every Markdown file is
-# redrawn by `scripts/update-doc-indexes.py --tree`, shipped with the
+# redrawn by `.github/scripts/update-doc-indexes.py --tree`, shipped with the
 # `update-indexes` action. A repository with no block anywhere fails here on
 # purpose, because a run that indexed nothing must not report a pass.
 #
@@ -83,7 +83,7 @@ jobs:
       pull-requests: write # open or update the index pull request
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🗂️ Machined Indexes: regenerates every AUTO-INDEX block and proposes the result as a pull request.'
@@ -95,7 +95,7 @@ jobs:
 
       - name: '🗂️ Regenerate the machined indexes'
         id: index
-        uses: tannergolden/standards/actions/update-indexes@v1
+        uses: tannergolden/standards/.github/actions/update-indexes@v1
         with:
           mode: write
 
@@ -130,7 +130,7 @@ jobs:
 
       - name: '🚀 Propose the indexes as a pull request'
         if: ${{ steps.index.outputs.updated != '0' }}
-        uses: tannergolden/standards/actions/open-pr@v1
+        uses: tannergolden/standards/.github/actions/open-pr@v1
         with:
           token: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
           branch: 'docs/auto-index'

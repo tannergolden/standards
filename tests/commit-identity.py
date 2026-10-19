@@ -19,7 +19,7 @@ from __future__ import annotations
 import pytest
 from conftest import load_script
 
-commit_check = load_script("scripts/commit-check.py")
+commit_check = load_script(".github/scripts/commit-check.py")
 
 ADA = ("Ada Lovelace", "00000000+ada@users.noreply.github.com")
 CLAUDE = ("Claude", "noreply@anthropic.com")

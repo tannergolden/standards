@@ -134,13 +134,13 @@ jobs:
       deployments: write # deactivate and delete stale deployments
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🧹 Prune: removes superseded documentation-site deployments.'
 
       - name: '🧹 Prune pages deployments'
-        uses: tannergolden/standards/actions/prune-deployments@v1
+        uses: tannergolden/standards/.github/actions/prune-deployments@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           only: ${{ inputs.pages-environment }}
@@ -155,13 +155,13 @@ jobs:
       deployments: write # deactivate and delete stale deployments
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🧹 Prune: removes superseded application deployments.'
 
       - name: '🧹 Prune app environments'
-        uses: tannergolden/standards/actions/prune-deployments@v1
+        uses: tannergolden/standards/.github/actions/prune-deployments@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           exclude: ${{ inputs.pages-environment }}
@@ -177,7 +177,7 @@ jobs:
       contents: read # read the recent commit list for the protection window
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🧹 Prune: deletes old workflow runs, keeping recent history.'
@@ -185,7 +185,7 @@ jobs:
       # In-flight runs are never deleted, which includes this one, so the
       # prune cannot delete the job it is executing in.
       - name: '🧹 Prune runs'
-        uses: tannergolden/standards/actions/prune-workflow-runs@v1
+        uses: tannergolden/standards/.github/actions/prune-workflow-runs@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           keep: ${{ inputs.keep }}

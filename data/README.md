@@ -99,7 +99,7 @@ Anyone who wants exactness for good pins a commit SHA, which nothing here delete
 - **Renaming a label needs `renamed_from:`.** Without it the old label is orphaned in every
   repository that already carries it, taking its issues and pull requests out of every saved filter.
 - **Label descriptions stop at 100 characters, names at 50.** The GitHub API rejects longer ones with
-  a 422. [`scripts/sync-labels.sh`](../scripts/sync-labels.sh) validates the whole registry - lengths,
+  a 422. [`.github/scripts/sync-labels.sh`](../.github/scripts/sync-labels.sh) validates the whole registry - lengths,
   duplicate names, colour format - **before** its first write, so a bad entry fails the run naming the
   offender instead of half-applying the taxonomy.
 - **The sync reads before it writes.** A label already matching its declaration is left alone, so a
@@ -108,14 +108,14 @@ Anyone who wants exactness for good pins a commit SHA, which nothing here delete
   first.
 - **Every setting carries its reason.** A key added to `repository-settings.json` needs an entry in
   the `_why` block beside its group, and the suite fails without one; a setting deliberately left
-  out goes in `_excluded` with the reason. [`scripts/apply-settings.py`](../scripts/apply-settings.py)
+  out goes in `_excluded` with the reason. [`.github/scripts/apply-settings.py`](../.github/scripts/apply-settings.py)
   refuses a key it does not know and the handful it never writes, so a typo fails the run naming
   itself rather than quietly applying nothing.
 - **A settings change reaches every repository it is reapplied to, and a drift check shows it
   first.** Dispatch 🎯 Apply Standards with `dry-run` on in one repository after editing the file:
   the plan names every line the change would write.
 - **The label reference is generated.** `docs/references/Repository-Labels.md` builds its tables from
-  this file via [`scripts/update-label-docs.py`](../scripts/update-label-docs.py), which reports
+  this file via [`.github/scripts/update-label-docs.py`](../.github/scripts/update-label-docs.py), which reports
   drift when run with `--check`. Edit the registry and re-run the script; never edit the tables.
 - **The nine GitHub stock labels are byte-identical to a new repository's.** `bug`, `documentation`,
   `duplicate`, `enhancement`, `good first issue`, `help wanted`, `invalid`, `question` and `wontfix`

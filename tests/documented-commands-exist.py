@@ -34,12 +34,12 @@ MAKEFILE = ROOT / "Makefile"
 # "make sure", "make it", "make the" are not commands.
 REFERENCE = re.compile(r"`make ([a-z][a-z-]*)`")
 
-# SCOPED TO `scripts/` ON PURPOSE. A `make build` named in a workflow or in
+# SCOPED TO `.github/scripts/` ON PURPOSE. A `make build` named in a workflow or in
 # docs/ refers to the CONSUMING repository's Makefile, which is the whole
 # point of the stage-resolution contract, and this repository cannot vouch
 # for it. The script docstrings are different: they instruct whoever is
 # working on THIS repository, so a target they name has to exist HERE.
-SEARCHED = ("scripts/*.py", "scripts/*.sh")
+SEARCHED = (".github/scripts/*.py", ".github/scripts/*.sh")
 
 
 def declared_targets() -> set[str]:

@@ -20,7 +20,7 @@ from __future__ import annotations
 import pytest
 from conftest import ROOT
 
-SCRIPT = "scripts/update-doc-indexes.py"
+SCRIPT = ".github/scripts/update-doc-indexes.py"
 
 
 def run_in(run_script, cwd, *args):

@@ -122,7 +122,7 @@ jobs:
       pull-requests: write # post the welcome on pull requests
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
 
@@ -172,7 +172,7 @@ jobs:
       pull-requests: write # apply area, size, and conflict labels
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
 
@@ -183,7 +183,7 @@ jobs:
 
       - name: '📄 Resolve labeler configuration'
         id: labeler-config
-        uses: tannergolden/standards/actions/config@v1
+        uses: tannergolden/standards/.github/actions/config@v1
         with:
           name: labeler.yml
           override: ${{ inputs.labeler-config }}
@@ -240,7 +240,7 @@ jobs:
       pull-requests: write # mark and close stale pull requests
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
 
@@ -276,7 +276,7 @@ jobs:
       pull-requests: write # lock long-inactive closed pull requests
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🔒 Lock Threads: seals closed issues and pull requests after a period of silence.'
@@ -300,13 +300,13 @@ jobs:
       issues: write # create and update the repository's labels
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
 
       # No checkout: the taxonomy and the script both travel with the action.
       - name: '🔖 Sync Labels'
-        uses: tannergolden/standards/actions/sync-labels@v1
+        uses: tannergolden/standards/.github/actions/sync-labels@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 

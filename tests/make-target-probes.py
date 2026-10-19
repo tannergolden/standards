@@ -9,7 +9,7 @@ with `set -o pipefail`, two things make that pipeline lie. `grep -q` stops
 reading at its first match, so make dies writing the rest of its database;
 and a dry run whose default goal cannot be made exits non-zero on its own.
 Either read a declared target as missing, and the step went on as if it
-were absent: `actions/setup` never ran `make setup`, and
+were absent: `.github/actions/setup` never ran `make setup`, and
 `publish-package.yml` would publish a package without running `make build`.
 
 So every probing step is found by its text rather than listed, and runs
@@ -27,7 +27,7 @@ PROBE = re.compile(r"make -np\b.*?\|\s*grep -qE '\^(?P<target>[A-Za-z0-9_.-]+):'
 
 
 def _run_steps():
-    files = sorted(ROOT.glob(".github/workflows/*.yml")) + sorted(ROOT.glob("actions/*/action.yml"))
+    files = sorted(ROOT.glob(".github/workflows/*.yml")) + sorted(ROOT.glob(".github/actions/*/action.yml"))
     for path in files:
         rel = path.relative_to(ROOT).as_posix()
         doc = load_yaml(rel)
@@ -59,7 +59,7 @@ def test_every_make_database_probe_is_covered():
     written = sum(_code(step["run"]).count("make -np") for _, _, step in _run_steps())
     assert written == len(SITES), f"{written} `make -np` probes, {len(SITES)} recognized"
     found = {(param.values[0], param.values[3]) for param in SITES}
-    assert ("actions/setup/action.yml", "setup") in found
+    assert (".github/actions/setup/action.yml", "setup") in found
     assert (".github/workflows/publish-package.yml", "build") in found
 
 

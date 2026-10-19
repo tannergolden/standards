@@ -26,7 +26,7 @@ import sys
 import pytest
 from conftest import ROOT, SYNC_ENV, TEMPLATE_LIST, load_script
 
-sync = load_script("scripts/template-sync.py")
+sync = load_script(".github/scripts/template-sync.py")
 
 # An unchanged line between the rewritten block and the owner's setting, as in
 # any real file: git merges changes that do not touch, never ones that abut.
@@ -310,12 +310,12 @@ DOCS_README = (
 
 def redraw(where) -> subprocess.CompletedProcess:
     """Every machined index in a tree, redrawn as Machined Indexes redraws it."""
-    return subprocess.run([sys.executable, str(ROOT / "scripts/update-doc-indexes.py"), "--write", "--tree"],
+    return subprocess.run([sys.executable, str(ROOT / ".github/scripts/update-doc-indexes.py"), "--write", "--tree"],
                           cwd=where, capture_output=True, text=True, check=False)
 
 
 def checked(where) -> subprocess.CompletedProcess:
-    return subprocess.run([sys.executable, str(ROOT / "scripts/update-doc-indexes.py"), "--check", "--tree"],
+    return subprocess.run([sys.executable, str(ROOT / ".github/scripts/update-doc-indexes.py"), "--check", "--tree"],
                           cwd=where, capture_output=True, text=True, check=False)
 
 

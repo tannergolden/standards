@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 
-SCRIPT = "scripts/dco-check.sh"
+SCRIPT = ".github/scripts/dco-check.sh"
 
 
 def commits(count, *, signed=True, start=0):

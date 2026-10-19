@@ -22,8 +22,8 @@ import pytest
 from conftest import ROOT, SYNC_ENV, TEMPLATE_FILES, load_script, load_yaml, workflow_step_shell
 
 WORKFLOW = ".github/workflows/template-sync.yml"
-ACTION = "actions/template-sync/action.yml"
-sync = load_script("scripts/template-sync.py")
+ACTION = ".github/actions/template-sync/action.yml"
+sync = load_script(".github/scripts/template-sync.py")
 
 
 class TestTheReusableWorkflow:
@@ -46,7 +46,7 @@ class TestTheReusableWorkflow:
         assert derive < resolve
         assert steps[resolve]["env"]["MAP"] == "${{ steps.derive.outputs.map }}"
         for step in steps:
-            if step.get("uses", "").startswith("tannergolden/standards/actions/template-sync"):
+            if step.get("uses", "").startswith("tannergolden/standards/.github/actions/template-sync"):
                 assert step["with"]["map"] == "${{ steps.derive.outputs.map }}", step.get("name")
 
     def test_each_job_asks_for_what_it_uses_and_nothing_more(self):
@@ -90,7 +90,7 @@ class TestTheReusableWorkflow:
 
     def test_automerge_waits_for_a_clean_sync(self):
         step = next(s for s in self.jobs()["sync"]["steps"] if s.get("uses", "").startswith(
-            "tannergolden/standards/actions/open-pr"))
+            "tannergolden/standards/.github/actions/open-pr"))
         assert step["with"]["automerge"].replace(" ", "") == (
             "${{inputs.automerge&&steps.sync.outputs.clean=='true'}}")
         assert step["with"]["branch"] == "chore/template-sync"
@@ -115,7 +115,7 @@ class TestTheReusableWorkflow:
         steps = self.jobs()["sync"]["steps"]
         hold = next(i for i, s in enumerate(steps) if s.get("id") == "hold")
         push = next(i for i, s in enumerate(steps) if s.get("uses", "").startswith(
-            "tannergolden/standards/actions/open-pr"))
+            "tannergolden/standards/.github/actions/open-pr"))
         assert hold < push
         # Exactly the runs whose own pull request does not ask to merge itself.
         assert steps[hold]["if"].replace(" ", "") == (
@@ -270,7 +270,7 @@ class TestTheWorkflowFilePolicy:
         sync_world.generate()
         sync_world.release("v1.1.0", {self.CHECKS: self.RELEASED})
         shell = workflow_step_shell(ACTION, None, "sync")
-        base = {"GITHUB_ACTION_PATH": str(ROOT / "actions/template-sync"), "MODE": "run",
+        base = {"GITHUB_ACTION_PATH": str(ROOT / ".github/actions/template-sync"), "MODE": "run",
                 "TEMPLATE_DIR": str(sync_world.template), "TEMPLATE": "", "REF": "v1", "WORKFLOW_FILES": "auto",
                 "WORKFLOW_TOKEN": "", "OWNER_NAME": "", "REPOSITORY": "a/b", "VERSION": "", "MAP": "",
                 "PATH": curl.path, **SYNC_ENV}
@@ -315,7 +315,7 @@ class TestTheWorkflowFilePolicy:
 class TestTheActionDispatches:
     def run(self, run_shell, cwd, **env):
         shell = workflow_step_shell(ACTION, None, "sync")
-        base = {"GITHUB_ACTION_PATH": str(ROOT / "actions/template-sync"), "MODE": "run", "TEMPLATE_DIR": "",
+        base = {"GITHUB_ACTION_PATH": str(ROOT / ".github/actions/template-sync"), "MODE": "run", "TEMPLATE_DIR": "",
                 "TEMPLATE": "", "REF": "v1", "WORKFLOW_FILES": "true", "OWNER_NAME": "", "REPOSITORY": "a/b",
                 "VERSION": "", "MAP": "", **SYNC_ENV}
         return run_shell(shell, cwd=cwd, env={**base, **env})
@@ -362,7 +362,7 @@ class TestTheSyncPullRequestStaysCurrent:
 
     def deliver(self, run_script, fake_gh, repo):
         (repo / "synced.txt").write_text("v1.2.0\n", encoding="utf-8")
-        return run_script("scripts/open-pr.sh", cwd=repo, env=fake_gh.env(
+        return run_script(".github/scripts/open-pr.sh", cwd=repo, env=fake_gh.env(
             GH_TOKEN="t", BRANCH_PREFIX="chore/template-sync", PR_BASE="main",
             COMMIT_TITLE=self.TITLE, PR_TITLE=self.TITLE, PR_BODY="Needs you: c.txt"))
 
@@ -405,7 +405,7 @@ class TestTheWaitingFilesIssue:
         if pending is not None:
             (tmp_path / ".github").mkdir(exist_ok=True)
             (tmp_path / ".github/template-sync.lock").write_text(json.dumps({**LOCK, "pending": pending}))
-        script = f'exec python3 "{ROOT}/scripts/template-sync.py" track --repository janedoe/widget --version v1.2.0'
+        script = f'exec python3 "{ROOT}/.github/scripts/template-sync.py" track --repository janedoe/widget --version v1.2.0'
         return run_shell(script, cwd=tmp_path, env=fake_gh.env(GH_TOKEN="x"))
 
     WAITING: ClassVar[dict] = {".github/workflows/checks.yml": {"version": "v1.2.0", "reason": "conflict"}}
@@ -458,7 +458,7 @@ class TestTheWaitingFilesIssue:
 class TestInitWritesTheLock:
     def test_the_generation_lock_lands_in_inits_own_commit(self, sync_world, monkeypatch):
         """init's real main(), with only the API and the final push faked."""
-        init = load_script("scripts/init-template.py")
+        init = load_script(".github/scripts/init-template.py")
         sync_world.generate(init=False)
         repo = sync_world.repo
         root_tree = sync_world.sync.tree(repo, "HEAD")
@@ -495,7 +495,7 @@ class TestInitWritesTheLock:
         assert "[@janedoe]" in sync_world.text("docs/guide.md")
 
     def test_a_template_without_a_list_gets_no_lock(self, sync_world, monkeypatch, tmp_path):
-        init = load_script("scripts/init-template.py")
+        init = load_script(".github/scripts/init-template.py")
         sync_world.release("v1.0.1", {".github/template-sync": None})
         sync_world.generate(init=False)
         monkeypatch.setattr(init, "api", lambda path, token: {})
@@ -513,7 +513,7 @@ class TestInitWritesTheLock:
 class TestInitialised:
     """init's per-file rule, which template sync imports rather than copies."""
 
-    init = load_script("scripts/init-template.py")
+    init = load_script(".github/scripts/init-template.py")
     KW: ClassVar[dict] = {"owner": "janedoe", "repo": "janedoe/widget", "display": "Jane Doe",
                           "template_owner": "tannergolden", "year": 2027}
 
@@ -573,4 +573,4 @@ def test_the_action_is_the_only_caller_of_the_script_path(tmp_path):
     """The script travels with the action; the workflow must reach it through the action."""
     text = (ROOT / WORKFLOW).read_text(encoding="utf-8")
     assert "scripts/template-sync.py" not in text
-    assert os.path.isfile(ROOT / "scripts/template-sync.py")
+    assert os.path.isfile(ROOT / ".github/scripts/template-sync.py")

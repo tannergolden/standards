@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from conftest import load_script
 
-init = load_script("scripts/init-template.py")
+init = load_script(".github/scripts/init-template.py")
 
 
 def tree(root, *folders):

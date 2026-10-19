@@ -12,7 +12,7 @@
 # commit-type list drifting was a command that did not exist.
 #
 # WHAT BELONGS HERE: the commands a person or a gate runs. No logic. Every
-# target is a one-line call into `scripts/`, so this file cannot drift away
+# target is a one-line call into `.github/scripts/`, so this file cannot drift away
 # from what the scripts actually do, and CI runs the same entry points a
 # contributor does rather than its own private copy of them.
 #
@@ -46,10 +46,10 @@ lint-fix: ## Apply the lint fixes ruff can make automatically
 # The generators are the gate. Each reports drift and changes nothing, so
 # this target is safe to run anywhere and is what CI calls.
 lint-docs: ## Fail when a generated document, a document's frontmatter or the commit-type list has drifted
-	python3 scripts/update-doc-indexes.py --check
-	python3 scripts/update-label-docs.py --check
-	python3 scripts/check-frontmatter.py
-	python3 scripts/check-type-parity.py
+	python3 .github/scripts/update-doc-indexes.py --check --tree
+	python3 .github/scripts/update-label-docs.py --check
+	python3 .github/scripts/check-frontmatter.py
+	python3 .github/scripts/check-type-parity.py
 
 lint-format: ## Check formatting against the published Prettier config
 	npx --yes "prettier@$(PRETTIER_VERSION)" --config config/prettierrc.json --ignore-path config/prettierignore --check "**/*.{md,yml,yaml,json,js}"
@@ -58,8 +58,8 @@ test: ## Run the test suite
 	python3 -m pytest
 
 docs-index: ## Regenerate every machined index and label table in place
-	python3 scripts/update-doc-indexes.py --write
-	python3 scripts/update-label-docs.py
+	python3 .github/scripts/update-doc-indexes.py --tree --write
+	python3 .github/scripts/update-label-docs.py
 
 check-types: ## Check the Conventional Commit type list agrees everywhere
-	python3 scripts/check-type-parity.py
+	python3 .github/scripts/check-type-parity.py

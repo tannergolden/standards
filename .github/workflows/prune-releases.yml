@@ -107,7 +107,7 @@ jobs:
       contents: write # deleting releases, and optionally their tags, requires write
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🧹 Prune Releases: deletes published releases that a newer one supersedes, and with delete-tags every version tag no kept release stands on. A bare major tag is kept regardless.'

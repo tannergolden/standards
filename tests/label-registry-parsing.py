@@ -25,7 +25,7 @@ import pathlib
 import pytest
 from conftest import ROOT, load_script
 
-label_docs = load_script("scripts/update-label-docs.py")
+label_docs = load_script(".github/scripts/update-label-docs.py")
 
 QUOTING = [
     ("single", "- name: 'bug'\ncolor: 'd73a4a'\ndescription: 'Something is broken'\n"),

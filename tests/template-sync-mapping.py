@@ -28,7 +28,7 @@ import subprocess
 import pytest
 from conftest import SYNC_ENV, load_script
 
-sync = load_script("scripts/template-sync.py")
+sync = load_script(".github/scripts/template-sync.py")
 
 MIT = "Distributed under the MIT License."
 PROPRIETARY = "Proprietary and confidential; all rights reserved."

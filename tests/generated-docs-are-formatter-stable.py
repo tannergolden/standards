@@ -28,7 +28,7 @@ import pytest
 from conftest import ROOT
 
 DOC = ROOT / "docs/references/Repository-Labels.md"
-SCRIPT = ROOT / "scripts/update-label-docs.py"
+SCRIPT = ROOT / ".github/scripts/update-label-docs.py"
 
 requires_npx = pytest.mark.skipif(shutil.which("npx") is None, reason="npx not installed")
 
@@ -100,7 +100,7 @@ def first_delimiter(text: str) -> str:
     """
     from conftest import load_script
 
-    module = load_script("scripts/update-label-docs.py")
+    module = load_script(".github/scripts/update-label-docs.py")
     block = text.split(module.BEGIN, 1)[1].split(module.END, 1)[0]
     row = next(
         (ln for ln in block.split("\n") if re.fullmatch(r"\|(?:\s*:?-+:?\s*\|)+", ln)), None

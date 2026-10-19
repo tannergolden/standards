@@ -23,15 +23,15 @@ from __future__ import annotations
 import pytest
 from conftest import ROOT, load_script
 
-version_check = load_script("scripts/check-standards-version.py")
-doc_indexes = load_script("scripts/update-doc-indexes.py")
+version_check = load_script(".github/scripts/check-standards-version.py")
+doc_indexes = load_script(".github/scripts/update-doc-indexes.py")
 
 
 class TestOpenPrDistinguishesFailureFromCleanliness:
     def test_a_broken_repository_is_an_error(self, run_script, fake_gh, tmp_path):
         """The defect: git failing printed "No changes detected" and exited 0."""
         result = run_script(
-            "scripts/open-pr.sh",
+            ".github/scripts/open-pr.sh",
             cwd=tmp_path,  # not a git repository at all
             env=fake_gh.env(
                 GH_TOKEN="t",
@@ -48,7 +48,7 @@ class TestOpenPrDistinguishesFailureFromCleanliness:
 
     def test_a_genuinely_clean_tree_still_no_ops(self, run_script, fake_gh, git_repo):
         result = run_script(
-            "scripts/open-pr.sh",
+            ".github/scripts/open-pr.sh",
             cwd=git_repo,
             env=fake_gh.env(
                 GH_TOKEN="t",

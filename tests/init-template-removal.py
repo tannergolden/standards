@@ -35,7 +35,7 @@ import sys
 import pytest
 from conftest import ROOT, TEMPLATE_LIST, load_script
 
-sync = load_script("scripts/template-sync.py")
+sync = load_script(".github/scripts/template-sync.py")
 
 ONLY = "# --- Only ever in the template ----------------------------------------------"
 WORKFLOWS = ".github/workflows/"
@@ -102,7 +102,7 @@ def initialise(world, monkeypatch, tmp_path) -> tuple[str, str]:
 
     Returns the commit message it wrote and the step summary it left.
     """
-    init = load_script("scripts/init-template.py")
+    init = load_script(".github/scripts/init-template.py")
     generated = world.git(world.repo, "rev-parse", "HEAD").strip()
 
     def api(path, token):
@@ -310,7 +310,7 @@ class TestEveryFolderLogIsRedrawn:
     def test_the_logs_are_what_machined_indexes_would_draw(self, shaped, monkeypatch, tmp_path):
         shaped.generate(init=False)
         initialise(shaped, monkeypatch, tmp_path)
-        check = subprocess.run([sys.executable, str(ROOT / "scripts/update-doc-indexes.py"), "--tree", "--check"],
+        check = subprocess.run([sys.executable, str(ROOT / ".github/scripts/update-doc-indexes.py"), "--tree", "--check"],
                                cwd=shaped.repo, capture_output=True, text=True, check=False)
         assert check.returncode == 0, check.stdout + check.stderr
 

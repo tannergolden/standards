@@ -206,7 +206,7 @@ jobs:
               echo "::error title=Release::A workflow references ${ref}, which does not exist at this commit."
               missing=1
             fi
-          done < <(grep -rhoE 'tannergolden/standards/(actions/[A-Za-z0-9._-]+)@' .github/workflows/ \
+          done < <(grep -rhoE 'tannergolden/standards/((\.github/)?actions/[A-Za-z0-9._-]+)@' .github/workflows/ .github/actions/ actions/ \
                    | sed -E 's|tannergolden/standards/||; s|@$||' | sort -u)
           [ "$missing" -eq 0 ] || exit 1
           echo "Every referenced action exists at this commit."

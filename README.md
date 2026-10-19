@@ -69,11 +69,12 @@ the template alone needs, which its list names.
 | Path                                                | Purpose                                                                                                                                     |
 | :-------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
 | [`.github/workflows/`](.github/workflows/README.md) | 24 reusable workflows, called with `uses:` at the job level, plus two local to this repository: `self-checks.yml` and `self-dependabot.yml` |
-| [`actions/`](actions/README.md)                     | 19 composite actions, called with `uses:` at the step level                                                                                 |
+| [`.github/actions/`](.github/actions/README.md)     | 19 composite actions, called with `uses:` at the step level                                                                                 |
+| [`actions/`](actions/README.md)                     | Forwarders that keep each action's old address working until the next major version                                                         |
 | [`data/`](data/README.md)                           | Rulesets, the label taxonomy and the repository settings, written **to** a repository                                                       |
 | `config/`                                           | Linter and tooling configuration, read **by** a tool during a run                                                                           |
 | `docs/`                                             | The standards themselves, followed by link. Start at the standards index                                                                    |
-| `scripts/`                                          | Helpers the actions above ship and invoke                                                                                                   |
+| [`.github/scripts/`](.github/scripts/README.md)     | Helpers the actions above ship and invoke                                                                                                   |
 
 The two `uses:` mechanisms are not interchangeable, and the difference decides where a thing lives.
 A **reusable workflow** is checked out against the **calling** repository, so it can operate on your
@@ -87,7 +88,7 @@ an action reached consumers before anything had executed it.
 
 [`.github/workflows/self-checks.yml`](.github/workflows/self-checks.yml) closes it. It is local to
 this repository rather than published, the same way `self-dependabot.yml` is, and **every first-party
-`uses:` in it is a local path** - `./actions/harden`, never `tannergolden/standards/actions/harden@v1`.
+`uses:` in it is a local path** - `./.github/actions/harden`, never `tannergolden/standards/.github/actions/harden@v1`.
 That is the whole point: a local path resolves against the checked-out tree and therefore tests the
 diff, while a published path resolves the pin and would test the last release instead, reporting
 green on a pull request that breaks the very action it is changing. A local path is the only

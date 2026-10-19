@@ -1,7 +1,7 @@
 {
   "_comment": [
     "The repository settings a repository on these standards is expected to have.",
-    "Applied by scripts/apply-settings.py, which reads before it writes and",
+    "Applied by .github/scripts/apply-settings.py, which reads before it writes and",
     "previews by default. Every value here is required by something documented:",
     "the reason is in the _why block beside its group, and a setting nothing",
     "needs is not here.",

@@ -36,20 +36,28 @@ We adhere to a standardized structure so that any developer - or agent - can nav
 
 ```txt
 / (repo root)
+├── .devcontainer/         # The development container
+├── .vscode/               # Shared editor settings and recommended extensions
 ├── .github/
-│   ├── workflows/         # 22 reusable definitions + release.yml and self-checks.yml, local to here
+│   ├── actions/           # Composite actions, one folder each: action.yml and its README
+│   ├── scripts/           # The repository's own checks, and the helpers its actions ship
+│   ├── workflows/         # Stubs and the repository's own workflows; here, the reusable ones too
+│   ├── CODEOWNERS         # Read only from the owning repo
 │   ├── dependabot.yml     # Keeps every pinned action current. Read only from the owning repo
-│   └── CODEOWNERS         # Read only from the owning repo
-├── actions/               # 19 composite actions, each shipping the files it needs
-├── config/                # Tool configuration read BY a tool during a run
-├── data/                  # Rulesets and the label taxonomy, written TO a repository
-├── docs/                  # The standards themselves, followed by link
-├── scripts/               # Helpers the composite actions ship and invoke
-└── README.md, LICENSE, .ruff.toml, .editorconfig, .gitattributes, .gitignore
+│   └── release.yml        # How GitHub groups a release's generated notes
+├── assets/                # branding/, diagrams/, html/ and screenshots/ to start
+├── docs/                  # adrs/, and the project's documentation
+└── README.md, LICENSE, .editorconfig, .env.example, .gitattributes, .gitignore, .markdownlint.json
 ```
 
+Every folder lists its files in a `README.md`, whose log the indexer draws. These standards add
+three root folders the templates do not need: `config/` for tool configuration read **by** a tool
+during a run, `data/` for the rulesets, labels and settings written **to** a repository, and,
+until v2, `actions/`, whose forwarders keep each action's old address working
+([ADR-0001](../adrs/ADR-0001-Actions-And-Scripts-Live-In-Github.md)).
+
 > [!IMPORTANT]
-> **One script home, two kinds of caller.** Every helper lives in `scripts/`, whether a human invokes it (Makefile targets, `npm test`, session hooks) or only a workflow does, in which case it is shipped and invoked by the composite action that wraps it. The distinction that matters is the caller rather than the folder: anything a human or a build file invokes must keep a stable path, because those callers live in your repository and nothing updates them for you - while a helper reached only through an action can move freely, since the action that ships it moves with it.
+> **One script home, two kinds of caller.** Every helper lives in `.github/scripts/`, whether a human invokes it (Makefile targets, `npm test`, session hooks) or only a workflow does, in which case it is shipped and invoked by the composite action that wraps it. The distinction that matters is the caller rather than the folder: anything a human or a build file invokes must keep a stable path, because those callers live in your repository and nothing updates them for you - while a helper reached only through an action can move freely, since the action that ships it moves with it.
 
 ---
 

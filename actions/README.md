@@ -1,96 +1,66 @@
 <!--
-title: '🧩 COMPOSITE ACTIONS'
-description: 'Step-level building blocks called with uses:, and the rule that decides what belongs here rather than in a workflow.'
+title: '↪️ OLD ACTION ADDRESSES'
+description: 'Forwarders that keep each composite action''s old address, tannergolden/standards/actions/<name>@v1, working until the next major version.'
 type: index
-keywords: [reusable, github-actions]
+keywords: [github-actions, forwarder, migration]
 -->
 
 <!-- markdownlint-disable MD041 -->
 
 <div align="center">
 
-# 🧩 COMPOSITE ACTIONS
+# ↪️ OLD ACTION ADDRESSES
 
 <a name="top"></a>
 
-**Step-level pieces, called with `uses:` inside a job.**
+**Where the actions used to live.**
 
-_If it ships a file, it lives here._
+_Moved, never broken._
 
 </div>
 
 ---
 
-## 💡 Why These Exist Separately
+## 💡 What This Folder Is For
 
-A **reusable workflow** and a **composite action** look interchangeable until you need a file. They
-are not:
-
-|                                        | Reusable workflow          | Composite action                          |
-| :------------------------------------- | :------------------------- | :---------------------------------------- |
-| Called at                              | Job level                  | Step level                                |
-| `actions/checkout` gives you           | The **calling** repository | Nothing implicit                          |
-| Its own repository's files             | **Unreachable**            | Fetched with it, at `$GITHUB_ACTION_PATH` |
-| Can define jobs, permissions, matrices | Yes                        | No                                        |
-
-That third row decides everything. A reusable workflow cannot read the config or script published
-beside it, because its checkout resolves to whoever called it. A composite action can, because
-GitHub fetches the whole repository alongside it.
-
-So the rule is simple: **anything that has to ship a file with it is an action.** Everything that
-only describes jobs is a workflow.
+Every composite action moved to [`.github/actions/`](../.github/actions/README.md), where every repository keeps its own. A caller pinned to `v1` may still name the old address, so each old folder keeps one `action.yml` that declares the same inputs and outputs and forwards them to the action at its new address. Point every caller at `tannergolden/standards/.github/actions/<name>@v1`: this folder goes at the next major version.
 
 ---
 
-## 📦 What's Here
+## 📝 File Log
 
-| Action                | Ships                                   | Does                                                                                                  |
-| :-------------------- | :-------------------------------------- | :---------------------------------------------------------------------------------------------------- |
-| `harden`              |                                         | Pins the runner-hardening action in one place, and posts the job notice                               |
-| `setup`               |                                         | Makes the toolchains a repository uses available, detected from its manifests                         |
-| `config`              | `config/*`                              | Hands a workflow a shared config file, honoring a caller override                                     |
-| `dco-check`           | `scripts/dco-check.sh`                  | Verifies the sign-off trailer on every human commit in a pull request                                 |
-| `commit-check`        | `scripts/commit-check.py`               | Verifies every human commit message follows Conventional Commits                                      |
-| `open-pr`             | `scripts/open-pr.sh`                    | Delivers automation changes as one evolving pull request                                              |
-| `sync-labels`         | `data/labels.yml`, script               | Applies the label taxonomy, create-or-update, never pruning                                           |
-| `apply-rulesets`      | `data/rulesets/*`, script               | Creates or updates branch and tag rulesets, matched by name                                           |
-| `sbom`                | script                                  | Writes a dependency inventory for any ecosystem, not just npm                                         |
-| `init-template`       | script                                  | Rewrites a generated repository's identity and deletes what only the template needs, once             |
-| `standards-version`   | script                                  | Opens one issue when a newer major of these standards is published                                    |
-| `ci-failure-alert`    | script                                  | Opens an issue when a watched workflow fails, closes it on recovery                                   |
-| `prune-deployments`   | script                                  | Deletes superseded deployments, keeping the current successful one                                    |
-| `prune-workflow-runs` | script                                  | Deletes old runs, keeping recent history and anything in flight                                       |
-| `apply-settings`      | `data/repository-settings.json`, script | Brings every repository setting with a standard value in line with the published set, comparing first |
-| `update-indexes`      | script                                  | Regenerates, or checks, every machined index in a repository                                          |
-| `machined-blocks`     | script                                  | Fails when a block marked with its own hash, such as `INTELLIGENCE`, was edited by hand               |
-| `check-frontmatter`   | script                                  | Checks every document opens with the hidden frontmatter the documentation standard defines            |
-| `template-sync`       | script                                  | Brings a generated repository up to date with its template, on request; checks a template's list      |
+<!-- AUTO-INDEX:BEGIN dir=. style=log -->
 
----
+| Entry                                                   | Purpose                                                                                                                                                                 |
+| :------------------------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`apply-rulesets/`](apply-rulesets/README.md)           | Keeps the old address of the apply-rulesets action working for a caller pinned to v1, by forwarding every input and output to .github/actions/apply-rulesets.           |
+| [`apply-settings/`](apply-settings/README.md)           | Keeps the old address of the apply-settings action working for a caller pinned to v1, by forwarding every input and output to .github/actions/apply-settings.           |
+| [`check-frontmatter/`](check-frontmatter/README.md)     | Keeps the old address of the check-frontmatter action working for a caller pinned to v1, by forwarding every input and output to .github/actions/check-frontmatter.     |
+| [`ci-failure-alert/`](ci-failure-alert/README.md)       | Keeps the old address of the ci-failure-alert action working for a caller pinned to v1, by forwarding every input and output to .github/actions/ci-failure-alert.       |
+| [`commit-check/`](commit-check/README.md)               | Keeps the old address of the commit-check action working for a caller pinned to v1, by forwarding every input and output to .github/actions/commit-check.               |
+| [`config/`](config/README.md)                           | Keeps the old address of the config action working for a caller pinned to v1, by forwarding every input and output to .github/actions/config.                           |
+| [`dco-check/`](dco-check/README.md)                     | Keeps the old address of the dco-check action working for a caller pinned to v1, by forwarding every input and output to .github/actions/dco-check.                     |
+| [`harden/`](harden/README.md)                           | Keeps the old address of the harden action working for a caller pinned to v1, by forwarding every input and output to .github/actions/harden.                           |
+| [`init-template/`](init-template/README.md)             | Keeps the old address of the init-template action working for a caller pinned to v1, by forwarding every input and output to .github/actions/init-template.             |
+| [`machined-blocks/`](machined-blocks/README.md)         | Keeps the old address of the machined-blocks action working for a caller pinned to v1, by forwarding every input and output to .github/actions/machined-blocks.         |
+| [`open-pr/`](open-pr/README.md)                         | Keeps the old address of the open-pr action working for a caller pinned to v1, by forwarding every input and output to .github/actions/open-pr.                         |
+| [`prune-deployments/`](prune-deployments/README.md)     | Keeps the old address of the prune-deployments action working for a caller pinned to v1, by forwarding every input and output to .github/actions/prune-deployments.     |
+| [`prune-workflow-runs/`](prune-workflow-runs/README.md) | Keeps the old address of the prune-workflow-runs action working for a caller pinned to v1, by forwarding every input and output to .github/actions/prune-workflow-runs. |
+| [`sbom/`](sbom/README.md)                               | Keeps the old address of the sbom action working for a caller pinned to v1, by forwarding every input and output to .github/actions/sbom.                               |
+| [`setup/`](setup/README.md)                             | Keeps the old address of the setup action working for a caller pinned to v1, by forwarding every input and output to .github/actions/setup.                             |
+| [`standards-version/`](standards-version/README.md)     | Keeps the old address of the standards-version action working for a caller pinned to v1, by forwarding every input and output to .github/actions/standards-version.     |
+| [`sync-labels/`](sync-labels/README.md)                 | Keeps the old address of the sync-labels action working for a caller pinned to v1, by forwarding every input and output to .github/actions/sync-labels.                 |
+| [`template-sync/`](template-sync/README.md)             | Keeps the old address of the template-sync action working for a caller pinned to v1, by forwarding every input and output to .github/actions/template-sync.             |
+| [`update-indexes/`](update-indexes/README.md)           | Keeps the old address of the update-indexes action working for a caller pinned to v1, by forwarding every input and output to .github/actions/update-indexes.           |
+| [`README.md`](README.md)                                | This file.                                                                                                                                                              |
 
-## 🌿 Calling One Directly
-
-Actions are usable on their own, not only through the workflows here. Pin a tag, never a branch:
-
-```yaml
-steps:
-  - uses: tannergolden/standards/actions/harden@v1
-    with:
-      egress-policy: audit
-
-  - uses: tannergolden/standards/actions/setup@v1
-```
-
-> [!NOTE]
-> The workflows in this repository reference these actions at the **major** tag. Pinning a workflow
-> to an exact version freezes its logic while the actions it calls follow the `v1` line. Pin a commit
-> SHA if you need every layer frozen.
+<!-- AUTO-INDEX:END -->
 
 ---
 
 <div align="center">
 
-**Anything that ships a file is an action. Everything else is a workflow.**
+**Call the new address. This one is on its way out.**
 
 [↑ Back to Top](#top)
 

@@ -1,52 +1,15 @@
-# --- Composite Action ---
+# --- Composite Action (forwarder) ---
 #
-# 🧰 Setup Toolchain
+# 🧰 Setup Toolchain, at its old address
 #
-# Purpose: makes whichever toolchains a repository actually uses available,
-# decided by what is present in its tree rather than by configuration it has
-# to keep in sync. A repository with no go.mod gets no Go; one with no
-# Cargo.toml gets no Rust. Nothing is declared twice, and adding a language
-# to a project does not mean remembering to edit its CI.
+# This action moved to .github/actions/setup/, where every repository keeps
+# its composite actions. This forwarder keeps the old address working for a
+# caller pinned to v1: it passes every input on and hands every output back.
+# Call the new address instead. The forwarder goes at the next major version.
 #
-# Detection is by manifest file, which is the one thing every ecosystem
-# agrees on:
-#
-#   Node.js   package.json
-#   Python    requirements.txt, pyproject.toml, setup.py, Pipfile,
-#             and scripts/*.py
-#   Go        go.mod
-#   Rust      Cargo.toml
-#   Java      pom.xml, build.gradle, build.gradle.kts
-#   Ruby      Gemfile
-#   .NET      any *.csproj, *.fsproj, or *.sln
-#
-# `scripts/*.py` IS NOT A MANIFEST, and is the single exception to the rule
-# above. A repository with helper scripts and no Python packaging still needs
-# an interpreter of a known version to run them, and pinning it here beats
-# every consumer discovering the runner's default separately. The cost is
-# that a Go or Rust repository keeping a `scripts/release.py` gets a
-# setup-python step it did not ask for; `python-version` controls which one.
-#
-# TWO MECHANISMS, ON PURPOSE. Node and Python are installed by their setup
-# actions, because those give exact version control and dependency caching.
-# Everything else uses the toolchain PREINSTALLED on the runner image, which
-# is deliberate rather than lazy: it adds no third-party action to the
-# supply chain, and each of those ecosystems already reads its own version
-# from the repository. `go.mod` names the Go version and the toolchain
-# fetches it; `rust-toolchain.toml` pins rustup; Gradle wrappers pin
-# themselves. Installing over that would override a decision the repository
-# already made.
-#
-# Caching follows one rule throughout: enable it only where a lockfile
-# exists, because cache keys derive from one. Asking for a cache without a
-# lockfile fails the setup step rather than quietly skipping it.
-#
-# Used as:
-#
-#   - uses: tannergolden/standards/actions/setup@v1
+#   - uses: tannergolden/standards/.github/actions/setup@v1
 #
 # ---
-
 name: '🧰 Setup Toolchain'
 description: 'Makes the toolchains a repository uses available, detected from the manifests in its tree.'
 
@@ -60,130 +23,26 @@ inputs:
     required: false
     default: '3.12'
   java-version:
-    description: >-
-      Preinstalled Java major version to select, used when a Maven or Gradle
-      build file is present. Falls back to the image default if the runner
-      does not carry it.
+    description: 'Preinstalled Java major version to select, used when a Maven or Gradle build file is present. Falls back to the image default if the runner does not carry it.'
     required: false
     default: '21'
   cache:
-    description: >-
-      Enable dependency caching where a lockfile makes it safe. Turn this
-      off for jobs that publish artifacts, where a poisoned cache could
-      reach a release.
+    description: 'Enable dependency caching where a lockfile makes it safe. Turn this off for jobs that publish artifacts, where a poisoned cache could reach a release.'
     required: false
     default: 'true'
   install:
-    description: >-
-      Run the repository's own dependency install after the toolchains are
-      available. Set to false for jobs that only need a runtime present.
+    description: "Run the repository's own dependency install after the toolchains are available. Set to false for jobs that only need a runtime present."
     required: false
     default: 'true'
 
 runs:
-  using: composite
+  using: 'composite'
   steps:
-    - name: '🟢 Setup Node.js'
-      if: hashFiles('package.json') != ''
-      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+    - name: '↪️ Forward to .github/actions/setup'
+      uses: 'tannergolden/standards/.github/actions/setup@v1'
       with:
-        node-version: ${{ inputs.node-version }}
-        # Cache only alongside a lockfile: `npm ci` requires one, and the
-        # cache step fails outright in a repository that has none.
-        cache: ${{ (inputs.cache == 'true' && hashFiles('package-lock.json') != '') && 'npm' || '' }}
-
-    - name: '🐍 Setup Python'
-      if: hashFiles('requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile', 'scripts/*.py') != ''
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-      with:
-        python-version: ${{ inputs.python-version }}
-        cache: ${{ (inputs.cache == 'true' && hashFiles('requirements.txt') != '') && 'pip' || '' }}
-
-    - name: '☕ Select Java'
-      if: hashFiles('pom.xml', 'build.gradle', 'build.gradle.kts') != ''
-      shell: bash
-      env:
-        WANTED: ${{ inputs.java-version }}
-      # ACCEPTED FINDING: zizmor's `github-env` audit flags any write to
-      # GITHUB_ENV or GITHUB_PATH whose value it cannot prove is static. The
-      # value written here is neither caller-supplied nor attacker-supplied:
-      # it is read back out of the RUNNER'S OWN environment by indirect
-      # expansion, and both branches below require it to name a directory
-      # that already exists on the image. `java-version` selects WHICH
-      # runner variable to read; it never becomes the value.
-      #
-      # Suppressed inline rather than in config/zizmor.yml because that file
-      # keys ignores by BASE FILE NAME, and every composite action here is
-      # `action.yml` - an entry there would silence this audit across every
-      # one of them. See the note in config/zizmor.yml.
-      run: | # zizmor: ignore[github-env]
-        set -euo pipefail
-        # Runner images expose each preinstalled JDK as JAVA_HOME_<major>_X64,
-        # so only a bare MAJOR can name one.
-        #
-        # ⚠️ CHECKED BEFORE THE INDIRECT EXPANSION, because the input is
-        # spliced into a shell VARIABLE NAME. Anything that is not an integer
-        # builds an illegal identifier, and `${!VAR}` then aborts the step
-        # with `invalid variable name` under `set -euo pipefail`. That is how
-        # `java-version: '21.0.5'`, which is how most people write a Java
-        # version, failed every job calling this action in a repository with
-        # a pom.xml, while the input's own description promised a fallback.
-        SELECTED=""
-        if [ -z "${WANTED//[0-9]/}" ] && [ -n "$WANTED" ]; then
-          VAR="JAVA_HOME_${WANTED}_X64"
-          SELECTED="${!VAR:-}"
-        elif [ -n "$WANTED" ]; then
-          echo "::warning title=Java version::'$WANTED' is not a major version number, and a runner image only exposes preinstalled JDKs by major (JAVA_HOME_<major>_X64). Pass '21' rather than '21.0.5'. Falling back to the image default."
-        fi
-        if [ -n "$SELECTED" ] && [ -d "$SELECTED" ]; then
-          echo "JAVA_HOME=$SELECTED" >> "$GITHUB_ENV"
-          echo "$SELECTED/bin" >> "$GITHUB_PATH"
-          echo "Selected preinstalled Java $WANTED."
-        else
-          echo "::notice title=Java version::Java $WANTED is not preinstalled on this runner, so the image default ($(java -version 2>&1 | head -n 1)) is used. A Gradle or Maven wrapper in the repository still governs the build itself."
-        fi
-
-    - name: '🔎 Report Detected Toolchains'
-      shell: bash
-      run: |
-        set -euo pipefail
-        # Go, Rust, Ruby, and .NET ship with the runner image, and each
-        # reads its own version from the repository. Report what is
-        # available so a version surprise is visible in the log rather than
-        # inferred from a failure three steps later.
-        report() {
-          if command -v "$1" >/dev/null 2>&1; then
-            printf '  %-8s %s\n' "$1" "$("${@:2}" 2>&1 | head -n 1)"
-          else
-            echo "::warning title=Toolchain missing::'$1' was detected as needed by this repository but is not on the runner. Install it in your stub before calling this workflow."
-          fi
-        }
-        echo "Toolchains available for this repository:"
-        [ -f go.mod ] && report go go version
-        [ -f Cargo.toml ] && report cargo cargo --version
-        [ -f Gemfile ] && report ruby ruby --version
-        if ls ./*.sln ./*.csproj ./*.fsproj >/dev/null 2>&1; then report dotnet dotnet --version; fi
-        exit 0
-
-    - name: '📦 Install Dependencies'
-      if: inputs.install == 'true' && hashFiles('Makefile') != ''
-      shell: bash
-      run: |
-        # `make setup` is the repository's own answer to "get ready to
-        # build", whatever its language. Skipped rather than failed where
-        # the Makefile does not define it.
-        #
-        # Probed against make's target database, not with `make -n setup`:
-        # the latter exits 0 for a `setup/` DIRECTORY, so this step reported
-        # having installed dependencies while running nothing at all.
-        #
-        # And answered by grep alone. This step runs under pipefail, where
-        # make's own exit status read a declared target as missing: grep -q
-        # stops reading at its first match, so make dies writing the rest of
-        # its database, and a dry run whose default goal cannot be made exits
-        # non-zero too. `|| true` keeps that status out of the test.
-        if { [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; } && { make -np 2>/dev/null || true; } | grep -qE '^setup:'; then
-          make setup
-        else
-          echo "::notice title=No setup target::This repository's Makefile does not define 'setup', so dependency installation was left to the toolchain steps above."
-        fi
+        node-version: '${{ inputs.node-version }}'
+        python-version: '${{ inputs.python-version }}'
+        java-version: '${{ inputs.java-version }}'
+        cache: '${{ inputs.cache }}'
+        install: '${{ inputs.install }}'

@@ -71,7 +71,7 @@ jobs:
       commit_count: ${{ steps.count.outputs.count }}
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '📋 Release Notes: drafts a changelog from Conventional Commits.'
@@ -99,7 +99,7 @@ jobs:
 
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
 
@@ -111,7 +111,7 @@ jobs:
 
       - name: '📄 Resolve git-cliff configuration'
         id: cliff-config
-        uses: tannergolden/standards/actions/config@v1
+        uses: tannergolden/standards/.github/actions/config@v1
         with:
           name: cliff.toml
           override: ${{ inputs.cliff-config }}

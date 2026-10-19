@@ -25,10 +25,10 @@ import pathlib
 import pytest
 from conftest import load_script
 
-label_docs = load_script("scripts/update-label-docs.py")
+label_docs = load_script(".github/scripts/update-label-docs.py")
 
-LABEL_DOCS = "scripts/update-label-docs.py"
-VERSION_CHECK = "scripts/check-standards-version.py"
+LABEL_DOCS = ".github/scripts/update-label-docs.py"
+VERSION_CHECK = ".github/scripts/check-standards-version.py"
 
 INCOMPLETE = [
     ("no description", "- name: 'area: infra'\ncolor: '0e8a16'\n"),

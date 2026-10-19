@@ -24,7 +24,7 @@ _Absence is a decision. Never an oversight._
 
 A repository on these standards should never depend on someone remembering a checkbox. Every setting GitHub exposes falls into exactly one of five buckets: **written by 🎯 Apply Standards**, **set at generation**, **carried by a file in the tree**, **deliberately manual**, or **impossible to automate** because GitHub offers no API for it. This page is the map of all five, page by page of a repository's Settings, so "is that configured?" always has a lookup, never a shrug.
 
-The written set itself lives in [`data/repository-settings.json`](../../data/repository-settings.json) - one value and one reason per line, applied by [`scripts/apply-settings.py`](../../scripts/apply-settings.py), which reads before it writes and previews by default. This page does not repeat those reasons; it tells you which bucket everything is in, and how a run decides.
+The written set itself lives in [`data/repository-settings.json`](../../data/repository-settings.json) - one value and one reason per line, applied by [`.github/scripts/apply-settings.py`](../../.github/scripts/apply-settings.py), which reads before it writes and previews by default. This page does not repeat those reasons; it tells you which bucket everything is in, and how a run decides.
 
 ---
 

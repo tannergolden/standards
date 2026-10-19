@@ -1,28 +1,20 @@
-# --- Composite Action ---
+# --- Composite Action (forwarder) ---
 #
-# 🧠 Machined Block Check
+# 🧠 Machined Block Check, at its old address
 #
-# Purpose: fails when a block another repository renders and marks with its
-# own hash, such as the INTELLIGENCE block in AGENTS.md, has been edited by
-# hand. The next delivery would overwrite the edit silently; this says so on
-# the pull request that makes it.
+# This action moved to .github/actions/machined-blocks/, where every repository keeps
+# its composite actions. This forwarder keeps the old address working for a
+# caller pinned to v1: it passes every input on and hands every output back.
+# Call the new address instead. The forwarder goes at the next major version.
 #
-# An action rather than a workflow step, because it ships a file: the
-# script runs from `$GITHUB_ACTION_PATH`, against the calling repository's
-# checkout. A repository with no machined block passes untouched.
-#
-# Used as:
-#
-#   - uses: tannergolden/standards/actions/machined-blocks@v1
+#   - uses: tannergolden/standards/.github/actions/machined-blocks@v1
 #
 # ---
-
 name: '🧠 Machined Block Check'
 description: 'Verifies every hash-marked block in the repository still matches the hash its marker carries.'
 
 runs:
-  using: composite
+  using: 'composite'
   steps:
-    - name: '🧠 Verify machined blocks'
-      shell: bash
-      run: python3 "${GITHUB_ACTION_PATH}/../../scripts/machined-blocks.py"
+    - name: '↪️ Forward to .github/actions/machined-blocks'
+      uses: 'tannergolden/standards/.github/actions/machined-blocks@v1'

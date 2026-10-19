@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """A settings file that yields nothing, or names what it cannot, must fail.
 
-`settings-file` is a public input of `actions/apply-settings`, wired from
+`settings-file` is a public input of `.github/actions/apply-settings`, wired from
 `apply-standards.yml`, so the file is a consumer's and a consumer's mistake
 has to be reported, not interpreted. The first version of the script read
 its `repository` group out of a process substitution whose failure was
@@ -24,7 +24,7 @@ import json
 import pytest
 from conftest import ROOT, load_script
 
-SCRIPT = "scripts/apply-settings.py"
+SCRIPT = ".github/scripts/apply-settings.py"
 module = load_script(SCRIPT)
 
 GOOD = {"repository": {"has_issues": True}, "actions": {}}

@@ -16,7 +16,7 @@ from __future__ import annotations
 import pytest
 from conftest import load_script
 
-init = load_script("scripts/init-template.py")
+init = load_script(".github/scripts/init-template.py")
 
 DOTFILES = [".editorconfig", ".gitignore", ".gitattributes"]
 ORDINARY = ["README.md", "config.yml", "script.py", "LICENSE", "CODEOWNERS"]

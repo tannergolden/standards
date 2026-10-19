@@ -118,7 +118,7 @@ jobs:
       contents: read # read the template's own files and list
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🔄 Template Sync: checking that the sync list names every file this template ships.'
@@ -129,7 +129,7 @@ jobs:
           persist-credentials: false
 
       - name: '🔄 Check the list'
-        uses: tannergolden/standards/actions/template-sync@v1
+        uses: tannergolden/standards/.github/actions/template-sync@v1
         with:
           mode: check
 
@@ -148,7 +148,7 @@ jobs:
       pull-requests: write # open or update the sync pull request
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: "🔄 Template Sync: bringing the template's latest release into this repository as a pull request."
@@ -247,7 +247,7 @@ jobs:
 
       - name: '🔄 Sync'
         id: sync
-        uses: tannergolden/standards/actions/template-sync@v1
+        uses: tannergolden/standards/.github/actions/template-sync@v1
         with:
           mode: run
           template-dir: ${{ runner.temp }}/template.git
@@ -275,7 +275,7 @@ jobs:
 
       - name: '🚀 Propose The Sync As A Pull Request'
         if: ${{ steps.sync.outputs.changed == 'true' }}
-        uses: tannergolden/standards/actions/open-pr@v1
+        uses: tannergolden/standards/.github/actions/open-pr@v1
         with:
           token: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
           branch: 'chore/template-sync'
@@ -295,7 +295,7 @@ jobs:
 
       - name: '📌 Keep What Waits In View'
         if: ${{ success() }}
-        uses: tannergolden/standards/actions/template-sync@v1
+        uses: tannergolden/standards/.github/actions/template-sync@v1
         env:
           GH_TOKEN: ${{ github.token }}
         with:

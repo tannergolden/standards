@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """The local commitlint config must reject what the CI gate rejects.
 
-`scripts/commit-check.py` says of `config/commitlint.config.js`: "The two
+`.github/scripts/commit-check.py` says of `config/commitlint.config.js`: "The two
 encode ONE rule set and change together; editing either alone produces a
 rule nobody enforces or a gate nothing documents." They did not encode one
 rule set. Three rules were enforced in CI and absent locally:
@@ -38,7 +38,7 @@ import pytest
 from conftest import ROOT, load_script
 
 CONFIG = ROOT / "config/commitlint.config.js"
-commit_check = load_script("scripts/commit-check.py")
+commit_check = load_script(".github/scripts/commit-check.py")
 TYPES = commit_check.DEFAULT_TYPES.split(",")
 
 requires_node = pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")

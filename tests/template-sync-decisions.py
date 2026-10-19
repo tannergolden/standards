@@ -26,7 +26,7 @@ import itertools
 import pytest
 from conftest import load_script
 
-sync = load_script("scripts/template-sync.py")
+sync = load_script(".github/scripts/template-sync.py")
 Side = sync.Side
 
 BASE = b"one\ntwo\nthree\nfour\nfive\nsix\n"

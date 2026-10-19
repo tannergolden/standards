@@ -15,7 +15,7 @@
 export default {
   // `extends` inherits the base rules from the widely-used `config-conventional` preset.
   extends: ['@commitlint/config-conventional'],
-  // House plugins. Each mirrors `scripts/commit-check.py`, which is the gate
+  // House plugins. Each mirrors `.github/scripts/commit-check.py`, which is the gate
   // that actually blocks a merge; this file is what a contributor runs
   // locally, and the two are only useful if they agree. Every character is
   // built from its code point so this config never contains a banned

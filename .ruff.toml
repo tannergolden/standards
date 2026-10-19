@@ -40,7 +40,7 @@ ignore = [
 [lint.per-file-ignores]
 # The line-length ceiling is advisory in long help text and error messages,
 # where breaking a sentence hurts the reader more than the width does.
-"scripts/*.py" = ["E501"]
+".github/scripts/*.py" = ["E501"]
 # Tests assert, which is what `assert` is for; bandit's S101 exists for
 # production code where a stripped optimization would remove the check.
 # S108 likewise: a test that writes to a temp path is using the fixture it

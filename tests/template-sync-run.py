@@ -125,7 +125,7 @@ class TestTheTemplatesChangesArrive:
 
 class TestTheReportRendersWhatItShows:
     def test_a_conflict_in_a_markdown_file_keeps_its_own_fences_inside_the_diff(self):
-        sync = load_script("scripts/template-sync.py")
+        sync = load_script(".github/scripts/template-sync.py")
         diff = "--- a/x.md\n+++ b/x.md\n@@ -1 +1,3 @@\n+```yaml\n+a: 1\n+```"
         report = sync.render_report(template="t/p", version="v1.1.0", previous="v1.0.0", list_changed=False,
                                     decisions=[sync.Decision("x.md", "conflict", detail="clash", diff=diff)])
@@ -181,7 +181,7 @@ class TestWhatTheRunRefusesToGuess:
         assert not result.changed, "a release that changes nothing here opens no pull request"
 
     def test_a_missing_baseline_still_takes_the_templates_mode(self):
-        sync = load_script("scripts/template-sync.py")
+        sync = load_script(".github/scripts/template-sync.py")
         target = sync.Side("100755", b"same\n", "t" * 40)
         ours = sync.Side("100644", b"same\n", "o" * 40)
         decision = sync.decide("tool.sh", sync.MISSING, target, ours, synced=True, was_deleted=False)
@@ -660,7 +660,7 @@ class TestARepositoryWithoutALock:
 class TestTheCommandLine:
     def run_cli(self, world, run_script, *args):
         env = {**SYNC_ENV, "GITHUB_REPOSITORY": "janedoe/widget", "GITHUB_REPOSITORY_OWNER": "janedoe"}
-        return run_script("scripts/template-sync.py", cwd=world.repo, env=env) if not args else \
+        return run_script(".github/scripts/template-sync.py", cwd=world.repo, env=env) if not args else \
             world  # placeholder, replaced below
 
     def test_run_reports_through_actions_outputs(self, sync_world, run_shell):
@@ -677,7 +677,7 @@ class TestTheCommandLine:
         assert result.outputs["version"] == "v1.1.0"
         assert "::warning file=.github/workflows/checks.yml" in result.output
         assert "Needs you" in result.summary
-        commit_check = load_script("scripts/commit-check.py")
+        commit_check = load_script(".github/scripts/commit-check.py")
         types = list(commit_check.DEFAULT_TYPES) if not isinstance(commit_check.DEFAULT_TYPES, str) else \
             [t.strip() for t in commit_check.DEFAULT_TYPES.split(",")]
         for title in (result.outputs["pr-title"], result.outputs["commit-title"]):

@@ -5,7 +5,7 @@
 `check-type-parity.py` exists because the list "sits in three copies in
 three languages, so drift would be silent and would show up as a commit that
 passes one gate and fails another". It compared three:
-`scripts/commit-check.py`, `config/commitlint.config.js`, and the
+`.github/scripts/commit-check.py`, `config/commitlint.config.js`, and the
 `commit-types` input default in `semantic-pr.yml`.
 
 There are two more, and one of them is the most consequential of the lot:
@@ -14,7 +14,7 @@ There are two more, and one of them is the most consequential of the lot:
                                     squash commit, and semantic-pr.yml calls
                                     it "the only gate keeping a banned em
                                     dash out of history".
-  actions/commit-check/action.yml   the action's own `types` default, used
+  .github/actions/commit-check/action.yml   the action's own `types` default, used
                                     by anyone calling the action directly.
 
 So adding a type to the three checked places passed parity, and then a pull
@@ -26,14 +26,14 @@ from __future__ import annotations
 
 from conftest import ROOT, load_script
 
-parity = load_script("scripts/check-type-parity.py")
+parity = load_script(".github/scripts/check-type-parity.py")
 
 EXPECTED_SOURCES = {
-    "scripts/commit-check.py",
+    ".github/scripts/commit-check.py",
     "config/commitlint.config.js",
     ".github/workflows/semantic-pr.yml",
     ".github/workflows/semantic-pr.yml:title-types",
-    "actions/commit-check/action.yml",
+    ".github/actions/commit-check/action.yml",
 }
 
 
@@ -76,7 +76,7 @@ class TestTheTitleGateIsCovered:
         shutil.copytree(ROOT, work, ignore=shutil.ignore_patterns(".git", ".pytest_cache"))
         old_list = "feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert,security"
         for rel, before, after in (
-            ("scripts/commit-check.py", f'"{old_list}"', f'"{old_list},deps"'),
+            (".github/scripts/commit-check.py", f'"{old_list}"', f'"{old_list},deps"'),
             (
                 "config/commitlint.config.js",
                 "        'security',\n",
@@ -95,7 +95,7 @@ class TestTheTitleGateIsCovered:
             encoding="utf-8",
         )
 
-        drifted = load_script_from(work, "scripts/check-type-parity.py")
+        drifted = load_script_from(work, ".github/scripts/check-type-parity.py")
         assert drifted.main() == 1, (
             "parity passed with `deps` in the commit gate but not the title gate"
         )

@@ -17,7 +17,7 @@ import subprocess
 
 from conftest import ROOT, load_script
 
-check = load_script("scripts/check-frontmatter.py")
+check = load_script(".github/scripts/check-frontmatter.py")
 SPEC = ROOT / "docs/technical/interface/Document-Styling-&-Formatting.md"
 
 
@@ -157,7 +157,7 @@ def run_in(repo, files: dict[str, str], run_shell, mode: str | None = None, untr
     for rel, text in (untracked or {}).items():
         (repo / rel).write_text(text, encoding="utf-8")
     flag = f" --mode {mode}" if mode else ""
-    return run_shell(f'exec python3 "{ROOT}/scripts/check-frontmatter.py"{flag}', cwd=repo)
+    return run_shell(f'exec python3 "{ROOT}/.github/scripts/check-frontmatter.py"{flag}', cwd=repo)
 
 
 class TestTheGate:
@@ -188,7 +188,7 @@ class TestTheGate:
 class TestTheWiring:
     def test_ci_runs_the_action_with_the_input(self):
         text = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        assert "uses: tannergolden/standards/actions/check-frontmatter@v1" in text
+        assert "uses: tannergolden/standards/.github/actions/check-frontmatter@v1" in text
         assert "mode: ${{ inputs.frontmatter }}" in text
 
     def test_the_input_reports_without_failing_by_default(self):
@@ -199,9 +199,9 @@ class TestTheWiring:
     def test_the_action_runs_the_script_and_lint_docs_runs_it_here(self):
         from conftest import load_yaml
 
-        action = load_yaml("actions/check-frontmatter/action.yml")
-        assert "scripts/check-frontmatter.py" in action["runs"]["steps"][0]["run"]
-        assert "python3 scripts/check-frontmatter.py" in (ROOT / "Makefile").read_text(encoding="utf-8")
+        action = load_yaml(".github/actions/check-frontmatter/action.yml")
+        assert "../../scripts/check-frontmatter.py" in action["runs"]["steps"][0]["run"]
+        assert "python3 .github/scripts/check-frontmatter.py" in (ROOT / "Makefile").read_text(encoding="utf-8")
 
 
 class TestTheSpecificationAgrees:

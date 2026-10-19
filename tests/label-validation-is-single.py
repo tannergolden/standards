@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 """One validator for the label taxonomy, not two that disagree.
 
-`actions/sync-labels` carried an inline '🔍 Validate taxonomy' step that
+`.github/actions/sync-labels` carried an inline '🔍 Validate taxonomy' step that
 re-implemented, with a line-oriented regex and no YAML parser, checks
-`scripts/sync-labels.sh` already performs before its first write.
+`.github/scripts/sync-labels.sh` already performs before its first write.
 
 They disagreed. YAML escapes a single quote by doubling it, so a
 description written `'…isn''t…'` is two characters longer as raw text than
@@ -26,8 +26,8 @@ from __future__ import annotations
 import pytest
 from conftest import ROOT, load_yaml
 
-ACTION = "actions/sync-labels/action.yml"
-SCRIPT = ROOT / "scripts/sync-labels.sh"
+ACTION = ".github/actions/sync-labels/action.yml"
+SCRIPT = ROOT / ".github/scripts/sync-labels.sh"
 
 
 def step_names() -> list[str]:

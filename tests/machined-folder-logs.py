@@ -25,8 +25,8 @@ import subprocess
 import pytest
 from conftest import ROOT, load_script, load_yaml
 
-SCRIPT = ROOT / "scripts/update-doc-indexes.py"
-indexes = load_script("scripts/update-doc-indexes.py")
+SCRIPT = ROOT / ".github/scripts/update-doc-indexes.py"
+indexes = load_script(".github/scripts/update-doc-indexes.py")
 
 LOG = "<!-- AUTO-INDEX:BEGIN dir=. style=log -->\n<!-- AUTO-INDEX:END -->\n"
 
@@ -402,14 +402,14 @@ class TestTheWorkflowChainHoldsTogether:
     """Three files in two places, any of which can drift from the others."""
 
     def test_the_action_runs_the_generator_over_the_whole_tree(self):
-        action = (ROOT / "actions/update-indexes/action.yml").read_text(encoding="utf-8")
-        assert "scripts/update-doc-indexes.py" in action
+        action = (ROOT / ".github/actions/update-indexes/action.yml").read_text(encoding="utf-8")
+        assert "../../scripts/update-doc-indexes.py" in action
         assert "--tree" in action, "the action would only ever see docs/"
 
     def test_the_count_the_action_reads_is_the_one_the_script_prints(self, tmp_path):
         """The action counts rewritten files by the lines the script prefixes
         with 📝, so a reworded message would report every run as a no-op."""
-        action = (ROOT / "actions/update-indexes/action.yml").read_text(encoding="utf-8")
+        action = (ROOT / ".github/actions/update-indexes/action.yml").read_text(encoding="utf-8")
         assert "'^📝 '" in action
         write(tmp_path / "README.md", LOG)
         result = subprocess.run(

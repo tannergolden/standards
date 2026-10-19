@@ -4,7 +4,7 @@
 
 Nothing in the published contract requires a repository to define a `setup`
 target. `ci.yml` calls it "the repository's own answer to get ready to
-build" and treats it as a fallback; `actions/setup` skips it with a notice
+build" and treats it as a fallback; `.github/actions/setup` skips it with a notice
 when it is absent.
 
 `release-publish.yml` ran it bare, gated only on a Makefile existing at all.
@@ -24,7 +24,7 @@ from conftest import workflow_step_shell
 
 SITES = [
     (".github/workflows/release-publish.yml", "release", "📦 Install Dependencies"),
-    ("actions/setup/action.yml", None, "📦 Install Dependencies"),
+    (".github/actions/setup/action.yml", None, "📦 Install Dependencies"),
 ]
 
 

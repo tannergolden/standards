@@ -35,12 +35,12 @@ whatever the owner has changed, and only for the paths the owner leaves it.
 
 Four pieces make it up, and each has exactly one author:
 
-| Piece                       | Where                                 | Written by                                                |
-| :-------------------------- | :------------------------------------ | :-------------------------------------------------------- |
-| The `🔄 Template Sync` stub | `.github/workflows/template-sync.yml` | The template; yours to edit or delete like any stub       |
-| The list                    | `.github/template-sync`               | The template's defaults, then your choices                |
-| The lock                    | `.github/template-sync.lock`          | Initialisation first, then the sync. Never edited by hand |
-| The engine                  | `scripts/template-sync.py`, here      | These standards, called through `actions/template-sync`   |
+| Piece                       | Where                                    | Written by                                                      |
+| :-------------------------- | :--------------------------------------- | :-------------------------------------------------------------- |
+| The `🔄 Template Sync` stub | `.github/workflows/template-sync.yml`    | The template; yours to edit or delete like any stub             |
+| The list                    | `.github/template-sync`                  | The template's defaults, then your choices                      |
+| The lock                    | `.github/template-sync.lock`             | Initialisation first, then the sync. Never edited by hand       |
+| The engine                  | `.github/scripts/template-sync.py`, here | These standards, called through `.github/actions/template-sync` |
 
 The engine is called, never copied, like every other piece of logic here: a fix to how syncing works
 reaches every repository pinned to `@v1` on its next run.

@@ -1,27 +1,15 @@
-# --- Composite Action ---
+# --- Composite Action (forwarder) ---
 #
-# 🗂️ Frontmatter Check
+# 🗂️ Frontmatter Check, at its old address
 #
-# Purpose: checks that every Markdown document opens with the hidden
-# frontmatter Document Styling & Formatting defines: the comment form, a
-# title, a description and a type, and only the fields and values the
-# standard allows. An agent reads that block to decide what a document is
-# before it opens the body, so a missing or malformed one costs every reader
-# a guess.
+# This action moved to .github/actions/check-frontmatter/, where every repository keeps
+# its composite actions. This forwarder keeps the old address working for a
+# caller pinned to v1: it passes every input on and hands every output back.
+# Call the new address instead. The forwarder goes at the next major version.
 #
-# An action rather than a workflow step, because it ships a file: the
-# script runs from `$GITHUB_ACTION_PATH`, against the calling repository's
-# checkout. `mode: warn` reports each problem without failing, which is how
-# a repository adopts the standard before every document follows it.
-#
-# Used as:
-#
-#   - uses: tannergolden/standards/actions/check-frontmatter@v1
-#     with:
-#       mode: enforce
+#   - uses: tannergolden/standards/.github/actions/check-frontmatter@v1
 #
 # ---
-
 name: '🗂️ Frontmatter Check'
 description: 'Verifies every Markdown document opens with the hidden frontmatter the documentation standard defines.'
 
@@ -32,10 +20,9 @@ inputs:
     default: 'enforce'
 
 runs:
-  using: composite
+  using: 'composite'
   steps:
-    - name: '🗂️ Check frontmatter'
-      shell: bash
-      env:
-        MODE: ${{ inputs.mode }}
-      run: python3 "${GITHUB_ACTION_PATH}/../../scripts/check-frontmatter.py" --mode "$MODE"
+    - name: '↪️ Forward to .github/actions/check-frontmatter'
+      uses: 'tannergolden/standards/.github/actions/check-frontmatter@v1'
+      with:
+        mode: '${{ inputs.mode }}'

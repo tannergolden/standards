@@ -38,17 +38,17 @@ What it does have is `self-checks.yml`, which runs `make lint-docs` on every
 push and once a week, so the column below says where each rule is actually
 checked, and admits where the answer is nowhere:
 
-| Rule                              | Checked by                                                                 |
-| :-------------------------------- | :------------------------------------------------------------------------- |
-| Machined indexes match the tree   | `scripts/update-doc-indexes.py`, via `make lint-docs` and `auto-index.yml` |
-| Label reference matches registry  | `scripts/update-label-docs.py --check`, via `make lint-docs`               |
-| Spelling                          | `typos`, in `ci.yml`, in consuming repositories                            |
-| Links resolve                     | `lychee`, in `ci.yml`, in consuming repositories                           |
-| A drawn block matches its data    | Each kit's check mode, in consuming repositories                           |
-| Frontmatter: form, fields, values | `scripts/check-frontmatter.py`, via `make lint-docs` and `ci.yml`          |
-| A description says when to read   | Convention. Upheld by review                                               |
-| No `_` as a space in a filename   | Convention. Upheld by review                                               |
-| Plain words                       | Convention. Upheld by review, and by DOC-003 for agents                    |
+| Rule                              | Checked by                                                                         |
+| :-------------------------------- | :--------------------------------------------------------------------------------- |
+| Machined indexes match the tree   | `.github/scripts/update-doc-indexes.py`, via `make lint-docs` and `auto-index.yml` |
+| Label reference matches registry  | `.github/scripts/update-label-docs.py --check`, via `make lint-docs`               |
+| Spelling                          | `typos`, in `ci.yml`, in consuming repositories                                    |
+| Links resolve                     | `lychee`, in `ci.yml`, in consuming repositories                                   |
+| A drawn block matches its data    | Each kit's check mode, in consuming repositories                                   |
+| Frontmatter: form, fields, values | `.github/scripts/check-frontmatter.py`, via `make lint-docs` and `ci.yml`          |
+| A description says when to read   | Convention. Upheld by review                                                       |
+| No `_` as a space in a filename   | Convention. Upheld by review                                                       |
+| Plain words                       | Convention. Upheld by review, and by DOC-003 for agents                            |
 
 Everything else in this specification - the badges, the centered headers, the
 taglines, the fully-capped titles - is **convention, followed by hand**. It is
@@ -114,7 +114,7 @@ Lists that carry the `AUTO-INDEX` markers are **generated, never hand-maintained
 
 A folder log describes each entry by what the entry says about itself: a folder by its README's frontmatter description, or, with no README, by the note named after the folder that a vault gives it, a document by its own, a script by its docstring, a form by its `description:`, and anything else by its leading comment. An entry that cannot carry a description, such as an image, keeps the one written in its row, and that cell is the only text inside the markers a person ever writes. `fields=name,on` adds a column for a YAML file's `name:` and for a workflow's triggers, and any other key a column read from each document's frontmatter: `fields=status,date,evidence` is how a folder of decision records logs each one's status, date and evidence.
 
-`scripts/update-doc-indexes.py` regenerates every block from the tree. Run `python3 scripts/update-doc-indexes.py --write` after adding, renaming, or removing a doc, and `--check` to fail on a stale index, so an index need never silently disagree with the tree. `--tree` widens the search from `docs/` to every Markdown file in the repository, which is how a consuming repository runs it: the templates ship an `auto-index.yml` stub that calls the reusable `auto-index.yml` here after every push to the default branch, and that workflow proposes whatever changed as one evolving pull request. Never edit between the markers by hand - edit the surrounding prose freely.
+`.github/scripts/update-doc-indexes.py` regenerates every block from the tree. Run `python3 .github/scripts/update-doc-indexes.py --write` after adding, renaming, or removing a doc, and `--check` to fail on a stale index, so an index need never silently disagree with the tree. `--tree` widens the search from `docs/` to every Markdown file in the repository, which is how a consuming repository runs it: the templates ship an `auto-index.yml` stub that calls the reusable `auto-index.yml` here after every push to the default branch, and that workflow proposes whatever changed as one evolving pull request. Never edit between the markers by hand - edit the surrounding prose freely.
 
 ---
 
@@ -181,7 +181,7 @@ of the last change - is never added.
 - **Exemption**: the notes of a vault, a repository of notes such as a BRAIN, open with the hidden frontmatter like every document, **but carry no decorative header, footer or fully-capped title**: an agent reads a note and a search finds it, so its single Heading 1 and its body are the whole page. The vault's `README.md` pages, its root `AGENTS.md` and its community health files follow this specification in full, and a vault may add rules of its own for its notes, such as fields of a kind or the types they use.
 - **Exemption**: a test fixture is data, kept exactly as its test needs it, and a file `.gitattributes` marks `linguist-generated` belongs to the generator that writes it.
 
-`scripts/check-frontmatter.py` checks every rule above a machine can: the hidden form, the required
+`.github/scripts/check-frontmatter.py` checks every rule above a machine can: the hidden form, the required
 fields, the fields and values allowed, and the keyword limits. Whether a description really says when
 to read its document is left to review. `make lint-docs` runs the check here, and `ci.yml` runs it in
 every repository as **🗂️ Check Frontmatter**, inside `🧪 Lint, Test & Build`. Its `frontmatter` input
@@ -536,7 +536,7 @@ To ensure 100% portability across diverse editors, terminal environments, and CI
    - **In Body Text**: Standard UTF-8 emojis are permitted for readability.
    - **In Templates & Critical Headers**: You **MUST** use HTML Hexadecimal Entities (e.g., `&#x1F680;` for 🚀, `&#x1F4DD;` for 📝). This prevents character corruption (mojibake) when documents are processed by scripts or viewed in legacy environments.
    - **Zero-Tolerance for Mojibake**: Corrupted sequences (the `Ã`-prefixed artifacts you get when UTF-8 is read as Latin-1) are prohibited and must be repaired on sight.
-3. **No Em Dashes**: The em dash character (U+2014) is prohibited in every file the repository writes: prose, comments, configuration, and commit messages alike. Use a comma, a colon, parentheses, or a spaced hyphen (" - ") instead. In prose it is a convention upheld by review; in a commit message it is mechanical, and the ban runs wider there: `scripts/commit-check.py` rejects U+2013 to U+2015, the en dash and horizontal bar alongside the em dash, because none of the three belongs in a commit subject and a range is harder to get wrong than a single code point. The `no-banned-dashes` rule in `config/commitlint.config.js` covers the same range, so a local run and the required check agree.
+3. **No Em Dashes**: The em dash character (U+2014) is prohibited in every file the repository writes: prose, comments, configuration, and commit messages alike. Use a comma, a colon, parentheses, or a spaced hyphen (" - ") instead. In prose it is a convention upheld by review; in a commit message it is mechanical, and the ban runs wider there: `.github/scripts/commit-check.py` rejects U+2013 to U+2015, the en dash and horizontal bar alongside the em dash, because none of the three belongs in a commit subject and a range is harder to get wrong than a single code point. The `no-banned-dashes` rule in `config/commitlint.config.js` covers the same range, so a local run and the required check agree.
 
 ---
 

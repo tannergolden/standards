@@ -87,7 +87,7 @@ jobs:
       statuses: write # publish the semantic-title status check on the PR
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '📦 Governance: enforces Conventional Commits on pull request titles.'
@@ -169,7 +169,7 @@ jobs:
     if: ${{ github.event.pull_request.number && !endsWith(github.actor, '[bot]') && !endsWith(github.event.pull_request.user.login, '[bot]') }}
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
 
@@ -223,7 +223,7 @@ jobs:
     if: ${{ github.event.pull_request.number }}
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '✍️ Commits: enforces Conventional Commits on every human commit.'
@@ -232,7 +232,7 @@ jobs:
       # under pull_request_target with an elevated token, and the commits
       # are read through the API rather than fetched from the branch.
       - name: '✍️ Verify commit messages'
-        uses: tannergolden/standards/actions/commit-check@v1
+        uses: tannergolden/standards/.github/actions/commit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           pr-number: ${{ github.event.pull_request.number }}
@@ -250,7 +250,7 @@ jobs:
     if: ${{ github.event.pull_request.number }}
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '✍️ DCO: verifies the Signed-off-by trailer on every human commit.'
@@ -260,7 +260,7 @@ jobs:
       # than being fetched from the tree under review. That is what makes
       # this safe under pull_request_target.
       - name: '✍️ Verify Developer Certificate of Origin sign-offs'
-        uses: tannergolden/standards/actions/dco-check@v1
+        uses: tannergolden/standards/.github/actions/dco-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           pr-number: ${{ github.event.pull_request.number }}

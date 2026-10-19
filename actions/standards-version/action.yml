@@ -1,26 +1,15 @@
-# --- Composite Action ---
+# --- Composite Action (forwarder) ---
 #
-# ⬆️ Standards Version Check
+# ⬆️ Standards Version Check, at its old address
 #
-# Purpose: opens one issue when a newer MAJOR of the shared standards is
-# published, and does nothing else ever.
+# This action moved to .github/actions/standards-version/, where every repository keeps
+# its composite actions. This forwarder keeps the old address working for a
+# caller pinned to v1: it passes every input on and hands every output back.
+# Call the new address instead. The forwarder goes at the next major version.
 #
-# A moving major tag (`@v1`) already delivers every fix and feature in its
-# line with no pull request and no action. The one thing it cannot do is
-# become `@v2`, because a major is a breaking change and must never arrive by
-# itself. Nothing otherwise tells a consumer that v2 exists.
-#
-# ⚠️ NOT A DEPENDENCY UPDATER. Dependabot already updates `uses:` references
-# including reusable-workflow calls. This notifies; it never edits a pin.
-#
-# Used as:
-#
-#   - uses: tannergolden/standards/actions/standards-version@v1
-#     with:
-#       token: ${{ secrets.GITHUB_TOKEN }}
+#   - uses: tannergolden/standards/.github/actions/standards-version@v1
 #
 # ---
-
 name: '⬆️ Standards Version Check'
 description: 'Opens one issue when a newer major of the shared standards is published.'
 
@@ -31,7 +20,7 @@ inputs:
   repository:
     description: 'Repository whose stubs are inspected, as owner/repo.'
     required: false
-    default: ${{ github.repository }}
+    default: '${{ github.repository }}'
   standards-repository:
     description: 'Repository publishing the standards, as owner/repo.'
     required: false
@@ -46,14 +35,13 @@ inputs:
     default: ''
 
 runs:
-  using: composite
+  using: 'composite'
   steps:
-    - name: '⬆️ Check for a newer major'
-      shell: bash
-      env:
-        GH_TOKEN: ${{ inputs.token }}
-        REPO: ${{ inputs.repository }}
-        STANDARDS_REPO: ${{ inputs.standards-repository }}
-        WORKFLOW_DIR: ${{ inputs.workflow-dir }}
-        LABEL: ${{ inputs.label }}
-      run: python3 "${GITHUB_ACTION_PATH}/../../scripts/check-standards-version.py"
+    - name: '↪️ Forward to .github/actions/standards-version'
+      uses: 'tannergolden/standards/.github/actions/standards-version@v1'
+      with:
+        token: '${{ inputs.token }}'
+        repository: '${{ inputs.repository }}'
+        standards-repository: '${{ inputs.standards-repository }}'
+        workflow-dir: '${{ inputs.workflow-dir }}'
+        label: '${{ inputs.label }}'

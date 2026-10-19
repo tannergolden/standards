@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import json
 
-SCRIPT = "scripts/apply-rulesets.sh"
+SCRIPT = ".github/scripts/apply-rulesets.sh"
 
 CONTENTS = [
     {"type": "file", "name": "checks.yml"},

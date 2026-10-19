@@ -14,3 +14,9 @@
 *.jpg binary
 *.gif binary
 *.ico binary
+
+# The development environment is for working on these standards, not for
+# shipping them, so a source archive leaves it out. Everything an action or a
+# reusable workflow reads at a tag stays in.
+.devcontainer/ export-ignore
+.vscode/       export-ignore

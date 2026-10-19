@@ -101,13 +101,13 @@ jobs:
       contents: read # read the default branch to resolve the commit window
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🧹 Prune: deletes run history, keeping recent commit-triggered runs.'
 
       - name: '🧹 Prune runs'
-        uses: tannergolden/standards/actions/prune-workflow-runs@v1
+        uses: tannergolden/standards/.github/actions/prune-workflow-runs@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           keep: ${{ inputs.keep }}

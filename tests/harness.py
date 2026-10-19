@@ -31,7 +31,7 @@ class TestWorkflowStepShell:
         assert "Nothing was validated" in shell
 
     def test_reads_a_composite_action_step(self):
-        shell = workflow_step_shell("actions/config/action.yml", None, "resolve")
+        shell = workflow_step_shell(".github/actions/config/action.yml", None, "resolve")
         assert "Unknown shared config" in shell
 
     def test_raises_on_a_step_that_no_longer_exists(self):
@@ -127,7 +127,7 @@ class TestRepositoryShape:
         # check-standards-version exits early and cleanly when no stub pins
         # anything, which makes it the cheapest end-to-end proof available.
         result = run_script(
-            "scripts/check-standards-version.py",
+            ".github/scripts/check-standards-version.py",
             env=fake_gh.env(GH_TOKEN="t", REPO="o/r", WORKFLOW_DIR="nowhere"),
         )
         assert result.returncode == 0

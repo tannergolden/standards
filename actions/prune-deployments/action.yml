@@ -1,27 +1,15 @@
-# --- Composite Action ---
+# --- Composite Action (forwarder) ---
 #
-# 🧹 Prune Deployments
+# 🧹 Prune Deployments, at its old address
 #
-# Purpose: deletes superseded and non-passing deployments, leaving the
-# current SUCCESSFUL deployment for each environment in place. In-flight
-# deployments (in_progress, queued, pending) are never touched, so a prune
-# cannot land on a deploy that is still happening.
+# This action moved to .github/actions/prune-deployments/, where every repository keeps
+# its composite actions. This forwarder keeps the old address working for a
+# caller pinned to v1: it passes every input on and hands every output back.
+# Call the new address instead. The forwarder goes at the next major version.
 #
-# Environments are selected rather than assumed, because the two cases are
-# genuinely different: a documentation site publishes from everywhere, while
-# application environments exist only where something is deployed. Pass
-# `only` or `exclude` to draw that line.
-#
-# Used as:
-#
-#   - uses: tannergolden/standards/actions/prune-deployments@v1
-#     with:
-#       token: ${{ secrets.GITHUB_TOKEN }}
-#       exclude: github-pages
-#       dry-run: true
+#   - uses: tannergolden/standards/.github/actions/prune-deployments@v1
 #
 # ---
-
 name: '🧹 Prune Deployments'
 description: 'Deletes superseded deployments, keeping the current successful one per environment.'
 
@@ -32,7 +20,7 @@ inputs:
   repository:
     description: 'Repository to prune, as owner/repo.'
     required: false
-    default: ${{ github.repository }}
+    default: '${{ github.repository }}'
   only:
     description: 'Comma-separated environments to prune. Empty means all of them.'
     required: false
@@ -47,14 +35,13 @@ inputs:
     default: 'false'
 
 runs:
-  using: composite
+  using: 'composite'
   steps:
-    - name: '🧹 Prune deployments'
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ inputs.token }}
-        GITHUB_REPOSITORY: ${{ inputs.repository }}
-        ONLY_ENVIRONMENTS: ${{ inputs.only }}
-        EXCLUDE_ENVIRONMENTS: ${{ inputs.exclude }}
-        DRY_RUN: ${{ inputs.dry-run }}
-      run: python3 "${GITHUB_ACTION_PATH}/../../scripts/prune-deployments.py"
+    - name: '↪️ Forward to .github/actions/prune-deployments'
+      uses: 'tannergolden/standards/.github/actions/prune-deployments@v1'
+      with:
+        token: '${{ inputs.token }}'
+        repository: '${{ inputs.repository }}'
+        only: '${{ inputs.only }}'
+        exclude: '${{ inputs.exclude }}'
+        dry-run: '${{ inputs.dry-run }}'

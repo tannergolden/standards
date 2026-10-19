@@ -75,7 +75,7 @@ TOKEN = re.compile(r"^(T\d+\.\d+|O\d+)$")
 YOURS = ("README.md", "LICENSE")
 
 # The engine, unpatched, for the oracle's own reading of lists and identity.
-ORACLE = load_script("scripts/template-sync.py")
+ORACLE = load_script(".github/scripts/template-sync.py")
 
 
 class Violation(AssertionError):
@@ -529,7 +529,7 @@ MUTANTS = {
 @pytest.mark.parametrize("name", sorted(MUTANTS))
 def test_the_suite_rejects_a_known_bad_design(name, tmp_path, isolated_git):
     patch, expected = MUTANTS[name]
-    module = load_script("scripts/template-sync.py")
+    module = load_script(".github/scripts/template-sync.py")
     patch(module)
     for seed in range(200):
         root = tmp_path / f"seed-{seed}"

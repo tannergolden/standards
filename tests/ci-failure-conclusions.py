@@ -25,7 +25,7 @@ import json
 
 import pytest
 
-SCRIPT = "scripts/ci-failure-alert.sh"
+SCRIPT = ".github/scripts/ci-failure-alert.sh"
 
 ESCALATES = ["failure", "timed_out", "startup_failure"]
 IGNORES = ["cancelled", "skipped", "neutral", "action_required"]

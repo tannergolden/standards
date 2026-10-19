@@ -86,7 +86,7 @@ jobs:
 
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🌐 Preview Deploy: builds and publishes to the preview environment.'
@@ -98,7 +98,7 @@ jobs:
 
       - name: '🧰 Setup Toolchain'
         id: setup
-        uses: tannergolden/standards/actions/setup@v1
+        uses: tannergolden/standards/.github/actions/setup@v1
         with:
           node-version: ${{ inputs.node-version }}
 

@@ -67,7 +67,7 @@ jobs:
       issues: write # open the one notice
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
 
@@ -79,7 +79,7 @@ jobs:
           persist-credentials: false
 
       - name: '⬆️ Check for a newer major'
-        uses: tannergolden/standards/actions/standards-version@v1
+        uses: tannergolden/standards/.github/actions/standards-version@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           standards-repository: ${{ inputs.standards-repository }}

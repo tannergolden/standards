@@ -154,7 +154,7 @@ jobs:
       issues: write # create and update labels
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
           notice: '🏷️ Standards: applying the shared label taxonomy.'
@@ -168,7 +168,7 @@ jobs:
           persist-credentials: false
 
       - name: '🔖 Sync Labels'
-        uses: tannergolden/standards/actions/sync-labels@v1
+        uses: tannergolden/standards/.github/actions/sync-labels@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           labels-file: ${{ inputs.labels-file }}
@@ -199,7 +199,7 @@ jobs:
       drift: ${{ steps.apply.outputs.drift }}
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
 
@@ -222,7 +222,7 @@ jobs:
 
       - name: '⚙️ Apply Repository Settings'
         id: apply
-        uses: tannergolden/standards/actions/apply-settings@v1
+        uses: tannergolden/standards/.github/actions/apply-settings@v1
         with:
           token: ${{ secrets.ADMIN_TOKEN }}
           settings-file: ${{ inputs.settings-file }}
@@ -246,7 +246,7 @@ jobs:
     permissions: {}
     steps:
       - name: '🛡️ Harden Runner'
-        uses: tannergolden/standards/actions/harden@v1
+        uses: tannergolden/standards/.github/actions/harden@v1
         with:
           egress-policy: audit
 
@@ -268,7 +268,7 @@ jobs:
           persist-credentials: false
 
       - name: '🛡️ Apply Rulesets'
-        uses: tannergolden/standards/actions/apply-rulesets@v1
+        uses: tannergolden/standards/.github/actions/apply-rulesets@v1
         with:
           token: ${{ secrets.ADMIN_TOKEN }}
           rulesets-dir: ${{ inputs.rulesets-dir }}

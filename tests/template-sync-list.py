@@ -19,7 +19,7 @@ from __future__ import annotations
 import pytest
 from conftest import load_script
 
-sync = load_script("scripts/template-sync.py")
+sync = load_script(".github/scripts/template-sync.py")
 
 TEMPLATE = """\
 # Header note.

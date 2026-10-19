@@ -22,9 +22,9 @@ from conftest import ROOT, load_yaml
 SELF_CHECKS = ".github/workflows/self-checks.yml"
 
 GENERATORS = [
-    "scripts/update-doc-indexes.py",
-    "scripts/update-label-docs.py",
-    "scripts/check-type-parity.py",
+    ".github/scripts/update-doc-indexes.py",
+    ".github/scripts/update-label-docs.py",
+    ".github/scripts/check-type-parity.py",
 ]
 
 
