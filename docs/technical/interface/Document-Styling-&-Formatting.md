@@ -48,6 +48,7 @@ checked, and admits where the answer is nowhere:
 | Hidden frontmatter, comment form | Convention. Upheld by review                                               |
 | Exactly four `tags`              | Convention. Upheld by review                                               |
 | No `_` as a space in a filename  | Convention. Upheld by review                                               |
+| Plain words                      | Convention. Upheld by review, and by DOC-003 for agents                    |
 
 Everything else in this specification - the badges, the centered headers, the
 taglines, the fully-capped titles - is **convention, followed by hand**. It is
@@ -60,6 +61,23 @@ is in the table above.
 - **Visual Impact**: Use centered headers and high-contrast badges to create a high-fidelity feel.
 - **Artificial Intelligence Optimization**: Keep structures machine-readable while maintaining aesthetic appeal.
 - **Standards Enforcement**: Adhere strictly to the defined "these standards" for document composition. The subset a machine can verify is listed above, with the script that verifies it; the rest is upheld by writing it down and following it.
+
+### Plain Words
+
+Write like a sharp person: direct, specific and clear. Stock phrasing marks text as
+machine-written and costs the reader's trust, so none of these appears in a document, a commit
+message or a pull request:
+
+- **Words**: delve, leverage (as a verb), utilize, robust, comprehensive, streamlined,
+  cutting-edge, synergy, paradigm, holistic, actionable, empower, foster, harness, elevate,
+  underscore, crucial, vital, notable, importantly, furthermore, moreover, additionally, in
+  conclusion, it's worth noting, it's important to remember.
+- **Habits**: restating the question before answering it; hollow affirmations ("great question",
+  "certainly", "absolutely", "of course", "I'd be happy to"); padding before the point; bullets
+  where prose would read better; and language that sounds polished but says nothing specific.
+
+Agents meet this list through DOC-003 in tannergolden/intelligence's universal rules. Nothing
+checks it mechanically yet, so it is upheld by review.
 
 ---
 
