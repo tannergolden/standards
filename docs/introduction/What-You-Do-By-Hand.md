@@ -80,9 +80,9 @@ A healthy repository re-planned in dry run reports `0 change(s)` and writes noth
 
 ## 4️⃣ Make CI Real
 
-**CI fails until you do this, deliberately.** `checks.yml` ships without lint, test, or build commands, because a check that checks nothing reports green to branch protection and protects nothing.
+**CI is green from the first commit, and checks none of your code until you do this.** `checks.yml` ships with two commands that check the repository's own files: `lint-command` runs `.github/scripts/validate-repository.py`, which parses every YAML and JSON file, checks that every workflow `uses:` is pinned, and finds stray whitespace and CRLF, and `test-command` runs the tests of the scripts under `.github/scripts/`.
 
-Open `.github/workflows/checks.yml` and give it your project's real commands. Until then, a red ❌ on your first commit is the system working, not a fault.
+Open `.github/workflows/checks.yml` and give it your project's real commands as it gains them, with `build-command` once it builds. Keep at least one: the `ci` job fails when lint, test and build all resolve to nothing, because a check that checks nothing would report green to branch protection and protect nothing.
 
 ---
 
