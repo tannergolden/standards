@@ -46,9 +46,13 @@ We adhere to a standardized structure so that any developer - or agent - can nav
 │   ├── dependabot.yml     # Keeps every pinned action current. Read only from the owning repo
 │   └── release.yml        # How GitHub groups a release's generated notes
 ├── assets/                # branding/, diagrams/, html/ and screenshots/ to start
-├── docs/                  # adrs/, and the project's documentation
+├── docs/                  # The seven folders these standards keep, and templates/
 └── README.md, LICENSE, .editorconfig, .env.example, .gitattributes, .gitignore, .markdownlint.json
 ```
+
+`docs/` keeps the same seven folders as these standards: `introduction/`, `distribution/`,
+`technical/`, `operations/`, `references/`, `library/` and `adrs/`, each arriving with a
+`README.md` that says what belongs in it, so every repository's documents read the same way.
 
 Every folder lists its files in a `README.md`, whose log the indexer draws. These standards add
 three root folders the templates do not need: `config/` for tool configuration read **by** a tool
