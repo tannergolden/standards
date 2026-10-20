@@ -86,7 +86,7 @@ updates:
 
   # A glob, so a new action is covered the day it is added.
   - package-ecosystem: 'github-actions'
-    directories: ['/actions/*']
+    directories: ['/.github/actions/*']
     schedule: { interval: 'monthly', time: '07:00', timezone: 'Etc/UTC' }
     commit-message: { prefix: 'build', include: 'scope' }
 ```
@@ -109,7 +109,8 @@ updates:
 > **Name action directories with a glob, not a list.** Composite actions are not
 > discovered through the workflows directory, so their folders need naming
 > separately - and a hand-written list falls behind the tree without telling
-> anyone. `'/actions/*'` cannot.
+> anyone. `'/.github/actions/*'` cannot, though it has to move when the
+> actions do.
 
 > [!NOTE]
 > Because every action is pinned to a full commit SHA, the `github-actions` ecosystem is what keeps those pins current - Dependabot bumps the SHA and the version comment together.

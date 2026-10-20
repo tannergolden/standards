@@ -61,15 +61,24 @@ updates:
           - '*'
 
   # Composite actions are not discovered through the workflows directory, so
-  # their folders need naming separately.
+  # their folders need naming separately. They live in .github/actions/, one
+  # folder each.
   #
   # ⚠️ A GLOB, NOT AN ENUMERATION, and that is the point. This list was written
   # out by hand and had already fallen five actions behind the tree - none of
   # which happened to pin anything yet, so nothing was missed and nothing
-  # would have told us. The next one might. A pattern cannot fall behind.
+  # would have told us. The next one might. A pattern cannot fall behind the
+  # folder it names, but it stays put when the actions move: '/actions/*'
+  # outlived their move to .github/actions/ and watched only the forwarders.
+  #
+  # THE FORWARDERS ARE LEFT OUT. Each actions/<name>/action.yml calls only
+  # this repository's own `@v1`, which Dependabot does not move within a
+  # major, and the only bump it could offer is the next major, which a
+  # forwarder must never take: it exists to give a v1 caller the v1 action
+  # until that major deletes it (ADR-0001).
   - package-ecosystem: 'github-actions'
     directories:
-      - '/actions/*'
+      - '/.github/actions/*'
     schedule:
       interval: 'monthly'
       time: '07:00'
