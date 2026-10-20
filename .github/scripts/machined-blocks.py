@@ -22,7 +22,8 @@
 # blank lines around it ignored, exactly as the renderer computes it, so a
 # formatter that pads the block with blank lines or a checkout that converts
 # line endings does not count as an edit. A block shown inside a fenced code
-# block is an example, not a block, and is skipped.
+# block is an example, not a block, and is skipped; a fenced code block inside
+# a block is part of its text, and the hash covers it.
 #
 # A repository with no machined block passes. Nothing here touches the
 # network or anything outside the working tree.
@@ -86,14 +87,20 @@ def problems(path: str, text: str) -> list[tuple[int, str]]:
     """Each machined block in one file that no longer matches its hash, by line."""
     found = []
     seen: dict[str, int] = {}
-    for match in BLOCK.finditer(without_fences(text)):
-        line = text.count("\n", 0, match.start()) + 1
+    rows = text.split("\n")
+    shown = without_fences(text)
+    for match in BLOCK.finditer(shown):
+        line = shown.count("\n", 0, match.start()) + 1
         name = match.group("name")
         seen[name] = seen.get(name, 0) + 1
         if seen[name] > 1:
             found.append((line, f"a second {name} block; a file carries at most one of each"))
             continue
-        inner = match.group("inner").replace("\r\n", "\n").strip("\n") + "\n"
+        # The markers are found where no fence hides them, but the text the hash
+        # covers is the block's own lines as they stand, its code fences included.
+        first, end = shown.count("\n", 0, match.start("inner")), shown.count("\n", 0, match.end("inner"))
+        inner = "".join(row + "\n" for row in rows[first:end])
+        inner = inner.replace("\r\n", "\n").strip("\n") + "\n"
         if hashlib.sha256(inner.encode("utf-8")).hexdigest() != match.group("hash"):
             found.append((line, f"the {name} block was edited by hand: its text no longer matches the "
                                 "hash in its marker, and the next delivery will overwrite the edit"))

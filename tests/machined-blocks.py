@@ -66,6 +66,20 @@ class TestTheHash:
         example = "# How it looks\n\n```markdown\n" + region(RULES).replace("credential", "x") + "```\n"
         assert blocks.problems("README.md", example) == []
 
+    def test_a_code_fence_inside_a_block_is_part_of_its_text(self):
+        prompts = "## Fix A Bug\n\n```text\n<task>\nFind the cause.\n</task>\n```\n"
+        delivered = f"# Prompts\n\n{region(prompts, 'INTELLIGENCE:PROMPTS')}\n## Ours\n"
+        assert blocks.problems("docs/Prompts.md", delivered) == []
+        assert blocks.problems("docs/Prompts.md", delivered.replace("\n", "\r\n")) == []
+        (found,) = blocks.problems("docs/Prompts.md", delivered.replace("Find the cause.", "Patch it."))
+        assert found[0] == 3
+        assert "INTELLIGENCE:PROMPTS block was edited by hand" in found[1]
+
+    def test_a_fence_above_a_block_leaves_its_line_right(self):
+        text = "# Agents\n\n```text\none\ntwo\n```\n\n" + region(RULES).replace("credential", "secret")
+        (found,) = blocks.problems("AGENTS.md", text)
+        assert found[0] == 8
+
 
 class TestTheGate:
     def test_a_repository_without_blocks_passes(self, git_repo, run_script):
