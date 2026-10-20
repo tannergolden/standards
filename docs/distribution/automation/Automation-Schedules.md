@@ -24,10 +24,10 @@ _Staggered, off-peak, and yours to change._
 
 Every workflow **published** here is **reusable**: it declares `on: workflow_call`, so it carries
 no cron of its own and cannot fire on its own. (`release.yml` also keeps the `workflow_dispatch` this
-repository cuts its own versions with; that is a button, not a schedule.) Two files in that
-directory are local to this repository rather than published - `self-checks.yml`, which carries the
-one cron that actually fires here and is listed below with the rest, and `self-dependabot.yml`, which
-runs on Dependabot's pull requests and has no schedule.
+repository cuts its own versions with; that is a button, not a schedule.) Three files in that
+directory are local to this repository rather than published - `self-checks.yml` and
+`intelligence-sync.yml`, which carry the two crons that actually fire here and are listed below with
+the rest, and `self-dependabot.yml`, which runs on Dependabot's pull requests and has no schedule.
 
 **The `schedule:` block lives in your stub, in your repository.** That is the only place GitHub
 looks. The table below is the recommended cadence that the template repositories' stubs and the example
@@ -38,14 +38,15 @@ with nothing to sync back here.
 
 ## 🚦 Recommended Cadence
 
-| Workflow, job                | Recommended (UTC) | Why that slot                                              |
-| :--------------------------- | :---------------- | :--------------------------------------------------------- |
-| `checks.yml`, weekly sweep   | Weekly, Mon 03:00 | CodeQL and the secret scan over code nothing touched       |
-| `governance.yml`             | Weekly, Mon 04:00 | Start-of-week triage, stale sweep, locking, labels         |
-| `self-checks.yml` (local)    | Weekly, Mon 04:00 | This repository's own gate, so a moving upstream is caught |
-| `release.yml`, `notes`       | Weekly, Mon 05:00 | One evolving draft, refreshed before the week opens        |
-| `maintenance.yml`, `prune`   | Weekly, Mon 06:00 | Housekeeping, after the jobs that create the runs          |
-| `lifecycle.yml`, `standards` | Weekly, Mon 07:00 | Last of the weekly sweep, and it usually does nothing      |
+| Workflow, job                   | Recommended (UTC) | Why that slot                                                         |
+| :------------------------------ | :---------------- | :-------------------------------------------------------------------- |
+| `checks.yml`, weekly sweep      | Weekly, Mon 03:00 | CodeQL and the secret scan over code nothing touched                  |
+| `governance.yml`                | Weekly, Mon 04:00 | Start-of-week triage, stale sweep, locking, labels                    |
+| `self-checks.yml` (local)       | Weekly, Mon 04:00 | This repository's own gate, so a moving upstream is caught            |
+| `release.yml`, `notes`          | Weekly, Mon 05:00 | One evolving draft, refreshed before the week opens                   |
+| `maintenance.yml`, `prune`      | Weekly, Mon 06:00 | Housekeeping, after the jobs that create the runs                     |
+| `lifecycle.yml`, `standards`    | Weekly, Mon 07:00 | Last of the weekly sweep, and it usually does nothing                 |
+| `intelligence-sync.yml` (local) | Weekly, Mon 08:00 | The hub's rules for AI agents, after the sweep, on an hour of its own |
 
 Everything else is **event driven** and needs no schedule:
 

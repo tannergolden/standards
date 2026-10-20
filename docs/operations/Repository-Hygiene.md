@@ -80,6 +80,12 @@ The root is deliberately minimal: everything relocatable already lives in `confi
 | `.npmrc`                                                                | npm reads project config only from the package root.                                                                                                                                                                                                                  |
 | `profile/`                                                              | GitHub renders the account profile only from a root-level `profile/` in an owner's `.github` home repository - content for that account's `.github` home repository only; a repository generated from the template has no use for it, and `init-template` removes it. |
 
+> [!NOTE]
+> **One agent file, kept by the hub.** This account's repositories keep their instructions for AI agents in a
+> root `AGENTS.md` alone: the universal rules between its markers, kept current by the stub from
+> [tannergolden/intelligence](https://github.com/tannergolden/intelligence), and the repository's own around them.
+> None ships a `CLAUDE.md`, because Claude Code skips `AGENTS.md` beside one unless its settings say otherwise.
+
 ---
 
 ## 🧱 The Mandatory Root Layer

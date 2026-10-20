@@ -66,15 +66,15 @@ the template alone needs, which its list names.
 
 ## 📦 What's Inside
 
-| Path                                                | Purpose                                                                                                                                     |
-| :-------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`.github/workflows/`](.github/workflows/README.md) | 24 reusable workflows, called with `uses:` at the job level, plus two local to this repository: `self-checks.yml` and `self-dependabot.yml` |
-| [`.github/actions/`](.github/actions/README.md)     | 19 composite actions, called with `uses:` at the step level                                                                                 |
-| [`actions/`](actions/README.md)                     | Forwarders that keep each action's old address working until the next major version                                                         |
-| [`data/`](data/README.md)                           | Rulesets, the label taxonomy and the repository settings, written **to** a repository                                                       |
-| [`config/`](config/README.md)                       | Linter and tooling configuration, read **by** a tool during a run                                                                           |
-| [`docs/`](docs/README.md)                           | The standards themselves, followed by link. Start at the standards index                                                                    |
-| [`.github/scripts/`](.github/scripts/README.md)     | Helpers the actions above ship and invoke                                                                                                   |
+| Path                                                | Purpose                                                                                                                                                                |
+| :-------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`.github/workflows/`](.github/workflows/README.md) | 24 reusable workflows, called with `uses:` at the job level, plus three local to this repository: `self-checks.yml`, `self-dependabot.yml` and `intelligence-sync.yml` |
+| [`.github/actions/`](.github/actions/README.md)     | 19 composite actions, called with `uses:` at the step level                                                                                                            |
+| [`actions/`](actions/README.md)                     | Forwarders that keep each action's old address working until the next major version                                                                                    |
+| [`data/`](data/README.md)                           | Rulesets, the label taxonomy and the repository settings, written **to** a repository                                                                                  |
+| [`config/`](config/README.md)                       | Linter and tooling configuration, read **by** a tool during a run                                                                                                      |
+| [`docs/`](docs/README.md)                           | The standards themselves, followed by link. Start at the standards index                                                                                               |
+| [`.github/scripts/`](.github/scripts/README.md)     | Helpers the actions above ship and invoke                                                                                                                              |
 
 The two `uses:` mechanisms are not interchangeable, and the difference decides where a thing lives.
 A **reusable workflow** is checked out against the **calling** repository, so it can operate on your

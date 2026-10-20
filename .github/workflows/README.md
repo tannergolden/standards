@@ -235,6 +235,10 @@ workflow has no trigger of its own and cannot call itself). In both, the workflo
 one in the diff under review, while the actions inside it resolve their published pins exactly as
 they would for a consumer.
 
+`intelligence-sync.yml` is the third local file, and calls nothing here: it is the stub from
+[tannergolden/intelligence](https://github.com/tannergolden/intelligence) that keeps the universal
+rules for AI agents in this repository's `AGENTS.md` current, as one pull request each release.
+
 Check a change against the working tree before it ships: `actionlint` over `.github/workflows/`,
 `shellcheck` over `.github/scripts/`, `ruff` over the Python, and the generators under `.github/scripts/` run with
 `--check`. Reading the tree directly is the only way to validate a change **to** an action, since
