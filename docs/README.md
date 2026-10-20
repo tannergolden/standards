@@ -109,6 +109,20 @@ Fast lookups and background.
 
 ---
 
+## 🧰 Working On This Repository
+
+Guides for changing and releasing these standards themselves, rather than standards a repository
+follows.
+
+| Guide                                                                     | Covers                                                     |
+| :------------------------------------------------------------------------ | :--------------------------------------------------------- |
+| [Working On These Standards](introduction/Working-On-These-Standards.md)  | The local checks, what changes together, and failures      |
+| [Releasing These Standards](distribution/Releasing-These-Standards.md)    | Cutting a release here, and what it moves for every caller |
+| [Automation Architecture](technical/internals/Automation-Architecture.md) | How workflows, actions and scripts fit, and their shapes   |
+| [The Test Suite](technical/internals/Test-Suite.md)                       | The fixtures, and how a test runs a shipped step           |
+
+---
+
 <div align="center">
 
 **One rule, one gate, one place to read both.**

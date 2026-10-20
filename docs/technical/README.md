@@ -1,8 +1,8 @@
 <!--
 title: '🛠️ TECHNICAL'
-description: 'How things are built and specified: the interface standards every document follows, one area to a folder.'
+description: 'How things are built and specified, one area to a folder: the interface every document follows, and the internals of the automation this repository ships.'
 type: index
-keywords: [specification, documentation]
+keywords: [specification, documentation, architecture]
 -->
 
 <!-- markdownlint-disable MD041 -->
@@ -23,7 +23,7 @@ _One area to a folder._
 
 ## 💡 What This Folder Is For
 
-The specifications a repository on these standards builds to, one area to a folder. The interface comes first: how every document looks and reads. Each repository's own technical pages live in its own `docs/technical/`, which the templates seed beside the fill-in standards.
+The specifications a repository on these standards builds to, one area to a folder. The interface comes first: how every document looks and reads. Each repository's own technical pages live in its own `docs/technical/`, which the templates seed beside the fill-in standards, and this repository's are in [`internals/`](internals/README.md): how the automation it publishes is built and tested.
 
 ---
 
@@ -31,10 +31,11 @@ The specifications a repository on these standards builds to, one area to a fold
 
 <!-- AUTO-INDEX:BEGIN dir=. style=log -->
 
-| Entry                               | Purpose                                                                                          |
-| :---------------------------------- | :----------------------------------------------------------------------------------------------- |
-| [`interface/`](interface/README.md) | How documents look and read: the document styling and formatting standard, frontmatter included. |
-| [`README.md`](README.md)            | This file.                                                                                       |
+| Entry                               | Purpose                                                                                                                                                                         |
+| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`interface/`](interface/README.md) | How documents look and read: the document styling and formatting standard, frontmatter included.                                                                                |
+| [`internals/`](internals/README.md) | How the automation these standards ship is built and tested: the layers a call passes through, the shape of a workflow, an action and a script, and the suite over all of them. |
+| [`README.md`](README.md)            | This file.                                                                                                                                                                      |
 
 <!-- AUTO-INDEX:END -->
 

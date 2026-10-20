@@ -72,8 +72,8 @@ the template alone needs, which its list names.
 | [`.github/actions/`](.github/actions/README.md)     | 19 composite actions, called with `uses:` at the step level                                                                                 |
 | [`actions/`](actions/README.md)                     | Forwarders that keep each action's old address working until the next major version                                                         |
 | [`data/`](data/README.md)                           | Rulesets, the label taxonomy and the repository settings, written **to** a repository                                                       |
-| `config/`                                           | Linter and tooling configuration, read **by** a tool during a run                                                                           |
-| `docs/`                                             | The standards themselves, followed by link. Start at the standards index                                                                    |
+| [`config/`](config/README.md)                       | Linter and tooling configuration, read **by** a tool during a run                                                                           |
+| [`docs/`](docs/README.md)                           | The standards themselves, followed by link. Start at the standards index                                                                    |
 | [`.github/scripts/`](.github/scripts/README.md)     | Helpers the actions above ship and invoke                                                                                                   |
 
 The two `uses:` mechanisms are not interchangeable, and the difference decides where a thing lives.
@@ -154,6 +154,10 @@ production change:
 - **Additive over restrictive.** Tightening a rule tightens it everywhere at once.
 - **Version deliberately.** Anything that changes a required check name is a breaking change for
   every consumer's branch protection.
+
+Read [Working On These Standards](docs/introduction/Working-On-These-Standards.md) before a change
+here, and [Releasing These Standards](docs/distribution/Releasing-These-Standards.md) before moving
+`v1`.
 
 ---
 

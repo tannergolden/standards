@@ -47,6 +47,28 @@ The [config action](../.github/actions/config/README.md) copies a file from here
 
 ---
 
+## ⚙️ Who Reads Each File
+
+A reusable workflow reaches each file through the config action, in the job named below, and the
+input beside it names a file in the calling repository to use instead. Here, 🚦 Self Checks and
+`make lint-format` read the files directly.
+
+| File                   | Read by                                                                                | The caller's own copy                |
+| :--------------------- | :------------------------------------------------------------------------------------- | :----------------------------------- |
+| `_typos.toml`          | `ci.yml`, the `spelling` job                                                           | `typos-config`                       |
+| `lychee.toml`          | `ci.yml`, the `link-checker` job                                                       | `lychee-config`                      |
+| `labeler.yml`          | `governance.yml`, the `triage` job                                                     | `labeler-config`                     |
+| `zizmor.yml`           | `lint-workflows.yml`, the `lint` job, and 🚦 Self Checks here                          | `zizmor-config`                      |
+| `cliff.toml`           | `release-notes.yml`, the `changelog` job, and `release-publish.yml`, the `release` job | `cliff-config`                       |
+| `prettierrc.json`      | `auto-format.yml`, the `format` job, and `make lint-format` and 🚦 Self Checks here    | `prettier-config`                    |
+| `prettierignore`       | The same three                                                                         | None: the shared list always applies |
+| `commitlint.config.js` | No workflow. It is for running commitlint locally; `commit-check.py` is the gate       | -                                    |
+
+`commitlint.config.js` is one of the five copies of the commit type list that `make check-types`
+holds equal.
+
+---
+
 <div align="center">
 
 **One config, every repository.**

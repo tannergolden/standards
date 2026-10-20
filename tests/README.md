@@ -23,7 +23,7 @@ _Every script, every shell block._
 
 ## 💡 What This Folder Is For
 
-`python3 -m pytest` runs every file here (see [`pytest.ini`](../pytest.ini)): the scripts in [`.github/scripts/`](../.github/scripts/README.md), the shell inside the workflows and the actions, and the contracts the documents promise. [`conftest.py`](conftest.py) holds the shared fixtures.
+`python3 -m pytest` runs every file here (see [`pytest.ini`](../pytest.ini)): the scripts in [`.github/scripts/`](../.github/scripts/README.md), the shell inside the workflows and the actions, and the contracts the documents promise. [`conftest.py`](conftest.py) holds the shared fixtures, and [The Test Suite](../docs/technical/internals/Test-Suite.md) says how a test reads and runs a shipped step, what each fixture does, and what every file here keeps.
 
 ---
 
