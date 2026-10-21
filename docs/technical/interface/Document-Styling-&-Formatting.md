@@ -488,8 +488,9 @@ Everything between the kit's markers is **machine-owned**, the way the
 anywhere on the page and later runs rewrite only what is between them. The
 kit keeps a lock, `.github/markdown.lock.json`, remembers what it last
 measured, and commits only when something it shows has moved, as one
-`chore(markdown)` commit authored by the kit's author, unless the stub names
-another, and committed by `github-actions[bot]`. A file it drew and no longer draws is
+`chore(markdown)` commit that `github-actions[bot]` both authors and commits,
+unless the stub names another author, so a refresh never counts as a person's
+contribution. A file it drew and no longer draws is
 taken away in the same commit.
 
 The kit also has a **check mode**, which redraws from the lock and fails when
