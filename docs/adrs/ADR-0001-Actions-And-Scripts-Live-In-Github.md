@@ -2,7 +2,6 @@
 title: '🧭 ADR-0001: ACTIONS AND SCRIPTS LIVE IN .GITHUB'
 description: 'The composite actions and their scripts move to .github/actions/ and .github/scripts/, where every repository keeps its own, with a forwarder at each old address until v2.'
 type: record
-keywords: [repository-layout, composite-action, forwarder, migration]
 status: 'Accepted'
 date: '2026-10-19'
 evidence: 'N/A'

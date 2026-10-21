@@ -2,7 +2,6 @@
 title: '✍️ COMMIT MESSAGE CHECK'
 description: 'Verifies every human-authored commit in a pull request follows Conventional Commits.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -2,7 +2,6 @@
 title: '📘 REFERENCES'
 description: 'Curated index of the reference material for fast daily lookups.'
 type: index
-keywords: [reference, navigation, resources]
 -->
 
 <!-- markdownlint-disable MD041 -->

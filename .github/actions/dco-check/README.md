@@ -2,7 +2,6 @@
 title: '✍️ DCO SIGN-OFF CHECK'
 description: 'Verifies the Signed-off-by trailer on every human-authored commit in a pull request.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

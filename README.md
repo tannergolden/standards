@@ -2,7 +2,6 @@
 title: '📐 ENGINEERING STANDARDS'
 description: 'Documented engineering standards, plus the reusable workflows and composite actions that enforce them for any toolchain. Called, never copied, so a fix lands once and reaches every repository pinned to it.'
 type: index
-keywords: [github-actions, reusable-workflows, ci-cd]
 -->
 
 <!-- markdownlint-disable MD041 -->

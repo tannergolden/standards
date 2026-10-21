@@ -2,7 +2,6 @@
 title: '↪️ APPLY REPOSITORY SETTINGS, OLD ADDRESS'
 description: 'Keeps the old address of the apply-settings action working for a caller pinned to v1, by forwarding every input and output to .github/actions/apply-settings.'
 type: index
-keywords: [github-actions, forwarder]
 -->
 
 <!-- markdownlint-disable MD041 -->

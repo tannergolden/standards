@@ -2,7 +2,6 @@
 title: '🚦 TRIAGE & LABELING'
 description: 'Automated triage, sizing, and labeling of issues and pull requests.'
 type: guide
-keywords: [labels, automation, issues]
 -->
 
 <!-- markdownlint-disable MD041 -->

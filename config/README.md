@@ -2,7 +2,6 @@
 title: '⚙️ SHARED CONFIG'
 description: 'Linter and tooling configuration a tool reads during a run, handed to a calling repository by the config action unless it names its own.'
 type: index
-keywords: [configuration, linters]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -2,7 +2,6 @@
 title: '🛠️ TECHNICAL'
 description: 'How things are built and specified, one area to a folder: the interface every document follows, and the internals of the automation this repository ships.'
 type: index
-keywords: [specification, documentation, architecture]
 -->
 
 <!-- markdownlint-disable MD041 -->

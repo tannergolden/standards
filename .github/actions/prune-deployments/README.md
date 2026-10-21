@@ -2,7 +2,6 @@
 title: '🧹 PRUNE DEPLOYMENTS'
 description: 'Deletes superseded deployments, keeping the current successful one per environment.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

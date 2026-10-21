@@ -2,7 +2,6 @@
 title: '🤝 PULL REQUESTS & CODE REVIEWS'
 description: 'Pull-request etiquette and the code review rubric.'
 type: standard
-keywords: [workflow, quality]
 -->
 
 <!-- markdownlint-disable MD041 -->

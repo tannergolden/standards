@@ -2,7 +2,6 @@
 title: '↪️ PRUNE DEPLOYMENTS, OLD ADDRESS'
 description: 'Keeps the old address of the prune-deployments action working for a caller pinned to v1, by forwarding every input and output to .github/actions/prune-deployments.'
 type: index
-keywords: [github-actions, forwarder]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -2,7 +2,6 @@
 title: '🧰 SETUP TOOLCHAIN'
 description: 'Makes the toolchains a repository uses available, detected from the manifests in its tree.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

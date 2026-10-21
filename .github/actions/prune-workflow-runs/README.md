@@ -2,7 +2,6 @@
 title: '🧹 PRUNE WORKFLOW RUNS'
 description: 'Deletes old workflow runs, keeping recent ones and anything tied to recent commits.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

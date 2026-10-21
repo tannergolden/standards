@@ -2,7 +2,6 @@
 title: '🧠 MACHINED BLOCK CHECK'
 description: 'Verifies every hash-marked block in the repository still matches the hash its marker carries.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

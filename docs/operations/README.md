@@ -2,7 +2,6 @@
 title: '🛡️ OPERATIONS & SECURITY'
 description: 'How a repository is kept healthy and safe: branch protection, dependencies, hygiene, settings, secrets and troubleshooting.'
 type: index
-keywords: [security, repository-settings, hygiene]
 -->
 
 <!-- markdownlint-disable MD041 -->

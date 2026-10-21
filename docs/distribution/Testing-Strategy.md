@@ -2,7 +2,6 @@
 title: '🧪 TESTING STRATEGY'
 description: 'The layered testing strategy from unit tests to end-to-end validation.'
 type: standard
-keywords: [quality, coverage]
 -->
 
 <!-- markdownlint-disable MD041 -->

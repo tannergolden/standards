@@ -2,7 +2,6 @@
 title: '🛡️ APPLY RULESETS'
 description: 'Creates or updates the published branch and tag rulesets on a repository, matched by name.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

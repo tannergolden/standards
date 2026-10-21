@@ -2,7 +2,6 @@
 title: '🔬 THE TEST SUITE'
 description: 'How the pytest suite tests code that mostly lives inside workflow and action YAML: the fixtures that read a step and run it against a scripted gh, the conventions every test file keeps, and how to run part of the suite. Read it before writing or debugging a test here.'
 type: guide
-keywords: [pytest, fixtures, conftest, fake gh, workflow step shell, run shell, kebab-case]
 -->
 
 <!-- markdownlint-disable MD041 -->

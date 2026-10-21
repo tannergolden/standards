@@ -2,7 +2,6 @@
 title: '↪️ OPEN MAINTENANCE PULL REQUEST, OLD ADDRESS'
 description: 'Keeps the old address of the open-pr action working for a caller pinned to v1, by forwarding every input and output to .github/actions/open-pr.'
 type: index
-keywords: [github-actions, forwarder]
 -->
 
 <!-- markdownlint-disable MD041 -->

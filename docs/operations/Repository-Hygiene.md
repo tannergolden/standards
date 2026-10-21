@@ -2,7 +2,6 @@
 title: '🧩 REPOSITORY HYGIENE'
 description: 'Practices that keep the repository clean and healthy over time.'
 type: standard
-keywords: [maintenance, governance, structure]
 -->
 
 <!-- markdownlint-disable MD041 -->

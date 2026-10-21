@@ -2,7 +2,6 @@
 title: '🛡️ RULESETS'
 description: 'The branch and tag rulesets apply-rulesets writes to a repository, one JSON file each, matched by name.'
 type: index
-keywords: [rulesets, branch-protection]
 -->
 
 <!-- markdownlint-disable MD041 -->

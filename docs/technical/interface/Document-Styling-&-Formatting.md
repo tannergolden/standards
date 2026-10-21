@@ -2,7 +2,6 @@
 title: '📝 DOCUMENT STYLING & FORMATTING'
 description: 'The binding specification for documentation styling, from headers and badges to footers.'
 type: standard
-keywords: [documentation, specification, markdown]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -2,7 +2,6 @@
 title: '🔒 CODEQL SECURITY ANALYSIS'
 description: 'How the CodeQL static-analysis security workflow operates.'
 type: guide
-keywords: [automation, static-analysis]
 -->
 
 <!-- markdownlint-disable MD041 -->

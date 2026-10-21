@@ -2,7 +2,6 @@
 title: '🎨 INTERFACE'
 description: 'How documents look and read: the document styling and formatting standard, frontmatter included.'
 type: index
-keywords: [documentation, styling]
 -->
 
 <!-- markdownlint-disable MD041 -->

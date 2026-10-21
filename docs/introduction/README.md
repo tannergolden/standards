@@ -2,7 +2,6 @@
 title: '🧭 INTRODUCTION'
 description: 'Where to start: the principles these standards hold to, the environment they assume, what is still done by hand, and how to work on this repository itself.'
 type: index
-keywords: [onboarding, principles]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -2,7 +2,6 @@
 title: '🧾 GENERATE SBOM'
 description: 'Writes a CycloneDX or SPDX dependency inventory for any ecosystem, from the checked-out tree.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

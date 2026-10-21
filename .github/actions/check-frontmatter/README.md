@@ -2,7 +2,6 @@
 title: '🗂️ FRONTMATTER CHECK'
 description: 'Verifies every Markdown document opens with the hidden frontmatter the documentation standard defines.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

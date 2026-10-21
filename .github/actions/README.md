@@ -2,7 +2,6 @@
 title: '🧩 COMPOSITE ACTIONS'
 description: 'Step-level building blocks called with uses:, and the rule that decides what belongs here rather than in a workflow.'
 type: index
-keywords: [reusable, github-actions]
 -->
 
 <!-- markdownlint-disable MD041 -->

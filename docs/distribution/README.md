@@ -2,7 +2,6 @@
 title: '🌿 DISTRIBUTION & WORKFLOW'
 description: 'How code moves from a branch to a release: branching, commits, pull requests, CI, testing and versioning, and how these standards release themselves.'
 type: index
-keywords: [branching, releases, ci]
 -->
 
 <!-- markdownlint-disable MD041 -->

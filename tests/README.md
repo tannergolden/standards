@@ -2,7 +2,6 @@
 title: '🧪 TESTS'
 description: 'The pytest suite over the scripts, the workflows'' shell and the actions, run by make test and 🚦 Self Checks.'
 type: index
-keywords: [pytest, testing]
 -->
 
 <!-- markdownlint-disable MD041 -->

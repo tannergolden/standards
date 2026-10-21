@@ -2,7 +2,6 @@
 title: '🗂️ UPDATE MACHINED INDEXES'
 description: 'Regenerates, or checks, every machined index in a repository: folder logs, record registers and document lists.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

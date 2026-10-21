@@ -2,7 +2,6 @@
 title: '📦 DEPENDENCY MANAGEMENT'
 description: 'How dependencies are updated, reviewed, and kept secure.'
 type: guide
-keywords: [dependencies, dependabot, security, supply-chain]
 -->
 
 <!-- markdownlint-disable MD041 -->

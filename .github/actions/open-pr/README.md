@@ -2,7 +2,6 @@
 title: '🚀 OPEN MAINTENANCE PULL REQUEST'
 description: 'Commits working-tree changes to a fixed branch and opens or updates one evolving pull request.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

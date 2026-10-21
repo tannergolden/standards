@@ -2,7 +2,6 @@
 title: '✨ SEMANTIC PRS & AUTO-FORMATTING'
 description: 'Pull-request title enforcement and automatic formatting workflows.'
 type: guide
-keywords: [semantic-pr, automation, conventional-commits]
 -->
 
 <!-- markdownlint-disable MD041 -->

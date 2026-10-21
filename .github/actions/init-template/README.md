@@ -2,7 +2,6 @@
 title: '🎉 INITIALISE FROM TEMPLATE'
 description: 'Rewrites a generated repository''s identity to its new owner and deletes what only the template needs, once, then disables itself.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

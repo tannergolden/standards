@@ -2,7 +2,6 @@
 title: '🏗️ AUTOMATION INTERNALS'
 description: 'How the automation these standards ship is built and tested: the layers a call passes through, the shape of a workflow, an action and a script, and the suite over all of them.'
 type: index
-keywords: [architecture, testing, conventions]
 -->
 
 <!-- markdownlint-disable MD041 -->

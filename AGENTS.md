@@ -2,7 +2,6 @@
 title: '🤖 Agent Instructions'
 description: 'How AI agents work on tannergolden/standards: the universal rules first, then the rules for changing the standards, their workflows, actions and scripts. Read it before any change here.'
 type: standard
-keywords: [agents-md, ai-agents, standards, reusable-workflows, composite-actions, releases]
 -->
 
 <!-- markdownlint-disable MD041 -->

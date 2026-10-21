@@ -2,7 +2,6 @@
 title: '🧰 WORKING ON THESE STANDARDS'
 description: 'How to change this repository itself: what a merge reaches, the tools, the local command behind each Self Checks step, what must change together, running a script by hand, and what to do when a check fails. Read it before your first change here.'
 type: guide
-keywords: [contributing, self-checks, makefile, local checks, forwarders, inventories, dry run]
 -->
 
 <!-- markdownlint-disable MD041 -->

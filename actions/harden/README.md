@@ -2,7 +2,6 @@
 title: '↪️ HARDEN RUNNER, OLD ADDRESS'
 description: 'Keeps the old address of the harden action working for a caller pinned to v1, by forwarding every input and output to .github/actions/harden.'
 type: index
-keywords: [github-actions, forwarder]
 -->
 
 <!-- markdownlint-disable MD041 -->

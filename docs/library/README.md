@@ -2,7 +2,6 @@
 title: '📖 LIBRARY'
 description: 'Learning material behind the standards: git commands, a recap of GitHub concepts, and further reading.'
 type: index
-keywords: [learning, git, github]
 -->
 
 <!-- markdownlint-disable MD041 -->

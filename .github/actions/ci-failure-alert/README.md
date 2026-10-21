@@ -2,7 +2,6 @@
 title: '🚨 ESCALATE OR RESOLVE A CI FAILURE'
 description: 'Opens an issue when a watched workflow fails and closes it when the workflow recovers.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -2,7 +2,6 @@
 title: '📝 CONTINUOUS INTEGRATION & DELIVERY'
 description: 'How CI and delivery are wired, from pull-request checks to release workflows.'
 type: guide
-keywords: [ci-cd, automation, pipelines]
 -->
 
 <!-- markdownlint-disable MD041 -->

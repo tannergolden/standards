@@ -2,7 +2,6 @@
 title: '📄 PROVIDE SHARED CONFIG'
 description: 'Resolves a shared configuration file to a path, honoring a calling repository override.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -2,7 +2,6 @@
 title: '⚙️ APPLY REPOSITORY SETTINGS'
 description: 'Brings a repository''s settings in line with the published set, comparing before it writes.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

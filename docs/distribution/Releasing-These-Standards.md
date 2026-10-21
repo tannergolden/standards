@@ -2,7 +2,6 @@
 title: '🏷️ RELEASING THESE STANDARDS'
 description: 'How this repository releases itself with 🏷️ Cut Release: choosing the version, what each guard refuses, what a run publishes and prunes, what consumers see, and what a new major involves. Read it before moving v1.'
 type: guide
-keywords: [cut release, major tag, v1, prune, semver, breaking change, release.yml]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -2,7 +2,6 @@
 title: '🚢 RELEASES & VERSIONING'
 description: 'How releases are cut, versioned, and published.'
 type: guide
-keywords: [semver, changelog]
 -->
 
 <!-- markdownlint-disable MD041 -->

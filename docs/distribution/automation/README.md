@@ -2,7 +2,6 @@
 title: '🤖 AUTOMATION'
 description: 'What each automation does for a repository on its own: schedules, code scanning, onboarding, link checks, formatting, template sync and triage.'
 type: index
-keywords: [automation, github-actions]
 -->
 
 <!-- markdownlint-disable MD041 -->

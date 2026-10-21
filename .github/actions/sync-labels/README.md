@@ -2,7 +2,6 @@
 title: '🏷️ SYNC LABELS'
 description: 'Applies the shared label taxonomy to a repository, create-or-update, never pruning.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

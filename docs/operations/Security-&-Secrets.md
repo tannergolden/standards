@@ -2,7 +2,6 @@
 title: '🔐 SECURITY & SECRETS'
 description: 'Secret handling, scanning, and incident response for the repository.'
 type: standard
-keywords: [incident-response, operations]
 -->
 
 <!-- markdownlint-disable MD041 -->

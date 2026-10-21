@@ -2,7 +2,6 @@
 title: '👋 CONTRIBUTOR ONBOARDING'
 description: 'The automated welcome flow for first-time contributors.'
 type: guide
-keywords: [automation, community, contributors]
 -->
 
 <!-- markdownlint-disable MD041 -->

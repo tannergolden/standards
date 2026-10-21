@@ -2,7 +2,6 @@
 title: '🌿 CONVENTIONAL COMMITS'
 description: 'The commit message standard every repository on these standards follows, including the two places it deliberately diverges from the specification.'
 type: standard
-keywords: [git]
 -->
 
 <!-- markdownlint-disable MD041 -->

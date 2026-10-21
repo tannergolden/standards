@@ -2,7 +2,6 @@
 title: '↪️ UPDATE MACHINED INDEXES, OLD ADDRESS'
 description: 'Keeps the old address of the update-indexes action working for a caller pinned to v1, by forwarding every input and output to .github/actions/update-indexes.'
 type: index
-keywords: [github-actions, forwarder]
 -->
 
 <!-- markdownlint-disable MD041 -->

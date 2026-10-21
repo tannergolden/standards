@@ -2,7 +2,6 @@
 title: '⬆️ STANDARDS VERSION CHECK'
 description: 'Opens one issue when a newer major of the shared standards is published.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -2,7 +2,6 @@
 title: '🔄 TEMPLATE SYNC'
 description: 'Syncs a generated repository''s scaffold from its template, checks a template''s sync list, or tracks what waits on the owner.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

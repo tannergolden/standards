@@ -2,7 +2,6 @@
 title: '🛡️ HARDEN RUNNER'
 description: 'Audits or blocks runner egress, and posts the job notice.'
 type: index
-keywords: [github-actions, composite-action]
 -->
 
 <!-- markdownlint-disable MD041 -->

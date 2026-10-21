@@ -2,7 +2,6 @@
 title: '🏗️ AUTOMATION ARCHITECTURE'
 description: 'How the automation these standards ship fits together: the layers a call passes through, the ref each one resolves at, where an action finds its files, and the shape every workflow, action and script here keeps. Read it before adding or changing one.'
 type: guide
-keywords: [reusable workflow, composite action, github_action_path, forwarder, conventions, scripts]
 -->
 
 <!-- markdownlint-disable MD041 -->

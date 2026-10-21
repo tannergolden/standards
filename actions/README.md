@@ -2,7 +2,6 @@
 title: '↪️ OLD ACTION ADDRESSES'
 description: 'Forwarders that keep each composite action''s old address, tannergolden/standards/actions/<name>@v1, working until the next major version.'
 type: index
-keywords: [github-actions, forwarder, migration]
 -->
 
 <!-- markdownlint-disable MD041 -->

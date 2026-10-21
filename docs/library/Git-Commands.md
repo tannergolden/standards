@@ -2,7 +2,6 @@
 title: '📝 GIT COMMANDS'
 description: 'Copy-paste Git commands for the branching, syncing, and release flows used here.'
 type: reference
-keywords: [cli]
 -->
 
 <!-- markdownlint-disable MD041 -->

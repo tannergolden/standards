@@ -2,7 +2,6 @@
 title: '🌿 DISTRIBUTION & WORKFLOW'
 description: 'Overview of the distribution and workflow documentation.'
 type: index
-keywords: [delivery]
 -->
 
 <!-- markdownlint-disable MD041 -->

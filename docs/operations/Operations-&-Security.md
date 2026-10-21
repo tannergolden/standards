@@ -2,7 +2,6 @@
 title: '📝 OPERATIONS & SECURITY'
 description: 'Overview of the operations and security documentation.'
 type: index
-keywords: [governance]
 -->
 
 <!-- markdownlint-disable MD041 -->

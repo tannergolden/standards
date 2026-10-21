@@ -2,7 +2,6 @@
 title: '📝 REFERENCE LIBRARY'
 description: 'Index of the educational guides and high-signal references in the library.'
 type: index
-keywords: [learning, resources]
 -->
 
 <!-- markdownlint-disable MD041 -->

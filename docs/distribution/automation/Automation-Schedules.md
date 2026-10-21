@@ -2,7 +2,6 @@
 title: '🕒 AUTOMATION SCHEDULES'
 description: 'The recommended cadence for every scheduled workflow, and why the schedule lives in your repository rather than this one.'
 type: reference
-keywords: [workflows, cron]
 -->
 
 <!-- markdownlint-disable MD041 -->

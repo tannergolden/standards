@@ -2,7 +2,6 @@
 title: '📚 REFERENCES'
 description: 'Look-up material: the glossary, the reference list and the label registry.'
 type: index
-keywords: [glossary, labels]
 -->
 
 <!-- markdownlint-disable MD041 -->

@@ -2,7 +2,6 @@
 title: '🐳 DEVELOPMENT CONTAINER'
 description: 'The development container for working on these standards: Python, Node, and the test tools at the versions CI pins.'
 type: index
-keywords: [devcontainer, development-environment, configuration, onboarding]
 -->
 
 <div align="center">

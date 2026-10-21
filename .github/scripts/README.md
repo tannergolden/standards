@@ -2,7 +2,6 @@
 title: '🐍 SCRIPTS'
 description: 'The helpers the composite actions ship and invoke, and the generators make lint-docs runs; each one says what it does in its docstring or leading comment.'
 type: index
-keywords: [python, shell, automation]
 -->
 
 <!-- markdownlint-disable MD041 -->

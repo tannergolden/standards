@@ -2,7 +2,6 @@
 title: '⚙️ REUSABLE WORKFLOWS'
 description: 'Every callable workflow, the stub that calls it, and what any repository needs to adopt them.'
 type: index
-keywords: [ci-cd, adoption]
 -->
 
 <!-- markdownlint-disable MD041 -->

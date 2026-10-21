@@ -2,7 +2,6 @@
 title: '📝 BRANCH PROTECTION'
 description: 'Branch protection rules and the rulesets that apply them as code.'
 type: standard
-keywords: [rulesets, governance, security]
 -->
 
 <!-- markdownlint-disable MD041 -->

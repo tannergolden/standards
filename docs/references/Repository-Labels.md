@@ -2,7 +2,6 @@
 title: '📝 REPOSITORY LABELS'
 description: 'The label taxonomy applied to issues and pull requests, with the meaning, color, and applier of every label.'
 type: reference
-keywords: [triage, governance, taxonomy]
 -->
 
 <!-- markdownlint-disable MD041 -->

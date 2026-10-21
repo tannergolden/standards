@@ -2,7 +2,6 @@
 title: '📘 GLOSSARY'
 description: 'Definitions for the engineering, Git, and automation terms used throughout the repository.'
 type: reference
-keywords: [terminology, definitions]
 -->
 
 <!-- markdownlint-disable MD041 -->
