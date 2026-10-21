@@ -33,6 +33,9 @@
 #         - '🧹 Maintenance'
 #         # ... every workflow whose silent failure would cost something
 #       types: [completed]
+#       # Only the branches that escalate, so a topic branch's runs start
+#       # nothing here.
+#       branches: [Development]
 #   concurrency:
 #     group: ${{ github.workflow }}-${{ github.event.workflow_run.name }}-${{ github.event.workflow_run.head_branch }}
 #     cancel-in-progress: false

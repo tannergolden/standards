@@ -54,7 +54,7 @@ Everything else is **event driven** and needs no schedule:
 | Push and pull request                                       | `checks.yml`, `auto-format.yml`, `verify-stubs.yml`                  |
 | Push to the default branch                                  | `auto-index.yml`, which proposes its result as a pull request        |
 | Pull request, issue, comment                                | `governance.yml`; `dependabot-automerge.yml` on PRs only             |
-| Another workflow finishing                                  | `ci-failure-alert.yml`                                               |
+| A watched workflow finishing on the default branch          | `ci-failure-alert.yml`                                               |
 | Release published                                           | `release.yml` - the `publish` and `prune-releases` jobs              |
 | Push to a preview branch                                    | `preview-deploy.yml`                                                 |
 | Manual dispatch only                                        | `apply-standards.yml`; the `package` and `prune-drafts` tasks        |
