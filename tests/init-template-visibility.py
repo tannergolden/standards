@@ -117,6 +117,9 @@ class TestAPublicRepository:
         body = message.split("Already wired")[0]
         assert "This repository is public" in body and f"- {FORM}\n" in body
         assert "switches the line off" in body
+        # The deleted form is listed as deleted, never under the line that
+        # names the intake that replaces it.
+        assert body.index(f"- {FORM}") < body.index("is the intake here instead.")
         assert "| Deleted, issue forms a public repository would publish reports through | 1 |" in summary
         assert f"`{FORM}`" in summary.split("**Deleted, as this repository is public:**")[1]
 
