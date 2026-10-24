@@ -42,20 +42,21 @@ _Deterministic builds. Automated validation. Secure promotion._
 
 <strong>🔍 Required Checks (set in Branch Protection)</strong>
 
-The shipped rulesets require these three status checks - the job names below are the exact contexts the rulesets reference:
+The shipped rulesets require these four status checks - the job names below are the exact contexts the rulesets reference, and each must come from GitHub Actions:
 
 | Required check            | Source workflow   | Why it exists                                                                      |
 | ------------------------- | ----------------- | ---------------------------------------------------------------------------------- |
 | **🧪 Lint, Test & Build** | `ci.yml`          | One deterministic job: lint, then test, then build, using the commands you give it |
+| **📦 Dependency Review**  | `ci.yml`          | Blocks any PR that adds a dependency with a known vulnerability                    |
 | **🔍 Scan for Secrets**   | `gitleaks.yml`    | Blocks any PR that introduces a credential or token                                |
 | **✍️ DCO Sign-Off**       | `semantic-pr.yml` | Blocks any PR whose human-authored commits lack `Signed-off-by:`                   |
 
 > [!NOTE]
 > **Ready for a merge queue.** A merge queue waits on every required check for the merge group as
 > well as the pull request, so every stub behind one in the template also triggers on
-> `merge_group`. There `ci` runs in full, and the secret scan and the DCO check skip, which GitHub
-> reports as passing: the group carries commits their pull requests' own runs already checked. Turn
-> a queue on in a ruleset and all three report.
+> `merge_group`. There `ci` runs in full, and dependency review, the secret scan and the DCO check
+> skip, which GitHub reports as passing: the group carries commits their pull requests' own runs
+> already checked. Turn a queue on in a ruleset and all four report.
 
 If you add project-specific gates (typecheck, coverage thresholds, E2E), add their job names to the ruleset's required checks - and keep the job `name:` stable, because renaming a job silently un-requires it.
 
@@ -81,7 +82,7 @@ The template ships with `.github/workflows/checks.yml` (**🚦 Checks**), whose 
 - **🧪 Lint, Test & Build** - the required gate. It runs the `lint-command`, `test-command`, and `build-command` you pass it, falling back to the `lint`, `test`, and `build` targets of a `Makefile` if you have one. If every stage resolves to nothing it **fails**, rather than reporting a green check that checked nothing. Before any of them, a repository that keeps `.github/scripts/requirements.txt`, as the template does for the scripts its checks run, gets Python at the `python-version` input and that file installed, so the template's `validate-repository.py` imports what it names rather than whatever the runner image carries. It also runs **🗂️ Check Frontmatter** over every document, which reports a broken one without failing until the `frontmatter` input says `enforce` (see [Document Styling & Formatting](../technical/interface/Document-Styling-&-Formatting.md)).
 - **📝 Check Spelling** - `typos` catches misspellings across code and docs.
 - **🔗 Check Links** - `lychee` validates every link (advisory; see [Link Checker](automation/Link-Checker.md)).
-- **📦 Dependency Review** - blocks a pull request that introduces a dependency with a known vulnerability. Pull requests only, since it compares two commits.
+- **📦 Dependency Review** - a required check: blocks a pull request that introduces a dependency with a known vulnerability. Pull requests on public repositories only, since it compares two commits and the Dependency Graph it reads is free only there; anywhere else it skips, which a required check accepts.
 - **📄 REUSE Compliance** - verifies SPDX licensing information on every file in the tree. Off by default; enable it with the `reuse-check` input where a repository already carries SPDX headers and a `LICENSES/` folder.
 
 Dedicated companions cover the rest of the surface: `gitleaks.yml` (required secret scan), `codeql.yml` (static analysis), `lint-workflows.yml` (`actionlint` and `zizmor` on workflow changes), and `semantic-pr.yml` (Conventional-Commit pull request titles, `<type>/<topic>` branch names, and DCO sign-offs). Dependency review runs as a job inside `ci.yml` rather than as a workflow of its own.

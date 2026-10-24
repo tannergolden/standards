@@ -60,7 +60,6 @@
 #     pr: # <- fixed by the rulesets. Do not rename.
 #       permissions:
 #         pull-requests: read # read the PR title under validation
-#         statuses: write # publish the semantic-title status check on the PR
 #       uses: tannergolden/standards/.github/workflows/semantic-pr.yml@v1
 #
 # ---
@@ -106,9 +105,12 @@ jobs:
     name: '👮 Validate PR Title'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # NO `statuses: write`. The action writes a commit status only in its
+    # `wip` mode, which this never turns on; its result is this job's own
+    # check. Granted anyway, it would let the third-party action post a
+    # status under any name, a required check's included.
     permissions:
       pull-requests: read # read the PR title under validation
-      statuses: write # publish the semantic-title status check on the PR
     steps:
       - name: '🛡️ Harden Runner'
         uses: tannergolden/standards/.github/actions/harden@v1

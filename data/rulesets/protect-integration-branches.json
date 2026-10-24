@@ -44,13 +44,20 @@
         "do_not_enforce_on_create": true,
         "required_status_checks": [
           {
-            "context": "ci / 🧪 Lint, Test & Build"
+            "context": "ci / 🧪 Lint, Test & Build",
+            "integration_id": 15368
           },
           {
-            "context": "secrets / 🔍 Scan for Secrets"
+            "context": "ci / 📦 Dependency Review",
+            "integration_id": 15368
           },
           {
-            "context": "pr / ✍️ DCO Sign-Off"
+            "context": "secrets / 🔍 Scan for Secrets",
+            "integration_id": 15368
+          },
+          {
+            "context": "pr / ✍️ DCO Sign-Off",
+            "integration_id": 15368
           }
         ]
       }

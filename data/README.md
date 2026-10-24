@@ -53,13 +53,19 @@ labeler action at run time, so they are configuration, not state.
 > alone. The caller's job id is therefore part of branch protection, and renaming it silently
 > detaches every required check that names it.
 
-The rulesets here require three checks:
+The rulesets here require four checks:
 
 | Required check                  | Comes from        | Stub job id |
 | :------------------------------ | :---------------- | :---------- |
 | `ci / 🧪 Lint, Test & Build`    | `ci.yml`          | `ci`        |
+| `ci / 📦 Dependency Review`     | `ci.yml`          | `ci`        |
 | `secrets / 🔍 Scan for Secrets` | `gitleaks.yml`    | `secrets`   |
 | `pr / ✍️ DCO Sign-Off`          | `semantic-pr.yml` | `pr`        |
+
+Each is tied to GitHub Actions by its `integration_id`, 15368, the id of the app that reports
+every job's check. A status posted under the same name by anything else, a personal token or
+another app, does not satisfy it. Dependency Review runs only on a public repository's pull
+requests, and skips everywhere else, which GitHub reports as passing.
 
 So a consuming repository's stub must use exactly those job ids:
 

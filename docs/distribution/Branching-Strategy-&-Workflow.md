@@ -117,13 +117,13 @@ flowchart LR
 
 <strong>✅ Branch Protection (the shipped ruleset)</strong>
 
-| Rule                                                  | Development | Experimental |  Preview  |  Release  |
-| ----------------------------------------------------- | :---------: | :----------: | :-------: | :-------: |
-| Require PR before merge (squash-only)                 |     ✅      |      ✅      |    ✅     |    ✅     |
-| Required checks (lint/test/build + secret scan + DCO) |     ✅      |      ✅      |    ✅     |    ✅     |
-| Restrict pushes (no direct push, no deletion)         |     ✅      |      ✅      |    ✅     |    ✅     |
-| Restrict force-push (see note)                        | owner-only  |  owner-only  |    ✅     |    ✅     |
-| Required reviews                                      |  0 shipped  |  0 shipped   | 0 shipped | 0 shipped |
+| Rule                                                | Development | Experimental |  Preview  |  Release  |
+| --------------------------------------------------- | :---------: | :----------: | :-------: | :-------: |
+| Require PR before merge (squash-only)               |     ✅      |      ✅      |    ✅     |    ✅     |
+| Required checks (build, dependencies, secrets, DCO) |     ✅      |      ✅      |    ✅     |    ✅     |
+| Restrict pushes (no direct push, no deletion)       |     ✅      |      ✅      |    ✅     |    ✅     |
+| Restrict force-push (see note)                      | owner-only  |  owner-only  |    ✅     |    ✅     |
+| Required reviews                                    |  0 shipped  |  0 shipped   | 0 shipped | 0 shipped |
 
 > [!NOTE]
 > **Force-push is owner-only on the integration line.** `Preview` and `Release` are force-push-immutable for everyone. On `Development` and `Experimental` force-push is blocked for everyone **except the repository owner** (the integration ruleset grants the Repository-admin role a full ruleset bypass - which, among other things, permits the force-push), which is what lets the owner normalize the generation root commit at Day 0. See [Branch Protection](../operations/Branch-Protection.md) for the two shipped rulesets.

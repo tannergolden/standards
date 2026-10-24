@@ -81,6 +81,7 @@ _Every script, every shell block._
 | [`release-notes-errors.py`](release-notes-errors.py)                               | A hand-written error message must be reachable.                                               |
 | [`release-pruning.py`](release-pruning.py)                                         | Deleting a published release is a decision a person makes.                                    |
 | [`release-tag-contract.py`](release-tag-contract.py)                               | A repository consumed by tag carries two tags, and four files must agree.                     |
+| [`required-checks.py`](required-checks.py)                                         | Every required check comes from GitHub Actions, and nothing behind one can forge it.          |
 | [`ruleset-preflight.py`](ruleset-preflight.py)                                     | An unreadable workflow directory is a token problem, and must say so.                         |
 | [`schedule-documentation.py`](schedule-documentation.py)                           | The schedule page states two rules the repository itself breaks.                              |
 | [`script-error-messages.py`](script-error-messages.py)                             | A script must name the problem, not print a Python traceback.                                 |
