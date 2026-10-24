@@ -38,7 +38,7 @@ This is that list, in the order you meet it. If a step is not here, you should n
 > [!WARNING]
 > **Visibility is the one irreversible-feeling choice.** Generating the private template into a public repository publishes an "all rights reserved" licence to the world. Check the toggle before you click.
 
-Initialisation then runs on its own: it rewrites the template author's identity to yours, stamps the licence year to the current year, deletes its own sentinel and every file only the template needs, and rewrites the first commit into a Conventional Commit describing what arrived. **You do nothing** - but delete a workflow file the run names as only the template's: GitHub lets the workflow token change nothing under `.github/workflows/`, so initialisation leaves it there for you. From the private template that is `.github/workflows/template-parity.yml`; the public one has none.
+Initialisation then runs on its own: it rewrites the template author's identity to yours, stamps the licence year to the current year, deletes its own sentinel and every file only the template needs, deletes the vulnerability issue form when the repository is public, since every issue there is public, and rewrites the first commit into a Conventional Commit describing what arrived. **You do nothing** - but delete a workflow file the run names as only the template's: GitHub lets the workflow token change nothing under `.github/workflows/`, so initialisation leaves it there for you. From the private template that is `.github/workflows/template-parity.yml`; the public one has none.
 
 ---
 

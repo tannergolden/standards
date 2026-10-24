@@ -77,6 +77,8 @@ We prioritize security from the very first commit. Our objective is to minimize 
 > **Disclosure is wired too**: **🎯 Apply Standards** enables **private vulnerability reporting** with `apply-settings`, so coordinated disclosure (Security tab → Report a vulnerability) works once you have run it - see [`SECURITY.md`](https://github.com/tannergolden/.github/blob/Development/SECURITY.md). It is a public-repository feature, and the run says so and skips rather than failing on a private one.
 >
 > **Initialisation does not do this.** It rewrites identity and deletes what only the template needs, and it touches no setting. Until Apply Standards has run with `apply-settings: true`, these are off.
+>
+> **On a public repository it does remove the issue route.** Every issue there is public, so a vulnerability filed through `.github/ISSUE_TEMPLATE/Vulnerability-Report.yaml` would be published; initialisation deletes that form when the repository is public, and private vulnerability reporting is the intake. A private repository keeps the form, since private vulnerability reporting is not offered there.
 
 ---
 

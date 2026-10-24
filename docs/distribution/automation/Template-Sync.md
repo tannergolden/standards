@@ -112,6 +112,12 @@ How the file is read:
   switched off: take the `#` away and the next sync adds it. A workflow file is the one exception:
   GitHub lets the workflow token change nothing under `.github/workflows/`, so initialisation leaves
   it in place, names it, and you delete it. No sync touches it while its line is off.
+- **On a public repository the vulnerability issue form goes too.** Every issue on a public
+  repository is public, so initialisation deletes `.github/ISSUE_TEMPLATE/Vulnerability-Report.yaml`
+  there. Unlike a file the template keeps for itself, its line stays on and it keeps a baseline, so
+  the first sync reads its absence as your deletion: it lists it under 🙈 Switched off, because you
+  deleted it, writes its line back with a `#`, and never re-creates it. Take the `#` away, should the
+  repository go private, and the next sync restores it.
 
 > [!WARNING]
 > **A deleted list is restored, not obeyed.** Deleting `.github/template-sync` might mean "stop", so
@@ -281,17 +287,18 @@ Every option the stub can pass, under `with:`:
 
 The engine is tested here, on real git repositories, with no network:
 
-| Suite                               | What it holds                                                                    |
-| :---------------------------------- | :------------------------------------------------------------------------------- |
-| `tests/template-sync-decisions.py`  | Every combination of baseline, template and owner state against six safety rules |
-| `tests/template-sync-run.py`        | Each promise above, played out end to end                                        |
-| `tests/template-sync-list.py`       | The list's redraw rules, and git's matcher on hostile path names                 |
-| `tests/template-sync-lock.py`       | Every way a lock can be wrong, refused                                           |
-| `tests/template-sync-properties.py` | Random template histories against random owners, and the bad designs they catch  |
-| `tests/template-sync-edges.py`      | The cases review and real use found: edits, deletions, choices, indexes, ignores |
-| `tests/template-sync-mapping.py`    | A mapped sync: relocations, replaced text, exclusions, and its own lock and list |
-| `tests/template-sync-workflow.py`   | The workflow, the action, the token policy, the issue, and init's first lock     |
-| `tests/init-template-removal.py`    | What init deletes, the workflows it leaves alone, and every sync after it        |
+| Suite                               | What it holds                                                                              |
+| :---------------------------------- | :----------------------------------------------------------------------------------------- |
+| `tests/template-sync-decisions.py`  | Every combination of baseline, template and owner state against six safety rules           |
+| `tests/template-sync-run.py`        | Each promise above, played out end to end                                                  |
+| `tests/template-sync-list.py`       | The list's redraw rules, and git's matcher on hostile path names                           |
+| `tests/template-sync-lock.py`       | Every way a lock can be wrong, refused                                                     |
+| `tests/template-sync-properties.py` | Random template histories against random owners, and the bad designs they catch            |
+| `tests/template-sync-edges.py`      | The cases review and real use found: edits, deletions, choices, indexes, ignores           |
+| `tests/template-sync-mapping.py`    | A mapped sync: relocations, replaced text, exclusions, and its own lock and list           |
+| `tests/template-sync-workflow.py`   | The workflow, the action, the token policy, the issue, and init's first lock               |
+| `tests/init-template-removal.py`    | What init deletes, the workflows it leaves alone, and every sync after it                  |
+| `tests/init-template-visibility.py` | The vulnerability issue form init deletes from a public repository, and the syncs after it |
 
 The random histories carry an **oracle that does not ask the engine**: every line is a unique token,
 so "did the template's change arrive" is a set question. Each known-bad design - one baseline per

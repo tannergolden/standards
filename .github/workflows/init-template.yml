@@ -20,6 +20,13 @@
 # brings one back. A stub any repository might adopt, like 🏷️ Cut Release,
 # belongs under a different heading and stays.
 #
+# ON A PUBLIC REPOSITORY THE VULNERABILITY ISSUE FORM GOES TOO. Every issue
+# there is public, so `.github/ISSUE_TEMPLATE/Vulnerability-Report.yaml`
+# would publish each report filed through it; private vulnerability
+# reporting is the intake instead. A private repository keeps the form. The
+# first 🔄 Template Sync after this reads its absence as a deletion and
+# switches its line off rather than bringing it back.
+#
 # ⚠️ NOTHING UNDER .github/workflows/ CHANGES HERE. The push authenticates
 # with the GITHUB_TOKEN, and GitHub refuses it any change in that folder,
 # the README there included; no `permissions:` key grants that right. So a

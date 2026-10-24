@@ -53,7 +53,8 @@ fifteen stubs, grouped and pinned to `@v1`. After that, whenever you run it, **ð
 brings them up to date with the template as a pull request, merged with whatever you changed - all
 but `cut-release.yml`, which each repository keeps as its own to adopt or delete - see
 [Template Sync](docs/distribution/automation/Template-Sync.md). Initialisation deletes only what
-the template alone needs, which its list names.
+the template alone needs, which its list names, and, on a public repository, the issue form for
+vulnerability reports, which would publish them.
 
 > [!IMPORTANT]
 > **Logic is never delivered by copying.** A trigger is not logic: it names events and nothing else,

@@ -131,16 +131,16 @@ These are correct before Apply Standards ever runs, and running it never touches
 
 ## 📄 Carried by Files, Not Settings
 
-| Concern                        | File                                                                  |
-| :----------------------------- | :-------------------------------------------------------------------- |
-| **Dependency update cadence**  | `.github/dependabot.yml`                                              |
-| **Code scanning**              | The `codeql.yml` stub, an advanced setup; default setup stays off     |
-| **Review routing**             | `.github/CODEOWNERS`                                                  |
-| **Vulnerability intake**       | `SECURITY.md`                                                         |
-| **Sponsorship links**          | `.github/FUNDING.yml`                                                 |
-| **Issue and discussion forms** | `.github/ISSUE_TEMPLATE/`, `.github/DISCUSSION_TEMPLATE/`             |
-| **Label taxonomy**             | [`data/labels.yml`](../../data/labels.yml), applied by the labels job |
-| **Branch and tag protection**  | [`data/rulesets/`](../../data/rulesets/), applied by the rulesets job |
+| Concern                        | File                                                                                                                                       |
+| :----------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dependency update cadence**  | `.github/dependabot.yml`                                                                                                                   |
+| **Code scanning**              | The `codeql.yml` stub, an advanced setup; default setup stays off                                                                          |
+| **Review routing**             | `.github/CODEOWNERS`                                                                                                                       |
+| **Vulnerability intake**       | `SECURITY.md`; on a private repository, `.github/ISSUE_TEMPLATE/Vulnerability-Report.yaml`, which initialisation deletes from a public one |
+| **Sponsorship links**          | `.github/FUNDING.yml`                                                                                                                      |
+| **Issue and discussion forms** | `.github/ISSUE_TEMPLATE/`, `.github/DISCUSSION_TEMPLATE/`                                                                                  |
+| **Label taxonomy**             | [`data/labels.yml`](../../data/labels.yml), applied by the labels job                                                                      |
+| **Branch and tag protection**  | [`data/rulesets/`](../../data/rulesets/), applied by the rulesets job                                                                      |
 
 ---
 

@@ -59,6 +59,7 @@ _Every script, every shell block._
 | [`init-template-removal.py`](init-template-removal.py)                             | What only the template needs never reaches a generated repository, bar a workflow.            |
 | [`init-template-shape.py`](init-template-shape.py)                                 | The initial commit describes the template a repository came from, read from its tree.         |
 | [`init-template-substitution.py`](init-template-substitution.py)                   | The identity substitutions, which shipped without a gate.                                     |
+| [`init-template-visibility.py`](init-template-visibility.py)                       | A public repository never keeps the issue form that would publish a vulnerability.            |
 | [`issue-ops-authorization.py`](issue-ops-authorization.py)                         | Slash commands need a relationship to the repository, not just a slash.                       |
 | [`java-selection.py`](java-selection.py)                                           | A non-integer java-version must fall back, not crash the step.                                |
 | [`label-registry-parsing.py`](label-registry-parsing.py)                           | The label registry is YAML, so both quoting styles must parse.                                |

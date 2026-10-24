@@ -20,6 +20,13 @@
 # any change there, so a workflow file only the template needs stays, named
 # for the owner to delete, and no identity or folder log there is touched.
 #
+# ON A PUBLIC REPOSITORY IT DELETES THE VULNERABILITY ISSUE FORM TOO.
+# `.github/ISSUE_TEMPLATE/Vulnerability-Report.yaml` would publish every
+# report filed through it, since every issue there is public; private
+# vulnerability reporting is the intake instead. The repository object the
+# run already reads says whether it is public, or the event payload when
+# the API cannot be read; when neither does, the form stays with a warning.
+#
 # ⚠️ IT DOES NOT REWRITE A REPOSITORY ADDRESS. `<owner>/standards` is the
 # repository every consumer calls, and the template itself, its sibling, the
 # agent instruction publisher and the account's `.github` are the same kind

@@ -41,6 +41,21 @@
 # Markdown Kit, generated from the public template, does - so it stays,
 # inert until its owner adopts it.
 #
+# ⚠️ ON A PUBLIC REPOSITORY THE VULNERABILITY ISSUE FORM GOES TOO. Every
+# issue on a public repository is public, so a vulnerability reported
+# through `.github/ISSUE_TEMPLATE/Vulnerability-Report.yaml` would be
+# published the moment it was filed. Private vulnerability reporting is the
+# intake there, with the form the public template ships for it in
+# `.github/VULNERABILITY_REPORT.yml`. A private repository keeps the issue
+# form, since an issue there is as private as the repository. Whether the
+# repository is public is read from the repository object fetched below for
+# the template's name, else from the event that started the run; when
+# neither says, the form stays and the run warns, because deleting it from a
+# private repository would leave that repository no intake at all. Its line
+# in the list is left as it is, and the first 🔄 Template Sync after this
+# reads the absence as a deletion: it switches the line off and never
+# brings the form back.
+#
 # EVERY FOLDER LOG IS REDRAWN LAST, the workflows' aside. A log lists the
 # files beside it, so one naming the sentinel, or a file deleted above, would
 # describe a repository that does not exist; the lock written below belongs
@@ -116,6 +131,10 @@ TEXT_NAMES = {
 # The folder whose every file - workflow or not - GitHub refuses to let the
 # workflow token create, change or delete. See the header.
 WORKFLOW_DIR = ".github/workflows/"
+
+# The issue form that would publish a vulnerability on a public repository.
+# See the header: deleted there, kept on a private one.
+VULNERABILITY_FORM = ".github/ISSUE_TEMPLATE/Vulnerability-Report.yaml"
 
 # A sealed block's opening marker and a code fence, read as template sync
 # reads them. See the header: nothing inside a sealed block is rewritten.
@@ -444,6 +463,52 @@ def remove_template_only(root: pathlib.Path, sync) -> tuple[list[str], list[str]
     return removed, left
 
 
+def visibility_of(repository) -> str | None:
+    """`public`, `private` or `internal`, as a repository object says it; None when it says neither."""
+    if not isinstance(repository, dict):
+        return None
+    visibility = repository.get("visibility")
+    if visibility in ("public", "private", "internal"):
+        return visibility
+    private = repository.get("private")
+    if isinstance(private, bool):
+        return "private" if private else "public"
+    return None
+
+
+def event_repository() -> dict:
+    """The repository object in the payload of the event that started this run, or {} without one."""
+    path = os.environ.get("GITHUB_EVENT_PATH")
+    if not path:
+        return {}
+    try:
+        with open(path, encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return payload.get("repository") or {}
+
+
+def remove_vulnerability_form(root: pathlib.Path, visibility: str | None) -> tuple[list[str], list[str]]:
+    """Delete the vulnerability issue form from a public repository; see the header.
+
+    Returns the paths deleted, and the paths kept because the visibility
+    could not be read. Neither case is guessed: kept on a public repository
+    the form publishes every report filed through it, and deleted from a
+    private one it leaves no intake at all.
+    """
+    present = [VULNERABILITY_FORM] if (root / VULNERABILITY_FORM).is_file() else []
+    if visibility == "public":
+        for rel in present:
+            (root / rel).unlink()
+        return present, []
+    if visibility is None:
+        return [], present
+    return [], []
+
+
 def main() -> int:
     token = os.environ["GH_TOKEN"]
     repo = os.environ["REPO"]                       # owner/name
@@ -472,9 +537,12 @@ def main() -> int:
 
     # GitHub records which template a repository was generated from, so the
     # commit message can name it accurately instead of repeating a constant
-    # that a rename would falsify.
-    generated_from = ((api(f"repos/{repo}", token).get("template_repository") or {})
-                      .get("full_name") or "").strip()
+    # that a rename would falsify. The same object says whether the
+    # repository is public, and the event that started the run says it too
+    # when the API could not be read.
+    repository = api(f"repos/{repo}", token)
+    generated_from = ((repository.get("template_repository") or {}).get("full_name") or "").strip()
+    visibility = visibility_of(repository) or visibility_of(event_repository())
 
     profile = api(f"users/{owner}", token)
     display = (profile.get("name") or "").strip() or owner
@@ -515,6 +583,17 @@ def main() -> int:
         print(f"::warning title=Initialisation::{path} serves only the template, but GitHub lets no workflow "
               f"token change a workflow file, so it stays. Delete it yourself; its line in {sync.LIST_PATH} "
               "is switched off, so no sync brings it back.")
+
+    # A public repository's issues are public, so the issue form for
+    # vulnerabilities goes; its reports take the private route. The header
+    # says why, and what the next sync does about it.
+    exposed, unsure = remove_vulnerability_form(root, visibility)
+    for path in exposed:
+        print(f"Deleted {path}: this repository is public, so a vulnerability reported through it would be published.")
+    for path in unsure:
+        print(f"::warning title=Initialisation::Could not tell whether this repository is public, so {path} stays. "
+              "If it is public, delete it: every issue there is public, so a vulnerability reported through it "
+              "is published. A private repository keeps it.")
 
     changed: list[str] = []
     for path in sorted(root.rglob("*")):
@@ -616,6 +695,24 @@ def main() -> int:
         "\n"
         + "".join(f"- {path}\n" for path in left)
     ) if left else ""
+    # And the issue form a public repository would publish reports through.
+    public = (
+        "\n"
+        "This repository is public, and so is every issue on it, so it also\n"
+        "deleted the issue form for vulnerability reports: one filed through\n"
+        "it would be published the moment it was filed. Private\n"
+        "vulnerability reporting, which 🎯 Apply Standards switches on, is\n"
+        "the intake here instead:\n"
+        "\n"
+        + "".join(f"- {path}\n" for path in exposed)
+        + (
+            "\n"
+            "Its line in .github/template-sync stays as it was, and the next\n"
+            "🔄 Template Sync reads it as deleted: it switches the line off and\n"
+            "never brings the form back.\n"
+            if listed else ""
+        )
+    ) if exposed else ""
     message = (
         subject + "\n"
         "\n"
@@ -628,7 +725,7 @@ def main() -> int:
         "template's account were deliberately left alone - the shared\n"
         "standards the workflow stubs call among them - because each belongs\n"
         "to that account, not this one.\n"
-        + gone + stays +
+        + gone + stays + public +
         "\n"
         "Already wired: continuous integration, secret scanning, static\n"
         "analysis, workflow linting, governance automation, and pull request\n"
@@ -687,7 +784,9 @@ def main() -> int:
         f"| Commit identity | `{email}` |\n"
         f"| Files rewritten | {len(changed)} |\n"
         f"| Deleted, only the template needs them | {len(deleted)} |\n"
-        + (f"| Left for you to delete, workflow files only the template needs | {len(left)} |\n" if left else "") +
+        + (f"| Left for you to delete, workflow files only the template needs | {len(left)} |\n" if left else "")
+        + (f"| Deleted, issue forms a public repository would publish reports through | {len(exposed)} |\n"
+           if exposed else "") +
         f"| Folder logs redrawn | {len(redrawn)} |\n"
         f"| History | {mode} |\n"
         "\n"
@@ -695,7 +794,14 @@ def main() -> int:
            "`.github/template-sync`, switched off.\n\n" if deleted else "")
         + ("**Left for you to delete:** " + ", ".join(f"`{path}`" for path in left) + ". GitHub lets no "
            "workflow token change a workflow file, so initialisation could not. Each keeps its line in "
-           "`.github/template-sync`, switched off, so no sync brings it back.\n\n" if left else "") +
+           "`.github/template-sync`, switched off, so no sync brings it back.\n\n" if left else "")
+        + ("**Deleted, as this repository is public:** " + ", ".join(f"`{path}`" for path in exposed) + ". "
+           "Every issue here is public, so a vulnerability reported through it would be published; private "
+           "vulnerability reporting is the intake instead."
+           + (" The next 🔄 Template Sync switches its line off rather than bringing it back." if listed else "")
+           + "\n\n" if exposed else "")
+        + ("**Kept, visibility unknown:** " + ", ".join(f"`{path}`" for path in unsure) + ". Delete it if "
+           "this repository is public.\n\n" if unsure else "") +
         "The sentinel has been removed, so this workflow is now inert and will not run again.\n"
         "\n"
         "> **Next:** give `.github/workflows/checks.yml` the lint, test, and build commands for "
