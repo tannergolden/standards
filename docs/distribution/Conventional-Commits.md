@@ -206,7 +206,7 @@ Not enforced, and encouraged. One emoji after the colon reads well in a long log
 7. **Open a pull request** into `Development`.
 
 > [!NOTE]
-> **The rulesets have your back, not a local hook.** Nothing here installs a git hook, so this protocol is enforced where it cannot be bypassed: the branch rulesets refuse a direct push to a protected branch, and `semantic-pr.yml` re-checks every commit message and sign-off on the pull request itself. A local hook you can disable with `--no-verify` is a convenience, not a control.
+> **The rulesets have your back, not a local hook.** This protocol is enforced where it cannot be bypassed: the branch rulesets refuse a direct push to a protected branch, and `semantic-pr.yml` re-checks every commit message and sign-off on the pull request itself. The golden path template ships a `commit-msg` hook that runs the same checks before a commit exists, and its development container switches it on, but a hook you can skip with `--no-verify` is a convenience, not a control.
 
 ---
 

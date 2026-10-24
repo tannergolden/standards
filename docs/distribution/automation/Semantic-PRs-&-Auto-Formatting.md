@@ -50,7 +50,7 @@ Monitors the codebase for style drift and proposes corrections - without ever wr
 - **Workflow**: `.github/workflows/auto-format.yml` (Standalone for on-demand execution)
 - **Execution**: Runs on each push to `Development` (drift can only appear when the branch changes - zero idle runs), or on demand via `workflow_dispatch`.
 - **Remediation**: Runs Prettier repository-wide and, when drift exists, **opens a pull request** targeting `Development` (via the `open-pr` composite action). Long-lived branches are PR-only for automation exactly as they are for humans.
-- **Layered defense**: CI rejects unformatted changes via `make lint`, so drift only reaches the default branch when something bypassed a local check, or when there was no local check to bypass. A repository that wires a pre-commit hook of its own catches it a step earlier; this workflow is the safety net either way, and the only one that covers an edit made in the GitHub web editor.
+- **Layered defense**: where the `ci` job's lint includes a format check, such as a `make lint` that runs one, CI rejects unformatted changes, so drift only reaches the default branch when something bypassed that check, or when there was none. The hooks the golden path template ships check commit messages and secrets, not formatting, so a repository that wants drift caught before a commit wires a format hook of its own; this workflow is the safety net either way, and the only one that covers an edit made in the GitHub web editor.
 
 ---
 

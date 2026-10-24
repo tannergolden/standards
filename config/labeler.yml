@@ -125,4 +125,5 @@
           - '.devcontainer/**'
           - '.vscode/**'
           - '.husky/**'
+          - '.github/scripts/hooks/**'
           - 'Makefile'

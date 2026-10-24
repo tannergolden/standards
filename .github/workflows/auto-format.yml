@@ -7,11 +7,13 @@
 # merges through the normal gates, because automation obeys the same PR-only
 # contract it enforces on humans.
 #
-# This is a safety net, not the primary mechanism. Editor hooks, pre-commit
-# hooks, and `make lint` catch drift long before this does; what reaches here
-# is the edit that bypassed all three, typically one made in the GitHub web
-# UI. So it runs on push rather than on a schedule, at the exact moment such
-# drift can land, and no-ops when the tree is already clean.
+# This is a safety net, not the primary mechanism. Where a repository has
+# its own format check - an editor that formats on save, a pre-commit hook of
+# its own, a lint target CI runs - that catches drift long before this does;
+# what reaches here is the edit that bypassed them, typically one made in the
+# GitHub web UI, or any drift in a repository with no such check. So it runs
+# on push rather than on a schedule, at the exact moment such drift can land,
+# and no-ops when the tree is already clean.
 #
 # ANY FORMATTER, NOT JUST PRETTIER. Pass `format-command` and that runs
 # instead: `gofmt -w .`, `cargo fmt`, `black .`, `mvn spotless:apply`,
