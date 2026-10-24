@@ -89,7 +89,9 @@ be re-pointed at each release, and a ruleset that made it immutable would break 
 serve. A full version is never re-pointed while it exists, so what `v1.4.2` resolved yesterday it
 resolves today, but it does not exist for long: `release.yml` prunes every version but the one the
 major points at, page and tag, after each release, and a `deletion` rule would refuse that prune.
-Anyone who wants exactness for good pins a commit SHA, which nothing here deletes.
+Anyone who wants exactness for good pins a commit SHA, which nothing here deletes. The rules stop a
+push that moves a version tag, not a deletion followed by a new tag of the same name, which anyone
+who can create tags could point at another commit; the commit SHA answers that too.
 
 ---
 
