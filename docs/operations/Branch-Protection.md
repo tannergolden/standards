@@ -100,6 +100,9 @@ Reviews column = the **recommended team posture** once you have reviewers; the s
 - [ ] **Require Review from CODEOWNERS**: Uncomment and populate `.github/CODEOWNERS` first.
 - [ ] **Require Signed Commits**: Verified identity via GPG/SSH for auditability.
 - [ ] **Restrict Pushes**: Only designated service accounts or release managers can write to `Release`.
+- [ ] **Restrict Who Runs Releases**: Once anyone else has write access, add an actor rule under **Settings → Actions → Policies** that lets only repository admins run `release.yml`, `cut-release.yml` and `apply-standards.yml`. Without it a writer can dispatch the `package` task from an unmerged branch and publish what is on it. Actions policies cover public repositories, and private ones on GitHub Team or Enterprise.
+- [ ] **Require Code Scanning Results**: Add a `code_scanning` rule (CodeQL, errors, high or higher) once CodeQL reports on every pull request, so one that introduces an alert cannot merge. It is not shipped because it blocks every merge while CodeQL cannot report: on a private repository without GitHub Code Security, or for a compiled language its autobuild cannot build.
+- [ ] **Require Up-to-Date Branches**: Turn on `strict_required_status_checks_policy`, or better, a merge queue, which tests the merged result without the extra step. It is not shipped because without a queue, which a repository owned by a personal account cannot have, every Dependabot pull request after the first waits for someone to press **Update branch**.
 
 ---
 

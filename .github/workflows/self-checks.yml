@@ -145,6 +145,10 @@ jobs:
           egress-policy: audit
           notice: '🧰 actionlint and zizmor over the workflows and actions published here.'
 
+      # actionlint 1.7.12, the newest release, refuses the `cache-mode` key
+      # GitHub added to workflows. Once a release accepts it, give the jobs
+      # that publish, in publish-package.yml and release-publish.yml,
+      # `cache-mode: none`, so no cache can reach what users install.
       - name: '🔍 actionlint (Actions semantics)'
         run: |
           set -euo pipefail
