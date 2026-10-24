@@ -22,6 +22,7 @@
 #       branches: ['Experimental', 'Development', 'Preview', 'Release']
 #     pull_request:
 #       branches: ['Experimental', 'Development', 'Preview', 'Release']
+#     merge_group: # a merge queue waits on every required check
 #     workflow_dispatch:
 #   concurrency:
 #     group: ${{ github.workflow }}-${{ github.ref }}
@@ -53,6 +54,15 @@ permissions: {}
 jobs:
   scan:
     name: '🔍 Scan for Secrets'
+    # SKIPPED IN A MERGE QUEUE, AND SO PASSED. The pinned gitleaks action
+    # takes push, pull_request, workflow_dispatch and schedule, and exits 1
+    # on any other event, so on `merge_group` this required check failed
+    # every queued pull request. A merge group carries the commits each
+    # pull request's own run already scanned, and the push that lands it on
+    # the default branch is scanned like any other. GitHub reports a job
+    # skipped inside a called workflow as Success, which a required check
+    # accepts.
+    if: ${{ github.event_name != 'merge_group' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
