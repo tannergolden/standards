@@ -69,7 +69,16 @@ REPO_PRIVATE = {**REPO_PUBLIC, "visibility": "private", "private": True, "securi
 # The governance stub's event policy, as the shipped file names it and as a
 # POST or PUT sends it.
 POLICY_NAME = "Allow the governance stub's events"
-EVENTS = ["issue_comment", "issues", "merge_group", "pull_request", "pull_request_target", "schedule", "workflow_dispatch"]
+EVENTS = [
+    "issue_comment",
+    "issues",
+    "merge_group",
+    "pull_request",
+    "pull_request_target",
+    "schedule",
+    "workflow_call",
+    "workflow_dispatch",
+]
 POLICY = {
     "name": POLICY_NAME,
     "enforcement": "active",
