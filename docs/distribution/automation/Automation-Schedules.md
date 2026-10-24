@@ -39,6 +39,7 @@ with nothing to sync back here.
 
 | Workflow, job                   | Recommended (UTC) | Why that slot                                                         |
 | :------------------------------ | :---------------- | :-------------------------------------------------------------------- |
+| `scorecard.yml` (template)      | Weekly, Mon 02:00 | The OpenSSF Scorecard score, an hour clear of the sweep               |
 | `checks.yml`, weekly sweep      | Weekly, Mon 03:00 | CodeQL and the secret scan over code nothing touched                  |
 | `governance.yml`                | Weekly, Mon 04:00 | Start-of-week triage, stale sweep, locking, labels                    |
 | `self-checks.yml` (local)       | Weekly, Mon 04:00 | This repository's own gate, so a moving upstream is caught            |
