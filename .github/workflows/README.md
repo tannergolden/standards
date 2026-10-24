@@ -158,13 +158,17 @@ thing ever copied; everything behind the `uses:` stays here.
 
 Generate your repository from the public template,
 [tannergolden/path](https://github.com/tannergolden/path), and every trigger workflow arrives
-installed, grouped, and pinned to `@v1`: fifteen files covering the checks, governance, the release
-chain, maintenance, the standards lifecycle, the machined indexes, and template sync - which brings
-those files up to date afterwards, as a pull request, whenever you run it: all but `cut-release.yml`,
-which each repository keeps as its own. The optional ones carry an `is_template` guard, so they are
-silent in the template and come alive in the repository generated from it. `cut-release.yml` is the
-reverse: it runs only in the template until a repository released by tag - a kit, an action -
-adopts it. `template-sync.yml` checks its list there.
+installed and grouped: sixteen files covering the checks, governance, the release chain,
+maintenance, the standards lifecycle, the machined indexes, template sync, the stub ceilings and an
+OpenSSF Scorecard. Fourteen are stubs pinned to `@v1`; `verify-stubs.yml` and `scorecard.yml` are
+complete workflows of the template's own. Template sync brings those files up to date afterwards, as
+a pull request, whenever you run it: all but `cut-release.yml`, which each repository keeps as its
+own. The checks run in the template too, the three required ones among them, so what it ships is
+checked before a repository generated from it runs it. Jobs with an `is_template` guard naming the
+two golden path templates are silent there and come alive in the repository generated from one, and
+`release.yml` and initialisation stay silent in every template. `cut-release.yml` is the reverse: it
+runs only in a template until a repository released by tag - a kit, an action - adopts it.
+`template-sync.yml` checks its list there.
 
 Then run **🎯 Apply Standards** once for the label taxonomy, once more for the repository
 settings, and, when you are ready for branch protection, the rulesets:
