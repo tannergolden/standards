@@ -121,6 +121,20 @@ PRIVATE_FORK_KEYS = (
 EVENT_POLICY_KEYS = ("name", "enforcement", "workflow_paths", "allowed_events")
 ENFORCEMENTS = ("active", "disabled", "evaluate")
 EVENT_RULE = "restrict_action_events"
+# The events an event rule accepts, as GitHub's REST description lists them
+# for `allowed_events`. A name outside it is refused when the file loads,
+# rather than by the API halfway through a run.
+ACTION_EVENTS = frozenset({
+    "branch_protection_rule", "check_run", "check_suite", "create", "delete", "deployment",
+    "deployment_status", "discussion", "discussion_comment", "fork", "gollum", "image_version",
+    "issue_comment", "issues", "label", "merge_group", "milestone", "page_build", "project",
+    "project_card", "project_column", "public", "pull_request", "pull_request_review",
+    "pull_request_review_comment", "pull_request_target", "push", "registry_package", "release",
+    "repository_dispatch", "schedule", "status", "watch", "workflow_call", "workflow_dispatch",
+    "workflow_run",
+})
+# Policies listed per page; GitHub allows at most 100.
+POLICIES_PER_PAGE = 100
 
 # Statuses on the repository object's security_and_analysis block.
 SECURITY_STATUS_KEYS = {
@@ -359,7 +373,16 @@ def load_settings(path: pathlib.Path) -> dict:
                     f"and is {show(block['enforcement'])}."
                 )
             for key in ("workflow_paths", "allowed_events"):
-                expect_strings(block[key], f"actions.event_policy.{key}")
+                values = expect_strings(block[key], f"actions.event_policy.{key}")
+                twice = sorted({v for v in values if values.count(v) > 1})
+                if twice:
+                    raise SettingsError(f"'actions.event_policy.{key}' names {', '.join(twice)} more than once.")
+            strange = sorted(set(block["allowed_events"]) - ACTION_EVENTS)
+            if strange:
+                raise SettingsError(
+                    f"'actions.event_policy.allowed_events' names {', '.join(strange)}, which an event "
+                    "rule does not accept: GitHub's list is the events a workflow can be triggered by."
+                )
         settings["actions"] = actions
 
     security = document.get("security")
@@ -421,6 +444,10 @@ class Plan:
     def skip(self, name: str, reason: str) -> None:
         self.lines.append(f"  SKIP    {name:<40} {reason}")
         self.skipped += 1
+
+    def note(self, name: str, text: str) -> None:
+        """A fact the run does not act on but the owner should see; it changes no count."""
+        self.lines.append(f"  NOTE    {name:<40} {text}")
 
     def same(self) -> None:
         self.unchanged += 1
@@ -632,6 +659,50 @@ def unreadable(response: Response) -> str:
     return f"could not be read ({response.reason})"
 
 
+# What a skipped event policy leaves behind, said on its plan line: the one
+# setting whose absence stops a shipped workflow rather than weakening it.
+WITHOUT_POLICY = (
+    "; without it, GitHub's default policy blocks the governance stub's "
+    "pull_request_target triage on a public repository"
+)
+
+
+def repository_policies(ctx: Context):
+    """Every Actions policy set on the repository itself, page by page.
+
+    `has_parents=false` leaves out the policies an organization or an
+    enterprise set above it, which cannot be written from here. Returns the
+    policies and None, or None and the response that could not be read.
+    """
+    policies: list = []
+    page = 1
+    while True:
+        listed = gh("GET", ctx.path(f"actions/policies?has_parents=false&per_page={POLICIES_PER_PAGE}&page={page}"))
+        if not listed.ok or not isinstance(listed.data, dict):
+            return None, listed
+        batch = [policy for policy in listed.data.get("policies") or [] if isinstance(policy, dict)]
+        policies += batch
+        total = listed.data.get("total_count")
+        if len(batch) < POLICIES_PER_PAGE or (isinstance(total, int) and len(policies) >= total):
+            return policies, None
+        page += 1
+
+
+def event_rules(policy: dict) -> list:
+    """A policy's event rules; a policy may also carry rules of other kinds."""
+    return [rule for rule in policy.get("rules") or [] if isinstance(rule, dict) and rule.get("type") == EVENT_RULE]
+
+
+def covers(policy: dict, paths) -> bool:
+    """Whether a policy's workflow paths take in any of `paths`.
+
+    `~ALL` is how GitHub reports a policy over every workflow. Other
+    patterns are not expanded: an exact path is what this compares.
+    """
+    include = ((policy.get("conditions") or {}).get("workflow_path") or {}).get("include") or []
+    return "~ALL" in include or any(path in include for path in paths)
+
+
 def plan_event_policy(ctx: Context, want: dict) -> None:
     """One Actions event policy, found by its name: created, updated, or left alone.
 
@@ -641,10 +712,13 @@ def plan_event_policy(ctx: Context, want: dict) -> None:
     runs with an error.
 
     Compared on what the file sets: the enforcement, the workflow paths the
-    policy covers and that it excludes none, and the allowed events, in any
-    order. The list also carries policies an organization or an enterprise
-    set above the repository; only the repository's own policy of that name
-    is this one, and only it is ever written.
+    policy covers and that it excludes none, the allowed events in any order,
+    and that the policy carries no rule but its event rule, since the write
+    replaces the policy whole. Only the repository's own policies are listed,
+    every page of them, and only the one of this name is ever written.
+    Another of the repository's own policies that restricts the same
+    workflow's events still applies beside this one: policies layer, like
+    rulesets. The plan names it, and the run leaves it alone.
     """
     plan = ctx.plan
     label = "actions.event_policy"
@@ -653,21 +727,16 @@ def plan_event_policy(ctx: Context, want: dict) -> None:
     if not ctx.is_public:
         plan.skip(label, "public repositories only")
         return
-    listed = gh("GET", ctx.path("actions/policies?per_page=100"))
-    if not listed.ok or not isinstance(listed.data, dict):
-        plan.skip(label, unreadable(listed))
+    policies, failed = repository_policies(ctx)
+    if policies is None:
+        plan.skip(label, unreadable(failed) + WITHOUT_POLICY)
         return
+    own = [policy for policy in policies if policy.get("source_type", "Repository") == "Repository"]
+    found = next((policy for policy in own if policy.get("name") == want["name"]), None)
+    for other in own:
+        if other is not found and event_rules(other) and covers(other, want["workflow_paths"]):
+            plan.note(label, f"'{other.get('name')}' also restricts these workflows' events, and applies beside this one")
     body = event_policy_body(want)
-    found = next(
-        (
-            policy
-            for policy in listed.data.get("policies") or []
-            if isinstance(policy, dict)
-            and policy.get("name") == want["name"]
-            and policy.get("source_type", "Repository") == "Repository"
-        ),
-        None,
-    )
     if found is None:
         plan.change(label, "absent", want["name"])
         plan.write("the Actions event policy", "POST", ctx.path("actions/policies"), body,
@@ -676,25 +745,31 @@ def plan_event_policy(ctx: Context, want: dict) -> None:
     endpoint = ctx.path(f"actions/policies/{found.get('id')}")
     current = gh("GET", endpoint)
     if not current.ok or not isinstance(current.data, dict):
-        plan.skip(label, unreadable(current))
+        plan.skip(label, unreadable(current) + WITHOUT_POLICY)
         return
     have = current.data
     paths = (have.get("conditions") or {}).get("workflow_path") or {}
-    rules = [rule for rule in have.get("rules") or [] if isinstance(rule, dict) and rule.get("type") == EVENT_RULE]
-    events = [sorted((rule.get("parameters") or {}).get("allowed_events") or []) for rule in rules]
+    rules = event_rules(have)
+    events = [sorted(set((rule.get("parameters") or {}).get("allowed_events") or [])) for rule in rules]
     differs = plan.compare(f"{label}.enforcement", have.get("enforcement"), want["enforcement"])
     differs = plan.compare(
         f"{label}.workflow_path",
-        {"include": sorted(paths.get("include") or []), "exclude": sorted(paths.get("exclude") or [])},
-        {"include": sorted(want["workflow_paths"]), "exclude": []},
+        {"include": sorted(set(paths.get("include") or [])), "exclude": sorted(set(paths.get("exclude") or []))},
+        {"include": sorted(set(want["workflow_paths"])), "exclude": []},
     ) or differs
-    # One event rule is the usual case, compared as its list of events.
+    # One event rule is the usual case, compared as its set of events.
     # None, or several, can only differ from the one rule the file names.
     differs = plan.compare(
         f"{label}.allowed_events",
         events[0] if len(events) == 1 else (events or None),
-        sorted(want["allowed_events"]),
+        sorted(set(want["allowed_events"])),
     ) or differs
+    # The write replaces the policy whole, so a rule of another kind added
+    # by hand, such as an actor rule, would go with it: the plan says so. A
+    # rule with no type is one too, named as such rather than sorted beside
+    # the strings.
+    kinds = sorted({str(rule.get("type")) for rule in have.get("rules") or [] if isinstance(rule, dict)} - {EVENT_RULE})
+    differs = plan.compare(f"{label}.other_rules", kinds or None, None) or differs
     if differs:
         plan.write("the Actions event policy", "PUT", endpoint, body,
                    f"Updated the Actions event policy '{want['name']}'.")

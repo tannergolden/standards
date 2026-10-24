@@ -91,7 +91,7 @@ POLICY_BODY = {
     "conditions": {"workflow_path": {"include": [".github/workflows/governance.yml"], "exclude": []}},
     "rules": [{"type": "restrict_action_events", "parameters": {"allowed_events": EVENTS}}],
 }
-POLICY_LIST = "actions/policies?per_page=100"
+POLICY_LIST = "actions/policies?has_parents=false&per_page=100&page=1"
 
 # Every endpoint the shipped file reads, answering as a repository on the
 # standard would. A value of None is a 404 (the GET fails); "" is a 204; a
@@ -328,7 +328,7 @@ class TestTheEventPolicy:
 
     def test_a_matching_policy_is_read_and_left_alone(self, plan_with):
         plan = plan_with("actions", self.settings())
-        assert (plan.changed, plan.unchanged, plan.writes) == (0, 3, [])
+        assert (plan.changed, plan.unchanged, plan.writes) == (0, 4, [])
         assert ("GET", "repos/o/r/actions/policies/7", None) in plan.api.calls
 
     def test_the_events_compare_in_any_order(self, plan_with):
@@ -369,6 +369,66 @@ class TestTheEventPolicy:
     def test_a_listed_policy_that_cannot_be_read_is_a_skip(self, plan_with):
         plan = plan_with("actions", self.settings(), answers={"actions/policies/7": 404})
         assert (plan.changed, plan.skipped, plan.writes) == (0, 1, [])
+
+    def test_a_skip_names_what_is_left_unprotected(self, plan_with):
+        plan = plan_with("actions", self.settings(), answers={POLICY_LIST: 404})
+        assert "blocks the governance stub's pull_request_target triage" in line(plan, "actions.event_policy")
+
+    def test_only_the_repositorys_own_policies_are_listed_on_every_page(self, plan_with):
+        """A full first page is followed to the next, where this one is."""
+        others = [{"id": 100 + n, "name": f"other {n}", "source_type": "Repository", "rules": []} for n in range(100)]
+        plan = plan_with("actions", self.settings(), answers={
+            POLICY_LIST: {"total_count": 101, "policies": others},
+            "actions/policies?has_parents=false&per_page=100&page=2": HEALTHY[POLICY_LIST],
+        })
+        assert (plan.changed, plan.writes) == (0, [])
+        assert ("GET", "repos/o/r/actions/policies?has_parents=false&per_page=100&page=2", None) in plan.api.calls
+
+    def test_a_short_page_is_the_last(self, plan_with):
+        plan = plan_with("actions", self.settings())
+        assert not any("page=2" in path for _m, path, _b in plan.api.calls)
+
+    def test_another_policy_over_the_same_workflow_is_named_and_left_alone(self, plan_with):
+        """Policies layer, so a narrower one of the owner's still applies."""
+        mine = HEALTHY[POLICY_LIST]["policies"][0]
+        theirs = {
+            "id": 8, "name": "Only pushes", "source_type": "Repository",
+            "conditions": {"workflow_path": {"include": [".github/workflows/governance.yml"], "exclude": []}},
+            "rules": [{"type": "restrict_action_events", "parameters": {"allowed_events": ["push"]}}],
+        }
+        plan = plan_with("actions", self.settings(), answers={POLICY_LIST: {"total_count": 2, "policies": [mine, theirs]}})
+        assert "'Only pushes' also restricts these workflows' events" in "\n".join(plan.lines)
+        assert (plan.changed, plan.writes) == (0, [])
+        assert not any(path.endswith("/8") for _m, path, _b in plan.api.calls)
+
+    def test_an_excluded_path_is_drift(self, plan_with):
+        narrowed = {**HEALTHY["actions/policies/7"],
+                    "conditions": {"workflow_path": {"include": [".github/workflows/governance.yml"], "exclude": ["x.yml"]}}}
+        plan = plan_with("actions", self.settings(), answers={"actions/policies/7": narrowed})
+        assert plan.changed == 1 and line(plan, "actions.event_policy.workflow_path")
+        assert plan.writes[0][1:3] == ("PUT", "repos/o/r/actions/policies/7")
+
+    def test_a_second_event_rule_is_drift(self, plan_with):
+        rule = {"type": "restrict_action_events", "parameters": {"allowed_events": EVENTS}}
+        doubled = {**HEALTHY["actions/policies/7"], "rules": [rule, {**rule, "parameters": {"allowed_events": ["push"]}}]}
+        plan = plan_with("actions", self.settings(), answers={"actions/policies/7": doubled})
+        assert plan.changed == 1 and line(plan, "actions.event_policy.allowed_events")
+
+    def test_a_rule_of_another_kind_the_write_would_remove_is_named(self, plan_with):
+        actors = {"type": "restrict_action_actors", "parameters": {}}
+        added = {**HEALTHY["actions/policies/7"], "rules": [*HEALTHY["actions/policies/7"]["rules"], actors]}
+        plan = plan_with("actions", self.settings(), answers={"actions/policies/7": added})
+        assert "restrict_action_actors" in line(plan, "actions.event_policy.other_rules")
+        assert plan.writes[0][1:3] == ("PUT", "repos/o/r/actions/policies/7")
+
+    def test_a_rule_with_no_type_is_named_too(self, plan_with):
+        """Beside a typed rule, an untyped one must not break the sort."""
+        odd = [{"parameters": {}}, {"type": "restrict_action_actors", "parameters": {}}]
+        added = {**HEALTHY["actions/policies/7"], "rules": [*HEALTHY["actions/policies/7"]["rules"], *odd]}
+        plan = plan_with("actions", self.settings(), answers={"actions/policies/7": added})
+        other = line(plan, "actions.event_policy.other_rules")
+        assert "None" in other and "restrict_action_actors" in other
+        assert plan.writes[0][1:3] == ("PUT", "repos/o/r/actions/policies/7")
 
 
 class TestTheSecurityFeatures:

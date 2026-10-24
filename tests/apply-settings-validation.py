@@ -52,6 +52,12 @@ BAD_FILES = [
         "name": "x", "enforcement": "active", "workflow_paths": ["a.yml"], "allowed_events": []}}}),
     ("event policy names a path that is not a string", {"actions": {"event_policy": {
         "name": "x", "enforcement": "active", "workflow_paths": [7], "allowed_events": ["push"]}}}),
+    ("event policy names an event twice", {"actions": {"event_policy": {
+        "name": "x", "enforcement": "active", "workflow_paths": ["a.yml"], "allowed_events": ["push", "push"]}}}),
+    ("event policy names a path twice", {"actions": {"event_policy": {
+        "name": "x", "enforcement": "active", "workflow_paths": ["a.yml", "a.yml"], "allowed_events": ["push"]}}}),
+    ("event policy names an event GitHub does not have", {"actions": {"event_policy": {
+        "name": "x", "enforcement": "active", "workflow_paths": ["a.yml"], "allowed_events": ["pull-request"]}}}),
 ]
 
 
