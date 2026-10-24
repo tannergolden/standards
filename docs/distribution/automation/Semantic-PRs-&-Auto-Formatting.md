@@ -64,11 +64,12 @@ Monitors the codebase for style drift and proposes corrections - without ever wr
 > [!NOTE]
 > **Why `pull_request`, and not `pull_request_target`.** Every job reads the pull request through the
 > API and checks nothing out, so the read-only token a fork's pull request gets is all it needs. The
-> write token of `pull_request_target` would go unused, and GitHub blocks that event in a public
-> repository from 2 December 2026 unless a policy allows it. Under `pull_request` the stub runs as
-> the pull request has it, so a fork can edit it: review a change to a workflow file before you
-> approve its run, as for every other check. On a public repository an outside contributor's runs
-> wait for that approval, so the check starts once it is given.
+> write token of `pull_request_target` would go unused, and GitHub's default policy blocks that
+> event in a public repository, from 2 December 2026 at the latest, unless a policy allows it.
+> Under `pull_request` the stub runs as the pull request has it, so a fork can edit it: review a
+> change to a workflow file before you approve its run, as for every other check. On a public
+> repository an outside contributor's runs wait for that approval, so the check starts once it is
+> given.
 
 ---
 

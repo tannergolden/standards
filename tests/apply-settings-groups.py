@@ -304,10 +304,10 @@ class TestTheEventPolicy:
     """The governance stub keeps pull_request_target on a public repository.
 
     GitHub blocks that event in every public repository without an Actions
-    event policy allowing it, enforced from 2 December 2026. The policy that
-    allows it is listed, found by its name, read whole and compared before
-    anything is sent: created when absent, updated in place when it drifted,
-    and left alone when it matches.
+    event policy allowing it, enforced from 2 December 2026 at the latest. The
+    policy that allows it is listed, found by its name, read whole and
+    compared before anything is sent: created when absent, updated in place
+    when it drifted, and left alone when it matches.
     """
 
     def settings(self, **change):

@@ -27,12 +27,13 @@
 # token a fork's pull request gets under `pull_request` is all it needs.
 # `pull_request_target` would hand that run a write token it never uses,
 # and GitHub has added a default policy that blocks `pull_request_target`
-# in public repositories, enforced on 2 December 2026. One thing moves with
-# the trigger: `pull_request` runs the stub as the pull request's own head
-# has it, so a fork can edit the stub in its pull request. A maintainer
-# reviewing a change to a workflow file before approving its run is the
-# control there, exactly as it is for `ci`. A stub still on
-# `pull_request_target` keeps working, since no job here depends on which.
+# in public repositories, enforced from 2 December 2026 at the latest. One
+# thing moves with the trigger: `pull_request` runs the stub as the pull
+# request's own head has it, so a fork can edit the stub in its pull
+# request. A maintainer reviewing a change to a workflow file before
+# approving its run is the control there, exactly as it is for `ci`. A stub
+# still on `pull_request_target` keeps working, since no job here depends on
+# which.
 #
 # ON `merge_group` EVERY CHECK SKIPS, AND SO PASSES. A merge queue waits on
 # every required check for the merge group as well, and

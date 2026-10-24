@@ -57,7 +57,7 @@ When a first-time contributor opens a Pull Request, the bot:
 Orchestrated by `.github/workflows/governance.yml`:
 
 - **Events**: Subscribes to `pull_request_target` (`opened`, `synchronize`, `reopened`) and `issues` (`opened`); the welcome job itself gates on the `opened` action **plus a newcomer check** (author association `NONE`/`FIRST_TIME_CONTRIBUTOR`/`FIRST_TIMER`, never bots), so maintainers and automation are not greeted.
-- **Public repositories**: GitHub blocks `pull_request_target` in a public repository from 2 December 2026 unless an Actions event policy allows it. 🎯 Apply Standards writes that policy with `apply-settings`, for the governance stub alone ([Repository Settings](../../operations/Repository-Settings.md#the-governance-stubs-event-policy)).
+- **Public repositories**: GitHub's default policy blocks `pull_request_target` in a public repository, from 2 December 2026 at the latest, unless an Actions event policy allows it. 🎯 Apply Standards writes that policy with `apply-settings`, for the governance stub alone ([Repository Settings](../../operations/Repository-Settings.md#the-governance-stubs-event-policy)).
 - **Logic Engine**: Powered by `actions/first-interaction`.
 - **Permissions**: Requires `write` access to issues and pull requests to post comments.
 
@@ -78,7 +78,7 @@ If the welcome message fails to post:
 
 1. **Permissions**: The `GITHUB_TOKEN` must have the `write` permission for both `issues` and `pull-requests`.
 2. **Action Version**: Ensure the workflow is using `actions/first-interaction@v3` (the stable API).
-3. **Forks**: The use of `pull_request_target` is deliberate - it allows the bot to post on PRs coming from external forks. On a public repository it needs the event policy above; without it, from 2 December 2026, the run fails with an error naming the event.
+3. **Forks**: The use of `pull_request_target` is deliberate - it allows the bot to post on PRs coming from external forks. On a public repository it needs the event policy above; without it, from 2 December 2026 at the latest, the run fails with an error naming the event.
 
 ### 🔗 See also
 

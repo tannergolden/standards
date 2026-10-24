@@ -60,7 +60,7 @@ The logic for our triage system resides in these infrastructure files:
 
 ## ⚡ Execution Hooks
 
-- **Pull Requests**: Triggered by `pull_request_target` on `opened`, `synchronize`, and `reopened` - the triage job labels **PRs only**. It needs that event to label a fork's pull request, which the read-only token of `pull_request` cannot, and checks out only the base branch. A public repository keeps it through the Actions event policy 🎯 Apply Standards writes, which GitHub requires from 2 December 2026 ([Repository Settings](../../operations/Repository-Settings.md#the-governance-stubs-event-policy)).
+- **Pull Requests**: Triggered by `pull_request_target` on `opened`, `synchronize`, and `reopened` - the triage job labels **PRs only**. It needs that event to label a fork's pull request, which the read-only token of `pull_request` cannot, and checks out only the base branch. A public repository keeps it through the Actions event policy 🎯 Apply Standards writes, which GitHub requires from 2 December 2026 at the latest ([Repository Settings](../../operations/Repository-Settings.md#the-governance-stubs-event-policy)).
 - **Issues**: Labeled by the **issue forms themselves** at creation (each form declares its labels, e.g. `type: bug` + `status: needs triage`); the workflow's issue events serve the first-time-contributor welcome, not labeling.
 
 > [!TIP]

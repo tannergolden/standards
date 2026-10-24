@@ -63,8 +63,8 @@ Your part is the dispatch and the token - see [🙋 What You Do By Hand](../intr
 ### The governance stub's event policy
 
 GitHub has added a default policy that blocks the `pull_request_target` event in every public
-repository without an applicable Actions event policy, enforced from **2 December 2026**; a run it
-blocks fails with an error. The governance stub's pull request triage and first-time welcome need
+repository without an applicable Actions event policy, enforced from **2 December 2026** at the
+latest; a run it blocks fails with an error. The governance stub's pull request triage and first-time welcome need
 that event, because they write labels and comments on a fork's pull request, so on a public
 repository the run writes one policy under **Settings → Actions → Policies** that allows it for
 `.github/workflows/governance.yml` alone:
