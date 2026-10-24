@@ -17,15 +17,17 @@
 # 204 or 404 to a GET on each of them, which is a comparison.
 #
 # FOUR GROUPS, ONE PLAN. `repository` is the repository object, one PATCH.
-# `actions` is everything under Settings → Actions → General, each key its
-# own endpoint. `security` is the Advanced Security page: statuses on the
+# `actions` is Settings → Actions: everything under General, each key its
+# own endpoint, and one event policy under Policies, found by its name.
+# `security` is the Advanced Security page: statuses on the
 # repository object, and toggles with endpoints of their own. `releases` is
 # the Releases section. The settings file mirrors that shape, and everything
 # deliberately NOT written lives in its _excluded block so absence is a
 # decision rather than an oversight.
 #
 # A SKIP IS A FACT, NOT A FAILURE. Some settings are gated on visibility
-# (fork approvals are public-only, the private-fork policy private-only),
+# (fork approvals and the event policy are public-only, the private-fork
+# policy private-only),
 # some on plan (Secret Protection, Code Security, cache limits), and some a
 # repository simply does not report. Each is skipped with the reason on its
 # plan line, because a repository that cannot have a feature has not
@@ -96,6 +98,7 @@ ACTIONS_KEYS = {
     "artifact_and_log_retention_days",
     "cache_retention_days",
     "cache_storage_limit_gb",
+    "event_policy",
 }
 # The first published shape of the file kept these three flat under
 # `actions`. A consumer's override written against it is still read.
@@ -113,6 +116,11 @@ PRIVATE_FORK_KEYS = (
     "send_secrets_and_variables",
     "require_approval_for_fork_pr_workflows",
 )
+# One Actions event policy: every key is required, because a policy is
+# written whole. `evaluate` is GitHub Enterprise Cloud only.
+EVENT_POLICY_KEYS = ("name", "enforcement", "workflow_paths", "allowed_events")
+ENFORCEMENTS = ("active", "disabled", "evaluate")
+EVENT_RULE = "restrict_action_events"
 
 # Statuses on the repository object's security_and_analysis block.
 SECURITY_STATUS_KEYS = {
@@ -247,6 +255,12 @@ def expect_str(value, where: str) -> str:
     return value
 
 
+def expect_strings(value, where: str) -> list:
+    if not isinstance(value, list) or not value or not all(isinstance(v, str) and v for v in value):
+        raise SettingsError(f"'{where}' must be a non-empty list of non-empty strings, and is {show(value)}.")
+    return value
+
+
 def unknown(keys, allowed, where: str) -> None:
     extra = sorted(k for k in keys if k not in allowed)
     if extra:
@@ -329,6 +343,23 @@ def load_settings(path: pathlib.Path) -> dict:
         for key in ("artifact_and_log_retention_days", "cache_retention_days", "cache_storage_limit_gb"):
             if key in actions:
                 expect_int(actions[key], f"actions.{key}")
+        if "event_policy" in actions:
+            block = expect_object(actions["event_policy"], "actions.event_policy")
+            unknown(block, EVENT_POLICY_KEYS, "actions.event_policy")
+            missing = [key for key in EVENT_POLICY_KEYS if key not in block]
+            if missing:
+                raise SettingsError(
+                    f"'actions.event_policy' lacks {', '.join(missing)}: a policy is written whole, "
+                    "so the file names every part of it."
+                )
+            expect_str(block["name"], "actions.event_policy.name")
+            if block["enforcement"] not in ENFORCEMENTS:
+                raise SettingsError(
+                    f"'actions.event_policy.enforcement' must be one of {', '.join(ENFORCEMENTS)}, "
+                    f"and is {show(block['enforcement'])}."
+                )
+            for key in ("workflow_paths", "allowed_events"):
+                expect_strings(block[key], f"actions.event_policy.{key}")
         settings["actions"] = actions
 
     security = document.get("security")
@@ -571,6 +602,102 @@ def plan_actions(ctx: Context) -> None:
             plan.skip(f"actions.{key}", "not available on this repository's plan")
         elif plan.compare(f"actions.{key}", current.data.get(field), want):
             plan.write(label, "PUT", ctx.path(endpoint), {field: want}, f"Applied {label}.", tolerant=True)
+
+    want = actions.get("event_policy")
+    if want:
+        plan_event_policy(ctx, want)
+
+
+# --- actions: Settings → Actions → Policies ---------------------------------
+
+
+def event_policy_body(want: dict) -> dict:
+    """The whole policy, as a POST or a PUT takes it.
+
+    Sent whole every time. The policy is the standard's, found by its name,
+    so a PUT writes what the file says, and nothing a hand added to it.
+    """
+    return {
+        "name": want["name"],
+        "enforcement": want["enforcement"],
+        "conditions": {"workflow_path": {"include": list(want["workflow_paths"]), "exclude": []}},
+        "rules": [{"type": EVENT_RULE, "parameters": {"allowed_events": list(want["allowed_events"])}}],
+    }
+
+
+def unreadable(response: Response) -> str:
+    """Why a policy endpoint gave nothing to compare, as the plan line says it."""
+    if response.status in (403, 404):
+        return f"not available here (HTTP {response.status})"
+    return f"could not be read ({response.reason})"
+
+
+def plan_event_policy(ctx: Context, want: dict) -> None:
+    """One Actions event policy, found by its name: created, updated, or left alone.
+
+    ⚠️ AN EVENT RULE IS AN ALLOWLIST. A workflow the policy targets runs on
+    the events it names and on no other, so the file lists every event the
+    targeted workflow uses, and one missing from it fails that workflow's
+    runs with an error.
+
+    Compared on what the file sets: the enforcement, the workflow paths the
+    policy covers and that it excludes none, and the allowed events, in any
+    order. The list also carries policies an organization or an enterprise
+    set above the repository; only the repository's own policy of that name
+    is this one, and only it is ever written.
+    """
+    plan = ctx.plan
+    label = "actions.event_policy"
+    # GitHub's default block on pull_request_target covers public
+    # repositories alone, so nowhere else needs a policy to lift it.
+    if not ctx.is_public:
+        plan.skip(label, "public repositories only")
+        return
+    listed = gh("GET", ctx.path("actions/policies?per_page=100"))
+    if not listed.ok or not isinstance(listed.data, dict):
+        plan.skip(label, unreadable(listed))
+        return
+    body = event_policy_body(want)
+    found = next(
+        (
+            policy
+            for policy in listed.data.get("policies") or []
+            if isinstance(policy, dict)
+            and policy.get("name") == want["name"]
+            and policy.get("source_type", "Repository") == "Repository"
+        ),
+        None,
+    )
+    if found is None:
+        plan.change(label, "absent", want["name"])
+        plan.write("the Actions event policy", "POST", ctx.path("actions/policies"), body,
+                   f"Created the Actions event policy '{want['name']}'.")
+        return
+    endpoint = ctx.path(f"actions/policies/{found.get('id')}")
+    current = gh("GET", endpoint)
+    if not current.ok or not isinstance(current.data, dict):
+        plan.skip(label, unreadable(current))
+        return
+    have = current.data
+    paths = (have.get("conditions") or {}).get("workflow_path") or {}
+    rules = [rule for rule in have.get("rules") or [] if isinstance(rule, dict) and rule.get("type") == EVENT_RULE]
+    events = [sorted((rule.get("parameters") or {}).get("allowed_events") or []) for rule in rules]
+    differs = plan.compare(f"{label}.enforcement", have.get("enforcement"), want["enforcement"])
+    differs = plan.compare(
+        f"{label}.workflow_path",
+        {"include": sorted(paths.get("include") or []), "exclude": sorted(paths.get("exclude") or [])},
+        {"include": sorted(want["workflow_paths"]), "exclude": []},
+    ) or differs
+    # One event rule is the usual case, compared as its list of events.
+    # None, or several, can only differ from the one rule the file names.
+    differs = plan.compare(
+        f"{label}.allowed_events",
+        events[0] if len(events) == 1 else (events or None),
+        sorted(want["allowed_events"]),
+    ) or differs
+    if differs:
+        plan.write("the Actions event policy", "PUT", endpoint, body,
+                   f"Updated the Actions event policy '{want['name']}'.")
 
 
 # --- security: the Advanced Security page -----------------------------------

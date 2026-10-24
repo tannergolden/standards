@@ -66,8 +66,27 @@ REPO_PUBLIC = {
 # reports no security statuses at all.
 REPO_PRIVATE = {**REPO_PUBLIC, "visibility": "private", "private": True, "security_and_analysis": None}
 
+# The governance stub's event policy, as the shipped file names it and as a
+# POST or PUT sends it.
+POLICY_NAME = "Allow the governance stub's events"
+EVENTS = ["issue_comment", "issues", "merge_group", "pull_request", "pull_request_target", "schedule", "workflow_dispatch"]
+POLICY = {
+    "name": POLICY_NAME,
+    "enforcement": "active",
+    "workflow_paths": [".github/workflows/governance.yml"],
+    "allowed_events": EVENTS,
+}
+POLICY_BODY = {
+    "name": POLICY_NAME,
+    "enforcement": "active",
+    "conditions": {"workflow_path": {"include": [".github/workflows/governance.yml"], "exclude": []}},
+    "rules": [{"type": "restrict_action_events", "parameters": {"allowed_events": EVENTS}}],
+}
+POLICY_LIST = "actions/policies?per_page=100"
+
 # Every endpoint the shipped file reads, answering as a repository on the
-# standard would. A value of None is a 404 (the GET fails); "" is a 204.
+# standard would. A value of None is a 404 (the GET fails); "" is a 204; a
+# number is a GET refused with that status.
 HEALTHY = {
     "actions/permissions": {"enabled": True, "allowed_actions": "all", "sha_pinning_required": False},
     "actions/permissions/workflow": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": True},
@@ -85,11 +104,18 @@ HEALTHY = {
     "private-vulnerability-reporting": {"enabled": True},
     "code-scanning/default-setup": {"state": "not-configured", "languages": [], "query_suite": "default"},
     "immutable-releases": None,
+    POLICY_LIST: {
+        "total_count": 1,
+        "policies": [
+            {"id": 7, "name": POLICY_NAME, "target": "actions", "source_type": "Repository", "source": "o/r", "enforcement": "active"}
+        ],
+    },
+    "actions/policies/7": {"id": 7, "target": "actions", "source_type": "Repository", "source": "o/r", **POLICY_BODY},
 }
 
 
 def writes(calls) -> list[str]:
-    return [c for c in calls if " -X PUT " in c or " -X PATCH " in c or " -X DELETE " in c]
+    return [c for c in calls if any(f" -X {method} " in c for method in ("POST", "PUT", "PATCH", "DELETE"))]
 
 
 # --- The plan functions, with a stubbed gh --------------------------------
@@ -109,6 +135,8 @@ class StubApi:
             value = self.answers[key]
             if value is None:
                 return module.Response(False, None, "gh: Not Found (HTTP 404)")
+            if isinstance(value, int) and not isinstance(value, bool):
+                return module.Response(False, None, f"gh: refused (HTTP {value})")
             return module.Response(True, value if value != "" else None)
         return module.Response(False, None, "stub: no answer (HTTP 404)")
 
@@ -263,6 +291,77 @@ class TestTheActionsPolicies:
         assert plan.writes == []
 
 
+class TestTheEventPolicy:
+    """The governance stub keeps pull_request_target on a public repository.
+
+    GitHub blocks that event in every public repository without an Actions
+    event policy allowing it, enforced from 2 December 2026. The policy that
+    allows it is listed, found by its name, read whole and compared before
+    anything is sent: created when absent, updated in place when it drifted,
+    and left alone when it matches.
+    """
+
+    def settings(self, **change):
+        return {"actions": {"event_policy": {**POLICY, **change}}}
+
+    def test_an_absent_policy_is_created_whole(self, plan_with):
+        plan = plan_with("actions", self.settings(), answers={POLICY_LIST: {"total_count": 0, "policies": []}})
+        assert plan.changed == 1
+        assert f"absent -> {POLICY_NAME}" in line(plan, "actions.event_policy")
+        assert plan.writes[0][1:4] == ("POST", "repos/o/r/actions/policies", POLICY_BODY)
+
+    def test_a_policy_of_that_name_set_above_the_repository_is_not_this_one(self, plan_with):
+        """An organization's policy is listed too, and cannot be written from here."""
+        above = {"total_count": 1, "policies": [{"id": 9, "name": POLICY_NAME, "source_type": "Organization", "enforcement": "active"}]}
+        plan = plan_with("actions", self.settings(), answers={POLICY_LIST: above})
+        assert plan.writes[0][1:3] == ("POST", "repos/o/r/actions/policies")
+        assert not any(path.endswith("/9") for _m, path, _b in plan.api.calls)
+
+    def test_a_matching_policy_is_read_and_left_alone(self, plan_with):
+        plan = plan_with("actions", self.settings())
+        assert (plan.changed, plan.unchanged, plan.writes) == (0, 3, [])
+        assert ("GET", "repos/o/r/actions/policies/7", None) in plan.api.calls
+
+    def test_the_events_compare_in_any_order(self, plan_with):
+        plan = plan_with("actions", self.settings(allowed_events=list(reversed(EVENTS))))
+        assert plan.changed == 0 and plan.writes == []
+
+    def test_a_drifted_policy_is_updated_in_place_naming_each_difference(self, plan_with):
+        drifted = {
+            **HEALTHY["actions/policies/7"],
+            "enforcement": "disabled",
+            "rules": [{"type": "restrict_action_events", "parameters": {"allowed_events": [e for e in EVENTS if e != "merge_group"]}}],
+        }
+        plan = plan_with("actions", self.settings(), answers={"actions/policies/7": drifted})
+        assert plan.changed == 2, plan.lines
+        assert "disabled -> active" in line(plan, "actions.event_policy.enforcement")
+        assert "merge_group" in line(plan, "actions.event_policy.allowed_events")
+        assert plan.writes[0][1:4] == ("PUT", "repos/o/r/actions/policies/7", POLICY_BODY)
+
+    def test_a_policy_over_every_workflow_is_drift(self, plan_with):
+        """GitHub reports a policy stored without a path as covering `~ALL`,
+        where its allowlist would bind every workflow in the repository."""
+        everything = {**HEALTHY["actions/policies/7"], "conditions": {"workflow_path": {"include": ["~ALL"], "exclude": []}}}
+        plan = plan_with("actions", self.settings(), answers={"actions/policies/7": everything})
+        assert plan.changed == 1 and line(plan, "actions.event_policy.workflow_path")
+        assert plan.writes[0][1:3] == ("PUT", "repos/o/r/actions/policies/7")
+
+    def test_it_is_public_only_and_never_read_on_a_private_repository(self, plan_with):
+        plan = plan_with("actions", self.settings(), repo=REPO_PRIVATE)
+        assert "public repositories only" in line(plan, "actions.event_policy")
+        assert plan.api.calls == [] and plan.writes == []
+
+    @pytest.mark.parametrize("status", [403, 404])
+    def test_an_unavailable_endpoint_is_a_skip_naming_the_status(self, plan_with, status):
+        plan = plan_with("actions", self.settings(), answers={POLICY_LIST: status})
+        assert (plan.changed, plan.skipped, plan.writes) == (0, 1, [])
+        assert f"not available here (HTTP {status})" in line(plan, "actions.event_policy")
+
+    def test_a_listed_policy_that_cannot_be_read_is_a_skip(self, plan_with):
+        plan = plan_with("actions", self.settings(), answers={"actions/policies/7": 404})
+        assert (plan.changed, plan.skipped, plan.writes) == (0, 1, [])
+
+
 class TestTheSecurityFeatures:
     def test_the_free_features_are_switched_on_for_a_public_repository_that_reports_nothing(self, plan_with):
         repo = {**REPO_PUBLIC, "security_and_analysis": None}
@@ -385,7 +484,7 @@ class World:
                 self.gh.route(f"-X GET repos/o/r/{path}", "" if value == "" else json.dumps(value))
         for match in self.refused:
             self.gh.route(match, "", code=1)
-        for method in ("PUT", "PATCH", "DELETE"):
+        for method in ("POST", "PUT", "PATCH", "DELETE"):
             self.gh.route(f"-X {method} repos/o/r", "")
         self.gh.route("repo view", json.dumps({"nameWithOwner": "o/r"}))
         self.gh.route("-X GET repos/o/r", json.dumps(self.repo))
@@ -414,7 +513,7 @@ class TestAHealthyRepositoryIsLeftAlone:
         result = World(fake_gh, tmp_path, repo=REPO_PRIVATE).run(run_script)
         assert result.returncode == 0, result
         assert "Plan: 0 change(s)" in result.stdout
-        for name in ("actions.fork_pr_contributor_approval", "private_vulnerability_reporting"):
+        for name in ("actions.fork_pr_contributor_approval", "actions.event_policy", "private_vulnerability_reporting"):
             assert f"SKIP    {name}" in result.stdout, result.stdout
         assert "SKIP    secret_scanning " in result.stdout
         assert writes(fake_gh.calls) == []
@@ -469,6 +568,32 @@ class TestADriftedRepository:
         )
         assert "could not be applied" in result.summary and "Not applied" in result.summary
         assert result.outputs["failed"] == "1"
+
+
+class TestTheEventPolicyThroughTheScript:
+    def absent(self, fake_gh, tmp_path):
+        return World(fake_gh, tmp_path).answer(POLICY_LIST, {"total_count": 0, "policies": []})
+
+    def test_a_dry_run_plans_the_policy_and_writes_nothing(self, run_script, fake_gh, tmp_path):
+        result = self.absent(fake_gh, tmp_path).run(run_script)
+        assert result.returncode == 0, result
+        assert f"CHANGE  actions.event_policy                     absent -> {POLICY_NAME}" in result.stdout
+        assert "Plan: 1 change(s)" in result.stdout and "would be applied" in result.summary
+        assert writes(fake_gh.calls) == []
+
+    def test_a_real_run_creates_it(self, run_script, fake_gh, tmp_path):
+        result = self.absent(fake_gh, tmp_path).run(run_script, dry_run="false")
+        assert result.returncode == 0, result
+        assert [c for c in writes(fake_gh.calls) if "actions/policies" in c] == [
+            "api -X POST repos/o/r/actions/policies --input -"
+        ]
+        assert f"Created the Actions event policy '{POLICY_NAME}'." in result.stdout
+
+    def test_an_endpoint_that_cannot_be_read_is_skipped_and_the_drift_check_passes(self, run_script, fake_gh, tmp_path):
+        result = World(fake_gh, tmp_path).answer(POLICY_LIST, None).run(run_script, FAIL_ON_DRIFT="true")
+        assert result.returncode == 0, result
+        assert "SKIP    actions.event_policy" in result.stdout
+        assert writes(fake_gh.calls) == []
 
 
 class TestTheTokenAndTheTarget:

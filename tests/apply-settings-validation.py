@@ -42,6 +42,16 @@ BAD_FILES = [
     ("archiving is never written", {"repository": {"archived": True}}),
     ("security statuses belong under security", {"repository": {"security_and_analysis": {}}}),
     ("default setup state is not one of two", {"security": {"code_scanning_default_setup": {"state": "on"}}}),
+    ("event policy is a list", {"actions": {"event_policy": [{"name": "x"}]}}),
+    ("event policy lacks its events", {"actions": {"event_policy": {"name": "x", "enforcement": "active", "workflow_paths": ["a.yml"]}}}),
+    ("event policy has a key it does not know", {"actions": {"event_policy": {
+        "name": "x", "enforcement": "active", "workflow_paths": ["a.yml"], "allowed_events": ["push"], "allowed_actors": []}}}),
+    ("event policy enforcement is not one of three", {"actions": {"event_policy": {
+        "name": "x", "enforcement": "on", "workflow_paths": ["a.yml"], "allowed_events": ["push"]}}}),
+    ("event policy allows no event", {"actions": {"event_policy": {
+        "name": "x", "enforcement": "active", "workflow_paths": ["a.yml"], "allowed_events": []}}}),
+    ("event policy names a path that is not a string", {"actions": {"event_policy": {
+        "name": "x", "enforcement": "active", "workflow_paths": [7], "allowed_events": ["push"]}}}),
 ]
 
 
@@ -99,6 +109,13 @@ class TestTheRefusalNamesTheProblem:
         path = tmp_path / "settings.json"
         path.write_text(json.dumps({"repository": {"visibility": "public"}}), encoding="utf-8")
         with pytest.raises(module.SettingsError, match="human acts"):
+            module.load_settings(path)
+
+    def test_an_event_policy_names_what_it_lacks(self, tmp_path):
+        """A policy is written whole, so a part left out is refused rather than sent as a guess."""
+        path = tmp_path / "settings.json"
+        path.write_text(json.dumps({"actions": {"event_policy": {"name": "x", "enforcement": "active"}}}), encoding="utf-8")
+        with pytest.raises(module.SettingsError, match="lacks workflow_paths, allowed_events"):
             module.load_settings(path)
 
     def test_a_missing_file_is_named(self, tmp_path):

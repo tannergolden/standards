@@ -8,7 +8,9 @@
 # sign-off on web edits, Issues and Discussions on); the Actions policies
 # under Settings → Actions → General (Actions on, no SHA-pinning requirement,
 # the workflow token read-only by default, pull request approval, the fork
-# policies for public and private repositories, outside access, retention);
+# policies for public and private repositories, outside access, retention),
+# and on a public repository the Actions event policy under Settings →
+# Actions → Policies that keeps pull_request_target for the governance stub;
 # the security features (secret scanning and its push protection, generic and
 # AI detection, Dependabot alerts and security updates, private vulnerability
 # reporting, CodeQL default setup off so the shipped stub stays the scanner);
@@ -25,8 +27,10 @@
 # reports `0 change(s)`. That is what makes this safe to run on a schedule,
 # and with `fail-on-drift` a scheduled dry run is a drift check.
 #
-# ⚠️ SOME FEATURES ARE GATED, AND A SKIP IS NOT A FAILURE. Fork approvals are
-# public-only and the private-fork policy private-only; secret scanning is
+# ⚠️ SOME FEATURES ARE GATED, AND A SKIP IS NOT A FAILURE. Fork approvals and
+# the event policy are public-only, and the private-fork policy private-only;
+# a policy endpoint that answers 403 or 404 is reported as unavailable, like
+# any other feature a repository does not have; secret scanning is
 # free on public repositories and needs Secret Protection on private ones;
 # code scanning needs Code Security on a private repository. Each case is
 # detected and skipped with its reason on the plan line, because a repository

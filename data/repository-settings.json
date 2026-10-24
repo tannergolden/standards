@@ -10,10 +10,11 @@
     "applied separately, because they are the change that can lock you out.",
     "",
     "Four groups, one plan. `repository` is the repository object, one PATCH.",
-    "`actions` is everything under Settings → Actions → General, each key its",
-    "own endpoint. `security` is the Advanced Security page, each feature its",
-    "own endpoint or its own status on the repository object. `releases` is",
-    "the Releases section of Settings → General.",
+    "`actions` is Settings → Actions: everything under General, each key its",
+    "own endpoint, and one event policy under Policies, found by its name.",
+    "`security` is the Advanced Security page, each feature its own endpoint",
+    "or its own status on the repository object. `releases` is the Releases",
+    "section of Settings → General.",
     "",
     "Everything writable that is deliberately NOT here is in _excluded, with",
     "the reason - absence is always a decision, never an oversight. Most of it",
@@ -74,7 +75,21 @@
       "require_approval_for_fork_pr_workflows": true
     },
     "access_level": "none",
-    "artifact_and_log_retention_days": 90
+    "artifact_and_log_retention_days": 90,
+    "event_policy": {
+      "name": "Allow the governance stub's events",
+      "enforcement": "active",
+      "workflow_paths": [".github/workflows/governance.yml"],
+      "allowed_events": [
+        "issue_comment",
+        "issues",
+        "merge_group",
+        "pull_request",
+        "pull_request_target",
+        "schedule",
+        "workflow_dispatch"
+      ]
+    }
   },
 
   "_why_actions": {
@@ -86,6 +101,7 @@
     "fork_pr_contributor_approval": "ALL EXTERNAL CONTRIBUTORS: a fork pull request from anyone outside the repository waits for a maintainer to approve its workflow runs, however many of their pull requests have merged before. GitHub's secure-use reference and the CIS Software Supply Chain Security Guide (2.3.5) recommend it for public repositories, because a first-time policy is satisfied by one merged typo fix, and every pull request from that account after it runs its workflows unreviewed. The cost is a click per run: the required checks on such a pull request start once a maintainer approves them. PUBLIC repositories only: GitHub refuses the endpoint on a private repository, which an outsider cannot fork, so the run skips it with a notice there.",
     "fork_pr_workflows_private_repos": "PRIVATE repositories only, skipped with a notice elsewhere. A private repository's collaborators push topic branches to the repository itself, which is what the branching strategy describes, so a workflow from a fork of it has no business running at all - and certainly not with a write token or the secrets. Approval is required for the case where one does.",
     "access_level": "PRIVATE repositories only, skipped with a notice elsewhere. This is whether workflows in OTHER repositories may call the actions and reusable workflows inside this one. These standards publish shared workflows from one public repository, so nothing needs to reach into a private one, and `none` closes a door nothing uses.",
+    "event_policy": "PUBLIC repositories only, skipped with a notice elsewhere. GitHub has added a default policy that blocks the pull_request_target event in every public repository without an applicable Actions event policy, enforced from 2 December 2026, and a run it blocks fails with an error. The governance stub's pull request triage and first-time welcome write labels and comments on a fork's pull request, which takes pull_request_target, so this policy allows the event for that one file and no other. That is safe because the file never checks out pull-request code: its jobs read and write through the API, and the one checkout behind it takes the base branch. An event rule is an allowlist, so the list names every event the file uses, and a trigger added to the stub but missing here is blocked for it. A stub kept under another name needs its own path, from an override.",
     "artifact_and_log_retention_days": "GitHub's default and the most a public repository allows, written so a shortened window shows up as drift. Since October 2026 this window also deletes checks, workflow runs and commit statuses, so shortening it costs a long-lived pull request its checks. Trimming runs below the window is prune-runs.yml's job, which keeps recent history and anything in flight; retention is a blunt instrument by comparison."
   },
 
@@ -136,6 +152,6 @@
     "environments": "Protection rules name human reviewers, which no shared file can know, and the first deploy creates the environment it names. The manual-hardening list in docs/operations/Repository-Settings.md covers setting them up.",
     "pages, webhooks, autolinks, deploy keys, collaborators, secrets, variables": "Project-specific wiring with no standard value.",
     "interaction_limits, pull request creation cap": "Temporary moderation levers by design; a sync that re-applied them would turn an incident response into permanent policy.",
-    "actions policies, code quality setup, AI scan, check-suite preferences, custom properties": "Organization, enterprise or plan features with no standard value for a repository on these standards."
+    "other Actions policies, code quality setup, AI scan, check-suite preferences, custom properties": "Organization, enterprise or plan features with no standard value for a repository on these standards. The one Actions policy that has one, the event policy for the governance stub, is under `actions`; any other, such as an actor rule, names people or workflows no shared file can know."
   }
 }

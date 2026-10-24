@@ -10,7 +10,9 @@
 # that data/repository-settings.json spells out with a reason per line: the
 # repository object (merge policy, community surfaces, sign-off), the Actions
 # policies (Actions on, no SHA-pinning requirement, the workflow token, pull
-# request approval, both fork policies, outside access, retention), the
+# request approval, both fork policies, outside access, retention, and on a
+# public repository the event policy that keeps the governance stub's
+# pull_request_target), the
 # security features (secret scanning with push protection and generic and AI
 # detection, Dependabot alerts and security updates, private vulnerability
 # reporting, CodeQL default setup off so the shipped stub stays the scanner),
@@ -75,7 +77,8 @@ on:
       apply-settings:
         description: >-
           Write the repository settings: the merge policy and community
-          surfaces, every Actions policy under Settings → Actions → General,
+          surfaces, every Actions policy under Settings → Actions → General
+          and, on a public repository, the governance stub's event policy,
           the security features, and release immutability, each compared
           before it is written. Off by default because it needs the same
           admin token the rulesets do.
