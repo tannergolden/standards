@@ -87,17 +87,6 @@ rules:
       - dependabot-automerge.yml
       - maintenance.yml
 
-  # crates.io does support trusted publishing, but claiming it needs an OIDC
-  # exchange: either a third-party action, which would have to be pinned to a
-  # SHA verified here first, or a hand-rolled token exchange in a step that
-  # publishes real crates and cannot be rehearsed from this repository. The
-  # `cargo publish` path therefore keeps CARGO_REGISTRY_TOKEN, which the caller
-  # supplies and this workflow never prints. PyPI's trusted publishing IS
-  # supported and documented in the stub, because there it costs nothing.
-  use-trusted-publishing:
-    ignore:
-      - publish-package.yml
-
   # --- Accepted inline, not here ---
   #
   # One finding is suppressed at its own line instead of in this file:

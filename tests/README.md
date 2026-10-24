@@ -95,6 +95,7 @@ _Every script, every shell block._
 | [`template-sync-properties.py`](template-sync-properties.py)                       | Template sync under random histories, and the broken designs it rejects.                      |
 | [`template-sync-run.py`](template-sync-run.py)                                     | Template sync, end to end, on real repositories.                                              |
 | [`template-sync-workflow.py`](template-sync-workflow.py)                           | The workflow, the action and init: the shell around the engine, as shipped.                   |
+| [`trusted-publishing.py`](trusted-publishing.py)                                   | Npm and crates.io publish without a stored token, and say why when they cannot.               |
 
 <!-- AUTO-INDEX:END -->
 

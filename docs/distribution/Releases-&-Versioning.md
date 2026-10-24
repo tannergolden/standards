@@ -163,7 +163,12 @@ Three behaviours are worth knowing before you wire it up:
 - **Already-published is a no-op, not an error.** Each job asks the registry first, so re-running after fixing an unrelated step does not need anyone to reason about which half already happened.
 - **`dry-run` is a real rehearsal.** It builds, validates, and packages exactly as a live run does, and stops before the write. Use it before the first publish and after any change to the stub.
 
-PyPI additionally supports **Trusted Publishing**: configure it once on PyPI and drop `PYPI_API_TOKEN` entirely - the job exchanges the run's OIDC identity for a token that lives minutes, so the repository stores no publishing credential at all.
+npm and crates.io publish through **trusted publishing**: the job exchanges the run's OIDC identity for a credential that lives minutes, so the repository stores no registry secret at all. Set it up once per package:
+
+- **Name the calling workflow.** The trusted publisher on npmjs.com or crates.io names the repository and the workflow file that calls this one, such as `release.yml`, never `publish-package.yml`. On npm, its allowed actions must include `npm publish`.
+- **Publish the first version with a token.** Both registries offer a trusted publisher only for a package that already exists, so `NPM_TOKEN` or `CARGO_REGISTRY_TOKEN` carries the first version. Delete the secret once the trusted publisher works.
+- **npm needs npm 11.5.1 or later.** Node 22 ships npm 10, so set `node-version: '24.x'` in the stub. The job says so before it builds anything. npm is removing direct publishing with a token, announced for January 2027.
+- **PyPI still needs `PYPI_API_TOKEN`.** PyPI refuses trusted publishing from a reusable workflow ([pypi/warehouse#11096](https://github.com/pypi/warehouse/issues/11096)). Without the token, the job tries anyway and reports PyPI's refusal.
 
 ### 4. `release.yml` - Cut Release, For A Repository Consumed By Tag
 

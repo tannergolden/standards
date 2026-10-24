@@ -29,6 +29,18 @@
 # which is the tool its maintainers support, and keeps the trusted set for a
 # job that holds a registry credential as small as it can be.
 #
+# TRUSTED PUBLISHING FIRST, A TOKEN WHERE IT CANNOT BE. npm and crates.io
+# exchange this run's OIDC identity for a credential that lives minutes, so
+# a repository with a trusted publisher configured stores no registry secret
+# at all. Both registries match the CALLING workflow's file name, which is
+# the consumer's stub (`release.yml` in a repository generated from the
+# template), never this file. A token secret, where one is set, still works:
+# a package's first version has to go up with one, because a registry lets
+# you name a trusted publisher only for a package that already exists. PyPI
+# refuses a reusable workflow's identity (pypi/warehouse#11096), so it needs
+# PYPI_API_TOKEN for now; without one the job still tries the exchange, and
+# says plainly that PyPI refused it.
+#
 # Called, not triggered. A consuming repository adds a stub:
 #
 #   name: '📦 Publish Package'
@@ -49,7 +61,7 @@
 #       permissions:
 #         attestations: write # record it
 #         contents: read # read the repository
-#         id-token: write # signs the provenance statement npm attaches
+#         id-token: write # trusted publishing, and the provenance npm attaches
 #         packages: write # push to GHCR under this repository
 #       uses: tannergolden/standards/.github/workflows/publish-package.yml@v1
 #       with:
@@ -218,15 +230,24 @@ on:
 
     secrets:
       NPM_TOKEN:
-        description: 'npm automation token. Required when npm is on and not a dry run.'
+        description: >-
+          npm granular access token. Optional once the package has a trusted
+          publisher on npmjs.com naming the calling workflow file; needed for
+          a package's first version. npm is removing direct publishing with a
+          token (announced for January 2027).
         required: false
       PYPI_API_TOKEN:
         description: >-
-          PyPI API token. Optional: without it the job attempts Trusted
-          Publishing over OIDC, which stores no long-lived secret at all.
+          PyPI API token. Required when pypi is on and not a dry run, because
+          PyPI does not accept trusted publishing from a reusable workflow
+          (pypi/warehouse#11096). Without it the job tries the exchange
+          anyway and fails with PyPI's reason.
         required: false
       CARGO_REGISTRY_TOKEN:
-        description: 'crates.io API token. Required when crates is on and not a dry run.'
+        description: >-
+          crates.io API token. Optional once the crate has a trusted
+          publisher on crates.io naming the calling workflow file; needed for
+          a crate's first version.
         required: false
       REGISTRY_USERNAME:
         description: 'Container registry username. Not needed for GHCR.'
@@ -248,7 +269,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      id-token: write # signs the provenance statement npm attaches
+      id-token: write # trusted publishing, and the provenance npm attaches
     steps:
       - name: '🛡️ Harden Runner'
         uses: tannergolden/standards/.github/actions/harden@v1
@@ -273,16 +294,47 @@ jobs:
           node-version: ${{ inputs.node-version }}
           registry-url: ${{ inputs.npm-registry }}
 
+      # TRUSTED PUBLISHING NEEDS NO SECRET: only the OIDC identity the calling
+      # job grants with `id-token: write`, and a trusted publisher on
+      # npmjs.com naming this repository and the CALLING workflow's file,
+      # with `npm publish` among its allowed actions. npm tries that exchange
+      # before any token. NPM_TOKEN is the fallback, and a package's first
+      # version needs it, because npm offers a trusted publisher only for a
+      # package that already exists.
+      #
+      # It also needs npm 11.5.1 on Node 22.14.0 or later, and Node 22 ships
+      # npm 10. The run says so rather than install npm on the fly, which
+      # would put an unpinned package in a job that can publish: Node 24's
+      # own npm qualifies.
       - name: '🔑 Verify Credential'
+        id: credential
         if: ${{ !inputs.dry-run }}
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -z "${NPM_TOKEN:-}" ]; then
-            echo "::error title=No npm token::This workflow was asked to publish to npm, but NPM_TOKEN is not set. Add it as a repository secret and pass 'secrets: inherit', or set dry-run to rehearse without one. Failing rather than skipping, because a skipped publish looks identical to a successful one."
+          set -euo pipefail
+          CALLER="${GITHUB_WORKFLOW_REF%%@*}"
+          CALLER="${CALLER##*/}"
+          # True when version $1 is older than version $2.
+          older() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" = "$1" ]; }
+
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            echo "method=token" >> "$GITHUB_OUTPUT"
+            echo "::warning title=npm token in use::npm is removing direct publishing with a token (announced for January 2027). Add a trusted publisher on npmjs.com naming ${GITHUB_REPOSITORY} and ${CALLER}, then delete NPM_TOKEN."
+          elif [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            NODE="$(node --version)"
+            NODE="${NODE#v}"
+            NPM="$(npm --version)"
+            if older "$NODE" 22.14.0 || older "$NPM" 11.5.1; then
+              echo "::error title=npm too old for trusted publishing::Trusted publishing needs npm 11.5.1 or later on Node 22.14.0 or later, and this run has npm ${NPM} on Node ${NODE}. Set node-version to 24.x, whose npm qualifies, or add NPM_TOKEN."
+              exit 1
+            fi
+            echo "method=trusted" >> "$GITHUB_OUTPUT"
+            echo "No NPM_TOKEN: publishing through trusted publishing with npm ${NPM}, as ${GITHUB_REPOSITORY} and ${CALLER}."
+          else
+            echo "::error title=No npm credential::This workflow was asked to publish to npm, but it has no NPM_TOKEN and no OIDC identity to publish with. Grant 'id-token: write' to the calling job, or add NPM_TOKEN and pass 'secrets: inherit', or set dry-run to rehearse without either. Failing rather than skipping, because a skipped publish looks identical to a successful one."
             exit 1
           fi
-          echo "Credential present."
 
       # This step sets pipefail, under which make's own exit status read a
       # declared `build` target as missing, so a package its Makefile builds
@@ -319,6 +371,8 @@ jobs:
           # duplicate version. Same secret as the publish step, or the probe
           # is answering a different question from the one that matters.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          IS_PRIVATE: ${{ github.event.repository.private }}
+          REGISTRY: ${{ inputs.npm-registry }}
         run: |
           set -euo pipefail
           if [ ! -f package.json ]; then
@@ -346,6 +400,27 @@ jobs:
             echo "::warning title=Version mismatch::package.json says ${VERSION} but the release says ${WANT}. Publishing ${VERSION}, which is what npm will record."
           fi
 
+          # npm rejects a provenance statement, and a trusted publish, whose
+          # package.json names another repository or none. Warned here, where
+          # a dry run sees it too, rather than met as a 422 after the build.
+          if [ "$REGISTRY" = "https://registry.npmjs.org" ] && { [ "$IS_PRIVATE" = "false" ] || [ -z "${NODE_AUTH_TOKEN:-}" ]; }; then
+            URL="$(jq -r 'if (.repository | type) == "object" then .repository.url // "" else .repository // "" end' package.json)"
+            SEEN="${URL,,}"
+            SEEN="${SEEN#git+}"
+            SEEN="${SEEN%/}"
+            SEEN="${SEEN%.git}"
+            case "$SEEN" in
+              github:*) SEEN="https://github.com/${SEEN#github:}" ;;
+              git@github.com:*) SEEN="https://github.com/${SEEN#git@github.com:}" ;;
+              *://github.com/* | *://git@github.com/*) SEEN="https://github.com/${SEEN#*github.com/}" ;;
+              *:*) ;;
+              ?*/?*) SEEN="https://github.com/${SEEN}" ;;
+            esac
+            if [ "$SEEN" != "https://github.com/${GITHUB_REPOSITORY,,}" ]; then
+              echo "::warning title=repository.url does not match::package.json gives repository.url as '${URL}', and npm refuses provenance or a trusted publish unless it names this repository. Set it to git+https://github.com/${GITHUB_REPOSITORY}.git."
+            fi
+          fi
+
           # An existing version cannot be overwritten, so this is checked up
           # front and reported as a no-op rather than a 403 at the end.
           if npm view "${NAME}@${VERSION}" version > /dev/null 2>&1; then
@@ -360,6 +435,7 @@ jobs:
       # repository and the public npm registry, so it is enabled only when
       # both hold rather than failing the publish where they do not.
       - name: '🚀 Publish'
+        id: publish
         if: ${{ steps.inspect.outputs.published == 'false' }}
         working-directory: ${{ inputs.npm-directory }}
         env:
@@ -369,6 +445,7 @@ jobs:
           DRY_RUN: ${{ inputs.dry-run }}
           IS_PRIVATE: ${{ github.event.repository.private }}
           REGISTRY: ${{ inputs.npm-registry }}
+          METHOD: ${{ steps.credential.outputs.method }}
         run: |
           set -euo pipefail
           ARGS=(--tag "$DIST_TAG" --access "$ACCESS")
@@ -385,14 +462,31 @@ jobs:
             echo "Dry run: nothing will be written to the registry."
           fi
 
-          npm publish "${ARGS[@]}"
+          LOG="${RUNNER_TEMP}/npm-publish.log"
+          if npm publish "${ARGS[@]}" 2>&1 | tee "$LOG"; then
+            exit 0
+          fi
+
+          # Without a token the probe read the registry anonymously, and an
+          # anonymous read cannot see a restricted package, so a re-run can
+          # get here for a version that is already published.
+          if grep -q 'cannot publish over the previously published version' "$LOG"; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Already on npm::This version is already published. Nothing to do."
+            exit 0
+          fi
+          if [ "${METHOD:-}" = "trusted" ] && grep -qE 'ENEEDAUTH|E401|E403|E404' "$LOG"; then
+            CALLER="${GITHUB_WORKFLOW_REF%%@*}"
+            echo "::error title=Trusted publishing refused::npm would not take this publish from ${GITHUB_REPOSITORY} and ${CALLER##*/}. On npmjs.com, the package's trusted publisher must name exactly that repository and workflow file, with npm publish among its allowed actions. package.json's repository.url must name the repository, and a package's first version needs NPM_TOKEN."
+          fi
+          exit 1
 
       - name: '📝 Summary'
         if: ${{ always() }}
         env:
           NAME: ${{ steps.inspect.outputs.name }}
           VERSION: ${{ steps.inspect.outputs.version }}
-          ALREADY: ${{ steps.inspect.outputs.published }}
+          ALREADY: ${{ steps.inspect.outputs.published == 'true' || steps.publish.outputs.already == 'true' }}
           DRY_RUN: ${{ inputs.dry-run }}
         run: |
           {
@@ -472,10 +566,12 @@ jobs:
           ls -1 dist
 
       # Trusted Publishing exchanges this run's OIDC identity for a token
-      # that lives for minutes, so the repository stores no PyPI credential
-      # at all. It has to be configured once on PyPI, naming this repository
-      # and workflow. An explicit API token wins where one is set, because
-      # somebody set it on purpose.
+      # that lives for minutes, so a repository would store no PyPI
+      # credential at all. PyPI checks the workflow file that runs the
+      # upload, though, and refuses one called from another repository
+      # (pypi/warehouse#11096), as this one is. So PYPI_API_TOKEN is what
+      # publishes today. Without it the exchange is still tried, and PyPI's
+      # refusal is reported in PyPI's own words.
       #
       # ⚠️ RESOLVING THE CREDENTIAL AND USING IT ARE ONE STEP DELIBERATELY.
       # Handing a token to a later step means putting it in a step output or
@@ -527,7 +623,7 @@ jobs:
             TWINE_PASSWORD="$(printf '%s' "$MINTED" | jq -r '.token // empty')"
             if [ -z "$TWINE_PASSWORD" ]; then
               REASON="$(printf '%s' "$MINTED" | jq -r '(.message // "no reason given")' 2> /dev/null || echo 'no reason given')"
-              echo "::error title=Trusted Publishing refused::${MINT_HOST} would not issue a token: ${REASON}. Configure a trusted publisher on ${MINT_HOST} for this repository and workflow file, or set PYPI_API_TOKEN instead."
+              echo "::error title=Trusted Publishing refused::${MINT_HOST} would not issue a token: ${REASON}. PyPI does not accept trusted publishing from a reusable workflow, which this is (pypi/warehouse#11096), so set PYPI_API_TOKEN."
               exit 1
             fi
             echo "::add-mask::${TWINE_PASSWORD}"
@@ -570,6 +666,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+      id-token: write # exchanged for a crates.io token under trusted publishing
     steps:
       - name: '🛡️ Harden Runner'
         uses: tannergolden/standards/.github/actions/harden@v1
@@ -585,16 +682,25 @@ jobs:
 
       # Rust ships with the runner image, so there is no toolchain action to
       # pin here and nothing to install for the common case.
+      #
+      # Without CARGO_REGISTRY_TOKEN the publish step mints a token through
+      # trusted publishing, which needs a trusted publisher on crates.io
+      # naming this repository and the CALLING workflow's file. crates.io
+      # offers one only for a crate that already exists, so a crate's first
+      # version needs the token.
       - name: '🔑 Verify Credential'
         if: ${{ !inputs.dry-run }}
         env:
           CARGO_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          if [ -z "${CARGO_TOKEN:-}" ]; then
-            echo "::error title=No crates.io token::This workflow was asked to publish to crates.io, but CARGO_REGISTRY_TOKEN is not set. Add it as a repository secret and pass 'secrets: inherit', or set dry-run to rehearse without one."
+          if [ -n "${CARGO_TOKEN:-}" ]; then
+            echo "Publishing with CARGO_REGISTRY_TOKEN."
+          elif [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            echo "No CARGO_REGISTRY_TOKEN: the publish step mints a short-lived token through trusted publishing."
+          else
+            echo "::error title=No crates.io credential::This workflow was asked to publish to crates.io, but it has no CARGO_REGISTRY_TOKEN and no OIDC identity to publish with. Grant 'id-token: write' to the calling job, or add CARGO_REGISTRY_TOKEN and pass 'secrets: inherit', or set dry-run to rehearse without either."
             exit 1
           fi
-          echo "Credential present."
 
       - name: '🔎 Inspect Crate'
         id: inspect
@@ -648,6 +754,10 @@ jobs:
           COMMAND: ${{ inputs.build-command }}
         run: bash -c "$COMMAND"
 
+      # ⚠️ MINTING THE TOKEN AND USING IT ARE ONE STEP DELIBERATELY, as in
+      # the PyPI job: a token handed to a later step is written to disk and
+      # outlives its use. This one is revoked as the step exits, however it
+      # exits, and expires within 30 minutes even if the revocation fails.
       - name: '🚀 Publish'
         if: ${{ steps.inspect.outputs.published == 'false' }}
         working-directory: ${{ inputs.crates-directory }}
@@ -672,6 +782,38 @@ jobs:
             cargo publish --dry-run "${ARGS[@]}"
             echo "::notice title=Dry run::The crate packaged and verified. Nothing was registered."
             exit 0
+          fi
+
+          if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then
+            ENDPOINT='https://crates.io/api/v1/trusted_publishing/tokens'
+            AGENT='User-Agent: tannergolden-standards-publish'
+            CALLER="${GITHUB_WORKFLOW_REF%%@*}"
+            CALLER="${CALLER##*/}"
+
+            JWT="$(curl -sSfL -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=crates.io" | jq -r '.value // empty')"
+            if [ -z "$JWT" ]; then
+              echo "::error title=No OIDC token::The identity token could not be minted, so trusted publishing cannot proceed."
+              exit 1
+            fi
+
+            ANSWER="$(jq -cn --arg jwt "$JWT" '{jwt: $jwt}' | curl -sS -X POST "$ENDPOINT" -H 'Content-Type: application/json' -H "$AGENT" --data-binary @- || true)"
+            TOKEN="$(printf '%s' "$ANSWER" | jq -r '.token // empty' 2> /dev/null || true)"
+            if [ -z "$TOKEN" ]; then
+              REASON="$(printf '%s' "$ANSWER" | jq -r '[.errors[]?.detail] | join(" ") | select(. != "")' 2> /dev/null || true)"
+              echo "::error title=Trusted publishing refused::crates.io would not issue a token: ${REASON:-no reason given}. Its trusted publisher for this crate must name ${GITHUB_REPOSITORY} and ${CALLER}, or set CARGO_REGISTRY_TOKEN instead. A crate's first version needs the token."
+              exit 1
+            fi
+            echo "::add-mask::${TOKEN}"
+
+            revoke() {
+              CODE="$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE "$ENDPOINT" -H "Authorization: Bearer ${TOKEN}" -H "$AGENT" || echo '000')"
+              if [ "$CODE" != "204" ]; then
+                echo "::warning title=Token not revoked::crates.io answered ${CODE} to the revocation. The token expires within 30 minutes on its own."
+              fi
+            }
+            trap revoke EXIT
+            export CARGO_REGISTRY_TOKEN="$TOKEN"
+            echo "Minted a short-lived trusted publishing token."
           fi
           cargo publish "${ARGS[@]}"
 
