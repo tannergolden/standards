@@ -696,16 +696,32 @@ make setup
 
 ## 🏁 Footer Composition
 
-Every document should conclude with a centered footer providing navigation and attribution.
+Every document should conclude with a centered footer providing navigation and attribution. This is the whole block, from the rule above it to the closing tag:
 
 ```markdown
+---
+
+<div align="center">
+
 **[Document Summary Phrase]**
 
 [↑ Back to Top](#top)
+
+<br />
+
+Built with ❤️ by [the Engineering Team]. Distributed under the terms in [LICENSE](/LICENSE).
+
+</div>
 ```
 
 **Contextual Uniqueness Rule:**
 The **Document Summary Phrase** (bolded in the footer) must be unique to the document. It acts as the "closing argument" or mantra for that specific file. Do not use generic phrases like "End of file" or reuse the same footer across the repository.
+
+**Attribution Line Rule:**
+The last line credits the work and points at its licence. The credit, in brackets above, is the one part a page fills in: the Engineering Team, or a person by handle, such as a repository's owner on its root README. Everything after the credit is the same on every page, word for word.
+
+**Licence Clause Rule:**
+The clause names no licence. It links to the licence file from the repository root: `Distributed under the terms in [LICENSE](/LICENSE).` A named licence goes stale the day the licence changes, and a relative path, such as `../../LICENSE`, breaks the day the page moves to a folder at another depth, as every seed copied out of a template's `docs/templates/` does. GitHub resolves a link that starts with `/` from the repository root, on whichever branch is shown, so the clause names no repository and holds in a fork, after a rename, and in every repository generated from a template. The link check resolves it the same way through `--root-dir`; [`tests/footer-licence-link.py`](../../../tests/footer-licence-link.py) fails a footer here that names a licence or links any other way, and the golden path template's repository validator holds its own documents to the same clause.
 
 > [!NOTE]
 > On a drawn page the footer is the kit's footer block, and `closing` under

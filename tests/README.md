@@ -51,6 +51,7 @@ _Every script, every shell block._
 | [`documentation-inventories.py`](documentation-inventories.py)                     | An inventory that claims to be complete must be complete.                                     |
 | [`documented-commands-exist.py`](documented-commands-exist.py)                     | Every `make` command a script here tells someone to run must exist.                           |
 | [`draft-prune-scope.py`](draft-prune-scope.py)                                     | The draft prune must only delete drafts this workflow created.                                |
+| [`footer-licence-link.py`](footer-licence-link.py)                                 | Every footer links to the licence file and names no licence.                                  |
 | [`frontmatter-check.py`](frontmatter-check.py)                                     | Every document says what it is before it is opened.                                           |
 | [`generated-docs-are-formatter-stable.py`](generated-docs-are-formatter-stable.py) | A generator and the formatter must not fight over the same file.                              |
 | [`generators-are-gated.py`](generators-are-gated.py)                               | The generated documents must be checked by something that runs.                               |
