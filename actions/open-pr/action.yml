@@ -15,7 +15,7 @@ description: 'Commits working-tree changes to a fixed branch and opens or update
 
 inputs:
   token:
-    description: 'Token for pushing and for opening the pull request. The default GITHUB_TOKEN works but cannot push files under .github/workflows/ and cannot trigger required checks; a PAT with repo and workflow scopes lifts both limits.'
+    description: 'Token for pushing and for opening the pull request. The default GITHUB_TOKEN works but cannot push files under .github/workflows/, and the checks on a pull request it opens wait until someone with write access approves them; a PAT with repo and workflow scopes lifts both limits.'
     required: true
   branch:
     description: 'The fixed topic branch for this concern, such as style/auto-format.'

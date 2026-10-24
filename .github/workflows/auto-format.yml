@@ -239,11 +239,11 @@ jobs:
             ${{ steps.policy.outputs.note }}
 
             > [!NOTE]
-            > If required checks stay pending, this pull request was opened
-            > with the default `GITHUB_TOKEN`, which cannot trigger
-            > workflows. Re-run the checks by hand, or configure a
-            > `BOT_ACCESS_TOKEN` secret so automation pull requests run CI
-            > on their own.
+            > If required checks are waiting, this pull request was opened
+            > with the default `GITHUB_TOKEN`, and GitHub starts no checks
+            > on such a pull request by itself. Approve the waiting runs
+            > from this pull request, or configure a `BOT_ACCESS_TOKEN`
+            > secret so automation pull requests run CI on their own.
 
       - name: '📝 Report Failure (Format)'
         if: ${{ failure() }}

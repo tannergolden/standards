@@ -90,7 +90,7 @@ If the Semantic PR check fails:
 If an Auto-Formatting pull request appears:
 
 1. **Review & Merge**: The PR contains only Prettier output; merge it through the normal gates once CI is green.
-2. **Pending Checks**: If required checks stay pending, the PR was opened with the default `GITHUB_TOKEN` (which cannot trigger workflows). Re-run checks manually, or configure a `BOT_ACCESS_TOKEN` secret so automation PRs run CI automatically.
+2. **Pending Checks**: If required checks are waiting, the PR was opened with the default `GITHUB_TOKEN`, and GitHub starts no checks on such a PR by itself. Approve the waiting runs from the PR, or configure a `BOT_ACCESS_TOKEN` secret so automation PRs run CI automatically.
 3. **Local Linting**: Run `make lint` locally before pushing to ensure you are seeing what the CI sees.
 
 ### 🔗 See also

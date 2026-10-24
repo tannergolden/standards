@@ -16,9 +16,10 @@
 # each one and the next firing re-opens a duplicate, forever. One branch
 # means one PR that simply stays current until a maintainer merges it.
 # The PR is also labeled 'automated' - the purpose-built marker for
-# machine-authored PRs: it is stale-exempt (PRs opened with the default
-# GITHUB_TOKEN cannot run required checks and legitimately wait for a
-# human) and lets maintainers filter bot housekeeping from human work.
+# machine-authored PRs: it is stale-exempt (the checks on a PR opened with
+# the default GITHUB_TOKEN wait for a human to approve them, so such a PR
+# legitimately waits) and lets maintainers filter bot housekeeping from
+# human work.
 #
 # Commit identity: authored, committed, and signed off (--signoff) as the
 # repository OWNER, resolved from the identity Actions exposes. The change

@@ -260,8 +260,9 @@ every published path resolves a pin and would exercise the released copy rather 
   exempted commit by commit inside the check.
 - **CodeQL, dependency review, and Scorecard publishing need a public repository** (or Advanced
   Security). They skip rather than fail, so a private repository does not go permanently red.
-- **The default `GITHUB_TOKEN` cannot push workflow files** and cannot trigger required checks on
-  pull requests it opens. Automation degrades gracefully and says which limit it hit.
+- **The default `GITHUB_TOKEN` cannot push workflow files**, and the checks on a pull request it
+  opens wait until someone with write access approves them. Automation degrades gracefully and
+  says which limit it hit.
 - **Settings and rulesets need an admin token.** The default token cannot write either regardless
   of the permissions a job requests, and the settings job checks the token administers the
   repository before it compares anything.

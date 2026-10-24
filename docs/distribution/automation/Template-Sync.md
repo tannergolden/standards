@@ -237,11 +237,11 @@ words belong to the machine that sealed it.
 
 ## 🔑 Tokens
 
-| Without a `BOT_ACCESS_TOKEN`                                     | With one                         |
-| :--------------------------------------------------------------- | :------------------------------- |
-| Files under `.github/workflows/` wait, named in the PR and issue | They arrive like any other file  |
-| The pull request cannot trigger required checks                  | CI runs on it                    |
-| A **private** template cannot be fetched at all                  | It can, if the token can read it |
+| Without a `BOT_ACCESS_TOKEN`                                                 | With one                         |
+| :--------------------------------------------------------------------------- | :------------------------------- |
+| Files under `.github/workflows/` wait, named in the PR and issue             | They arrive like any other file  |
+| The pull request's checks wait until someone with write access approves them | CI runs on it                    |
+| A **private** template cannot be fetched at all                              | It can, if the token can read it |
 
 The default `GITHUB_TOKEN` can do everything else: read a public template, push the branch, open the
 pull request - once **Allow GitHub Actions to create and approve pull requests** is on, which 🎯
