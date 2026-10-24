@@ -115,3 +115,28 @@ class TestTheBotCommitsAreSkipped:
         first = next(p for p in parsers if re.search(p["message"], subject))
         assert not first.get("skip"), f"an ordinary chore is being skipped by {first}"
         assert first.get("group")
+
+
+class TestTheNotesAskForAHumanSummary:
+    """Release notes drawn from commits are a log, and a log is not release notes.
+
+    OpenSSF's Best Practices badge asks each release for a human-readable
+    summary of its major changes, and says outright that `git log` output is
+    not one. The draft holds a hidden prompt where that summary goes, so the
+    person publishing it writes one, and a draft published untouched shows
+    nothing extra.
+    """
+
+    def body(self, cliff) -> str:
+        return cliff["changelog"]["body"]
+
+    def test_the_draft_prompts_for_a_summary(self, cliff):
+        assert "✍️ SUMMARY" in self.body(cliff)
+
+    def test_the_prompt_is_hidden_until_someone_replaces_it(self, cliff):
+        prompt = next(line for line in self.body(cliff).splitlines() if "✍️ SUMMARY" in line)
+        assert prompt.startswith("<!--") and prompt.endswith("-->")
+
+    def test_it_comes_before_anything_drawn_from_the_log(self, cliff):
+        body = self.body(cliff)
+        assert body.index("✍️ SUMMARY") < body.index("### 📈 Stats")

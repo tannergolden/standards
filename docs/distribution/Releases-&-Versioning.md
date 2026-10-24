@@ -148,7 +148,7 @@ The repository employs a suite of automated workflows to ensure a consistent, tr
 
 ### 1. `release-notes.yml` - Release Notes Drafter
 
-Maintains **one evolving draft release per branch**: weekly (Monday 05:00 UTC) - or on manual dispatch, which bypasses the activity gate (the weekly run skips quietly unless the branch has accumulated **3+ commits** since the last tag) - it computes the next SemVer with git-cliff, prunes the superseded drafts in the branch's tag namespace, and publishes a fresh draft tagged `v<next>-<branch>.next`. Set the final tag in the release form when you publish.
+Maintains **one evolving draft release per branch**: weekly (Monday 05:00 UTC) - or on manual dispatch, which bypasses the activity gate (the weekly run skips quietly unless the branch has accumulated **3+ commits** since the last tag) - it computes the next SemVer with git-cliff, prunes the superseded drafts in the branch's tag namespace, and publishes a fresh draft tagged `v<next>-<branch>.next`. Set the final tag in the release form when you publish, and replace the hidden ✍️ SUMMARY prompt at the top of the draft with two or three sentences for the people who install it: what changed for them, whether to upgrade, and anything they must do. The sections under it are drawn from the commit log, which is a record of the work, not a summary of the release.
 
 ### 2. `release-publish.yml` - Publish Release
 
