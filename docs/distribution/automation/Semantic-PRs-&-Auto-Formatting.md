@@ -75,7 +75,7 @@ Monitors the codebase for style drift and proposes corrections - without ever wr
 ## ⚙️ Configuration Details
 
 - **Semantic PR Lib**: Uses `amannn/action-semantic-pull-request`.
-- **Formatting Engine**: Prettier, configured by the committed [`config/prettierrc.json`](../../../config/prettierrc.json) - the workflow, the pre-commit hook, and `make lint` all invoke it with `--config config/prettierrc.json`, so every layer formats identically.
+- **Formatting Engine**: Prettier, configured by the committed [`config/prettierrc.json`](../../../config/prettierrc.json) - the workflow hands it that file unless a repository names its own with `prettier-config`, and this repository's `make lint-format` checks against the same file, so both format identically.
 
 ---
 

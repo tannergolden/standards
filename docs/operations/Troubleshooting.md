@@ -61,14 +61,14 @@ Before escalating, perform these atomic checks to eliminate 95% of common config
 
 ## 🔟 Common Pathological Symptoms
 
-| Symptom                  | Probable Cause                | Immediate Resolution                                                      |
-| :----------------------- | :---------------------------- | :------------------------------------------------------------------------ |
-| **CI Red / Local Green** | Environmental drift.          | `nvm use`; sync lockfile with `npm ci`.                                   |
-| **Hook Bypass**          | Husky initialization failure. | `make setup`; `chmod +x .husky/*`.                                        |
-| **Blocked PR**           | Missing status checks.        | Update Branch Protection to match CI job names.                           |
-| **Merge Conflict**       | Divergent branch history.     | `git rebase origin/Development` & force-with-lease.                       |
-| **Emulator Failure**     | Port conflict.                | `lsof -i :8080` → `kill -9 <PID>`.                                        |
-| **Secret Leak**          | Credential committed to Git.  | Revoke key; follow [&#x1F512; Security & Secrets](Security-&-Secrets.md). |
+| Symptom                  | Probable Cause                          | Immediate Resolution                                                                   |
+| :----------------------- | :-------------------------------------- | :------------------------------------------------------------------------------------- |
+| **CI Red / Local Green** | Environmental drift.                    | `nvm use`; sync lockfile with `npm ci`.                                                |
+| **Hooks Not Running**    | `core.hooksPath` not set in this clone. | `git config core.hooksPath .github/scripts/hooks`; `chmod +x .github/scripts/hooks/*`. |
+| **Blocked PR**           | Missing status checks.                  | Update Branch Protection to match CI job names.                                        |
+| **Merge Conflict**       | Divergent branch history.               | `git rebase origin/Development` & force-with-lease.                                    |
+| **Emulator Failure**     | Port conflict.                          | `lsof -i :8080` → `kill -9 <PID>`.                                                     |
+| **Secret Leak**          | Credential committed to Git.            | Revoke key; follow [&#x1F512; Security & Secrets](Security-&-Secrets.md).              |
 
 ---
 

@@ -120,11 +120,15 @@ Every fork or new project seeded from this standards-based repository must maint
 
 ## 🤖 Automated Enforcement (Hooks)
 
-We utilize **Husky** to ensure that code hygiene is enforced before it ever reaches the remote repository.
+The golden path template ships its git hooks in `.github/scripts/hooks/`, and git runs them once a clone points at that folder. Its development container does that for you; anywhere else, run:
 
-- **Pre-commit**: Auto-formats **fully staged** files with Prettier (via `config/prettierrc.json`) and restages them - partially staged files are deliberately skipped so the hook never commits changes you did not stage.
-- **Commit-msg**: Enforces the [&#x1F33F; Conventional Commits](../distribution/Conventional-Commits.md).
-- **CI Required Checks**: Blocks merges if the branch deviates from formatting or testing standards.
+```bash
+git config core.hooksPath .github/scripts/hooks
+```
+
+- **Commit-msg**: Checks the header follows [&#x1F33F; Conventional Commits](../distribution/Conventional-Commits.md) and the message carries a `Signed-off-by:` trailer.
+- **Pre-commit**: Runs gitleaks over the staged changes when gitleaks is installed, and does nothing when it is not.
+- **CI is the authority**: A hook runs only in a clone that turned it on, and `--no-verify` skips it, so the required checks run every rule again on the pull request and block the merge when one fails.
 
 ---
 

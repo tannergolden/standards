@@ -104,12 +104,12 @@ Every project standardized on this system must implement the following `make` ta
 
 ## 🆘 Troubleshooting Paradigms
 
-| Symptom             | Probable Cause                        | Corrective Action                       |
-| :------------------ | :------------------------------------ | :-------------------------------------- |
-| **CI/Local Drift**  | Version mismatch or missing lockfile. | Check pinning file; run `make setup`.   |
-| **Missing Modules** | Dependencies not synchronized.        | Run `make setup`; check `PATH`.         |
-| **Rejected Push**   | Protection rule violation.            | Open a Pull Request into `Development`. |
-| **Broken Hooks**    | Improper Husky setup.                 | `chmod +x .husky/*`; run `make setup`.  |
+| Symptom             | Probable Cause                                      | Corrective Action                                                                      |
+| :------------------ | :-------------------------------------------------- | :------------------------------------------------------------------------------------- |
+| **CI/Local Drift**  | Version mismatch or missing lockfile.               | Check pinning file; run `make setup`.                                                  |
+| **Missing Modules** | Dependencies not synchronized.                      | Run `make setup`; check `PATH`.                                                        |
+| **Rejected Push**   | Protection rule violation.                          | Open a Pull Request into `Development`.                                                |
+| **Broken Hooks**    | Hooks not enabled in this clone, or not executable. | `git config core.hooksPath .github/scripts/hooks`; `chmod +x .github/scripts/hooks/*`. |
 
 ---
 
