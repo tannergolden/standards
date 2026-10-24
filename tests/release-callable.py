@@ -33,9 +33,12 @@ class TestTheCallMatchesTheDispatch:
         on = workflow_on(load_yaml(RELEASE))
         call = on["workflow_call"]["inputs"]
         extra = set(call) - set(on["workflow_dispatch"]["inputs"])
-        assert extra == {"required-files", "check-command", "keep-versions"}
+        assert extra == {"required-files", "check-command", "keep-versions", "python-version"}
         for name in ("required-files", "check-command"):
             assert call[name].get("default") == "", name
+        # The Python a check-command's scripts run on, at the version the
+        # other shared workflows default to.
+        assert call["python-version"]["default"] == "3.12"
         # Off unless asked: a caller that says nothing prunes, as these
         # standards always do.
         assert call["keep-versions"]["type"] == "boolean"

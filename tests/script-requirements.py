@@ -98,3 +98,37 @@ class TestItLandsBeforeEveryStage:
     def test_ci_hands_the_setup_action_its_python_version(self):
         step = next(step for step in self.validate() if step.get("name") == "🧰 Setup Toolchain")
         assert step["with"]["python-version"] == "${{ inputs.python-version }}"
+
+
+class TestCutReleaseInstallsThemToo:
+    """🏷️ Cut Release runs the template's validator as its check-command.
+
+    It ran on the runner's system Python, so a release passed only while the
+    image happened to carry PyYAML, the same accident the setup action
+    stopped relying on.
+    """
+
+    RELEASE = ".github/workflows/release.yml"
+
+    def steps(self) -> list[dict]:
+        return load_yaml(self.RELEASE)["jobs"]["release"]["steps"]
+
+    def by_name(self, name: str) -> dict:
+        return next(step for step in self.steps() if step.get("name") == name)
+
+    def test_both_steps_run_only_where_the_file_is(self):
+        for name in ("🐍 Setup Python", STEP):
+            assert self.by_name(name)["if"] == f"${{{{ hashFiles('{REQUIREMENTS}') != '' }}}}"
+
+    def test_they_land_before_the_check_command(self):
+        names = [step.get("name") for step in self.steps()]
+        check = names.index("🧪 Verify The Release Candidate")
+        assert names.index("🐍 Setup Python") < names.index(STEP) < check
+
+    def test_it_installs_the_file_with_its_hashes(self, run_shell, tmp_path):
+        env, log = fake_python(tmp_path)
+        result = run_shell(workflow_step_shell(self.RELEASE, "release", STEP), cwd=tmp_path / "repo", env=env)
+        assert result.returncode == 0, result
+        assert log.read_text(encoding="utf-8").split() == [
+            "-m", "pip", "install", "--require-hashes", "--requirement", REQUIREMENTS,
+        ]

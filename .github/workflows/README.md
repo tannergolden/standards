@@ -143,8 +143,10 @@ labels, settings and rulesets through the API and never touches your tree. See
 >       check-command: 'make check'
 > ```
 >
-> The file is called `cut-release.yml` in the calling repository because `release.yml` there is
-> already the stub for the notes, publish, package and prune chain.
+> Where `.github/scripts/requirements.txt` exists, Python is set up and the file is installed,
+> hashes required, before the check runs, so a check that runs the repository's own scripts has
+> what they import. The file is called `cut-release.yml` in the calling repository because
+> `release.yml` there is already the stub for the notes, publish, package and prune chain.
 
 ---
 
