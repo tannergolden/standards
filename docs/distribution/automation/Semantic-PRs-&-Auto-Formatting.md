@@ -37,7 +37,7 @@ This layer is composed of two primary workflows:
 
 Ensures that the title of every Pull Request matches the conventional pattern required for automated changelog generation and versioning (em dashes are rejected outright - squash titles become commits, and the Output Rules ban the character) - and, in companion jobs, that the source branch follows the naming law and every human commit carries its DCO sign-off.
 
-- **Workflow**: `.github/workflows/semantic-pr.yml` (the `title` job, on a privileged trigger)
+- **Workflow**: `.github/workflows/semantic-pr.yml` (the `title` job)
 - **Pattern**: `type(scope): description` (e.g., `feat(auth): add login support`)
 - **Branch naming**: a companion `branch-name` job in the same workflow enforces `<type>/<topic>` on the PR's source branch (18 accepted prefixes, set by the workflow's `branch-prefixes` input, plus the `agent-prefixes` compatibility list).
 - **DCO sign-off**: a companion `dco` job verifies the `Signed-off-by:` trailer mandated by CONTRIBUTING on every human-authored commit. Exemptions are per **commit**, never per PR: bot-authored commits and merge commits pass individually while the job still runs on every PR, so a person's commit on a bot's branch is still checked. The check reads commits through the API and never executes PR code, and it **fails closed**: `gh api` is the primary client with a retrying direct-HTTPS fallback, and if both clients fail the gate fails rather than passing blind.
@@ -56,10 +56,19 @@ Monitors the codebase for style drift and proposes corrections - without ever wr
 
 ## 🚀 Trigger Mechanism
 
-| Workflow        | Event                                                                                     | Outcome                                             |
-| :-------------- | :---------------------------------------------------------------------------------------- | :-------------------------------------------------- |
-| **Semantic PR** | `pull_request_target` (opened, edited, synchronized) - so fork PRs can receive the status | Passes/Fails the PR check.                          |
-| **Auto-Format** | `push` to `Development` / `workflow_dispatch`                                             | Opens a PR with formatting fixes when drift exists. |
+| Workflow        | Event                                                                     | Outcome                                                                                        |
+| :-------------- | :------------------------------------------------------------------------ | :--------------------------------------------------------------------------------------------- |
+| **Semantic PR** | `pull_request` (opened, edited, synchronize, reopened), and `merge_group` | Passes/Fails the PR check; in a merge queue every check skips, which GitHub reports as passing |
+| **Auto-Format** | `push` to `Development` / `workflow_dispatch`                             | Opens a PR with formatting fixes when drift exists.                                            |
+
+> [!NOTE]
+> **Why `pull_request`, and not `pull_request_target`.** Every job reads the pull request through the
+> API and checks nothing out, so the read-only token a fork's pull request gets is all it needs. The
+> write token of `pull_request_target` would go unused, and GitHub blocks that event in a public
+> repository from 2 December 2026 unless a policy allows it. Under `pull_request` the stub runs as
+> the pull request has it, so a fork can edit it: review a change to a workflow file before you
+> approve its run, as for every other check. On a public repository an outside contributor's runs
+> wait for that approval, so the check starts once it is given.
 
 ---
 

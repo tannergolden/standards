@@ -24,7 +24,9 @@ rules:
   # pull-request HEAD code. They call GitHub APIs only (labels, size,
   # first-interaction greeting, PR-title lint, DCO trailer reads, failure
   # issues). `pull_request_target` is REQUIRED for fork pull requests to
-  # receive labels and status checks at all.
+  # receive labels and comments at all. semantic-pr.yml's stub now runs on
+  # `pull_request`, which needs no exemption; its entry stays for a stub
+  # that still runs it on `pull_request_target`.
   #
   # THE ONE CHECKOUT IN THE FAMILY is in governance.yml's `triage` job. It
   # takes `actions/checkout` with NO `ref:`, which under

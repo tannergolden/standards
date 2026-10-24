@@ -9,7 +9,7 @@
 # else. A repository that merges or rebases instead puts every commit
 # message on its default branch having been validated by nothing at all.
 #
-# ⚠️ NO CHECKOUT, DELIBERATELY. The workflow that calls this runs on
+# ⚠️ NO CHECKOUT, DELIBERATELY. The workflow that calls this may run on
 # `pull_request_target`, which means an elevated token and a checkout that
 # would be the contributor's code. That is exactly why this reads the
 # commits through the API instead: nothing from the branch under review is

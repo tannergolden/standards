@@ -9,7 +9,7 @@
 # instead, every commit message on the branch lands on the default branch
 # having been validated by nothing at all. This is that gate.
 #
-# WHY THIS IS NOT commitlint. The workflow that calls it runs on
+# WHY THIS IS NOT commitlint. The workflow that calls it may run on
 # `pull_request_target`, which hands an elevated token to a job whose
 # checkout would be the CONTRIBUTOR'S code. Running `npm install` there,
 # with the pull request's own package.json and its postinstall scripts,

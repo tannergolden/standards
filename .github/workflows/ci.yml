@@ -36,6 +36,7 @@
 #       branches: ['Experimental', 'Development', 'Preview', 'Release']
 #     pull_request:
 #       branches: ['Experimental', 'Development', 'Preview', 'Release']
+#     merge_group: # a merge queue waits on every required check
 #     workflow_dispatch:
 #   concurrency:
 #     # In-progress runs are never canceled, so a required check cannot

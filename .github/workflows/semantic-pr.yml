@@ -22,17 +22,37 @@
 # pull request: GitHub reports a job skipped inside a called workflow as
 # Success. Only a skipped CALLER job leaves the required check unreported.
 #
+# WHY `pull_request`, NOT `pull_request_target`. Every job here reads the
+# pull request through the API and checks nothing out, so the read-only
+# token a fork's pull request gets under `pull_request` is all it needs.
+# `pull_request_target` would hand that run a write token it never uses,
+# and GitHub has added a default policy that blocks `pull_request_target`
+# in public repositories, enforced on 2 December 2026. One thing moves with
+# the trigger: `pull_request` runs the stub as the pull request's own head
+# has it, so a fork can edit the stub in its pull request. A maintainer
+# reviewing a change to a workflow file before approving its run is the
+# control there, exactly as it is for `ci`. A stub still on
+# `pull_request_target` keeps working, since no job here depends on which.
+#
+# ON `merge_group` EVERY CHECK SKIPS, AND SO PASSES. A merge queue waits on
+# every required check for the merge group as well, and
+# `pr / ✍️ DCO Sign-Off` is one. A merge group carries no pull request, so
+# the jobs gated on one skip and the title job skips its check; GitHub
+# reports a skipped job as Success, which a required check accepts. The
+# pull request's own run is where the checks happened.
+#
 # Called, not triggered. A consuming repository adds a stub:
 #
 #   name: '✨ Semantic Pull Request'
 #   on:
-#     pull_request_target:
-#       types: [opened, edited, synchronize]
+#     pull_request:
+#       types: [opened, edited, synchronize, reopened]
+#     merge_group:
 #   concurrency:
-#     # Keyed per pull request: under pull_request_target github.ref is the
-#     # BASE branch, so a branch-keyed group would put every open pull
-#     # request in one queue slot.
-#     group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+#     # One group per pull request, and one per merge group: github.ref is
+#     # refs/pull/<number>/merge on the first and the queue's branch on the
+#     # second.
+#     group: ${{ github.workflow }}-${{ github.ref }}
 #     cancel-in-progress: false
 #   permissions: {}
 #   jobs:
@@ -231,9 +251,10 @@ jobs:
           egress-policy: audit
           notice: '✍️ Commits: enforces Conventional Commits on every human commit.'
 
-      # No checkout, for the same reason the DCO job has none: this runs
-      # under pull_request_target with an elevated token, and the commits
-      # are read through the API rather than fetched from the branch.
+      # No checkout, for the same reason the DCO job has none: a stub may
+      # still run this under pull_request_target with an elevated token, so
+      # the commits are read through the API rather than fetched from the
+      # branch.
       - name: '✍️ Verify commit messages'
         uses: tannergolden/standards/.github/actions/commit-check@v1
         with:
@@ -261,7 +282,7 @@ jobs:
       # No checkout. The commits under review are read through the API and
       # never executed, and the check script travels with the action rather
       # than being fetched from the tree under review. That is what makes
-      # this safe under pull_request_target.
+      # this safe under pull_request_target, and enough under pull_request.
       - name: '✍️ Verify Developer Certificate of Origin sign-offs'
         uses: tannergolden/standards/.github/actions/dco-check@v1
         with:

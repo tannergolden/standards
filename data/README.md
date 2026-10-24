@@ -72,7 +72,9 @@ jobs:
 ```
 
 A check that never reports is not a check that fails loudly. It is a pull request that waits
-forever, which is why the job ids are fixed here rather than left to each repository.
+forever, which is why the job ids are fixed here rather than left to each repository. It is also
+why each stub behind one triggers on `merge_group`: a merge queue waits on every required check for
+the merge group as well, and a check that never reports there holds the queue.
 
 ---
 

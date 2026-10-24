@@ -31,7 +31,8 @@ Never pin `@Development`.
 
 **2. Three job ids are fixed.** A called workflow reports its checks as `<your job id> / <job name>`,
 so branch protection depends on the id you write in your stub. If you apply the published rulesets,
-use `ci`, `secrets`, and `pr`. Full explanation in [`data/README.md`](../../data/README.md).
+use `ci`, `secrets`, and `pr`, and trigger each of those stubs on `merge_group` as well, or a merge
+queue never gets their result. Full explanation in [`data/README.md`](../../data/README.md).
 
 **3. Tell CI how to build.** `ci.yml` runs your command, or a Makefile target of the same name, or
 nothing. If nothing resolves it **fails on purpose**, because a check that checked nothing still

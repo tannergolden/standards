@@ -12,6 +12,22 @@
 # its own. Nothing here is a required check; all of it is allowed to fail
 # without blocking a merge.
 #
+# ⚠️ PULL REQUEST TRIAGE STILL NEEDS `pull_request_target`. Triage labels a
+# fork's pull request and the welcome comments on it, which the read-only
+# token a fork gets under `pull_request` cannot do. Nothing here checks out
+# or runs the pull request's code: the one checkout, in `triage`, takes the
+# base branch.
+#
+# ⚠️ FROM 2 DECEMBER 2026 A PUBLIC REPOSITORY NEEDS A POLICY FOR IT. GitHub
+# has added a default policy that blocks `pull_request_target` in every
+# public repository without an applicable Actions event policy, and a run it
+# blocks fails with an error. 🎯 Apply Standards writes that policy with
+# `apply-settings`, allowing the events of `.github/workflows/governance.yml`,
+# where the template keeps this stub, and of no other file. An event rule is
+# an allowlist, so the policy names every event that file uses; a stub
+# under another name, or given another trigger, needs its own from a
+# settings-file override (docs/operations/Repository-Settings.md).
+#
 # Called, not triggered. A consuming repository adds a stub:
 #
 #   name: '⚖️ Governance & Automation'

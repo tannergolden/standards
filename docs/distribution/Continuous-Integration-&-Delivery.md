@@ -50,6 +50,13 @@ The shipped rulesets require these three status checks - the job names below are
 | **🔍 Scan for Secrets**   | `gitleaks.yml`    | Blocks any PR that introduces a credential or token                                |
 | **✍️ DCO Sign-Off**       | `semantic-pr.yml` | Blocks any PR whose human-authored commits lack `Signed-off-by:`                   |
 
+> [!NOTE]
+> **Ready for a merge queue.** A merge queue waits on every required check for the merge group as
+> well as the pull request, so every stub behind one in the template also triggers on
+> `merge_group`. There `ci` runs in full, and the secret scan and the DCO check skip, which GitHub
+> reports as passing: the group carries commits their pull requests' own runs already checked. Turn
+> a queue on in a ruleset and all three report.
+
 If you add project-specific gates (typecheck, coverage thresholds, E2E), add their job names to the ruleset's required checks - and keep the job `name:` stable, because renaming a job silently un-requires it.
 
 ---
@@ -69,7 +76,7 @@ flowchart LR
 
 <strong>📦 Standard CI (for PRs and Development)</strong>
 
-The template ships with `.github/workflows/checks.yml` (**🚦 Checks**), whose `ci` job calls the **✨ CI Validation** reusable workflow on pushes and pull requests to all four long-lived branches:
+The template ships with `.github/workflows/checks.yml` (**🚦 Checks**), whose `ci` job calls the **✨ CI Validation** reusable workflow on every pull request and merge group, and on pushes to the default branch:
 
 - **🧪 Lint, Test & Build** - the required gate. It runs the `lint-command`, `test-command`, and `build-command` you pass it, falling back to the `lint`, `test`, and `build` targets of a `Makefile` if you have one. If every stage resolves to nothing it **fails**, rather than reporting a green check that checked nothing. Before any of them, a repository that keeps `.github/scripts/requirements.txt`, as the template does for the scripts its checks run, gets Python at the `python-version` input and that file installed, so the template's `validate-repository.py` imports what it names rather than whatever the runner image carries. It also runs **🗂️ Check Frontmatter** over every document, which reports a broken one without failing until the `frontmatter` input says `enforce` (see [Document Styling & Formatting](../technical/interface/Document-Styling-&-Formatting.md)).
 - **📝 Check Spelling** - `typos` catches misspellings across code and docs.
