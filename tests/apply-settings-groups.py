@@ -374,7 +374,7 @@ class TestTheEventPolicy:
         plan = plan_with("actions", self.settings(), answers={POLICY_LIST: 404})
         assert "blocks the governance stub's pull_request_target triage" in line(plan, "actions.event_policy")
 
-    def test_only_the_repositorys_own_policies_are_listed_on_every_page(self, plan_with):
+    def test_only_policies_set_on_the_repository_are_listed_on_every_page(self, plan_with):
         """A full first page is followed to the next, where this one is."""
         others = [{"id": 100 + n, "name": f"other {n}", "source_type": "Repository", "rules": []} for n in range(100)]
         plan = plan_with("actions", self.settings(), answers={
