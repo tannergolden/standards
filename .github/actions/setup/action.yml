@@ -13,7 +13,7 @@
 #
 #   Node.js   package.json
 #   Python    requirements.txt, pyproject.toml, setup.py, Pipfile,
-#             and scripts/*.py
+#             .github/scripts/requirements.txt, and scripts/*.py
 #   Go        go.mod
 #   Rust      Cargo.toml
 #   Java      pom.xml, build.gradle, build.gradle.kts
@@ -26,6 +26,15 @@
 # every consumer discovering the runner's default separately. The cost is
 # that a Go or Rust repository keeping a `scripts/release.py` gets a
 # setup-python step it did not ask for; `python-version` controls which one.
+#
+# `.github/scripts/requirements.txt` IS INSTALLED AS WELL AS DETECTED. The
+# golden path template keeps the scripts its own checks run there - the
+# `lint-command` it ships is `.github/scripts/validate-repository.py` - and
+# names what they import in that file. When it exists, it is installed right
+# after Python is set up, whatever `install` says, so it lands before the
+# setup command, lint, test and build of any job calling this. Without it
+# those scripts would run on the runner's system Python and import whatever
+# the image happens to carry, which the runner images do not promise.
 #
 # TWO MECHANISMS, ON PURPOSE. Node and Python are installed by their setup
 # actions, because those give exact version control and dependency caching.
@@ -93,11 +102,20 @@ runs:
         cache: ${{ (inputs.cache == 'true' && hashFiles('package-lock.json') != '') && 'npm' || '' }}
 
     - name: '🐍 Setup Python'
-      if: hashFiles('requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile', 'scripts/*.py') != ''
+      if: hashFiles('requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile', '.github/scripts/requirements.txt', 'scripts/*.py') != ''
       uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
       with:
         python-version: ${{ inputs.python-version }}
         cache: ${{ (inputs.cache == 'true' && hashFiles('requirements.txt') != '') && 'pip' || '' }}
+
+    # The repository's own scripts' requirements, installed into the Python
+    # just set up and not gated on `install`: a caller that passes its own
+    # setup command turns `install` off, and that command, like every stage
+    # after it, may run these scripts. See the header.
+    - name: '📜 Install Script Requirements'
+      if: hashFiles('.github/scripts/requirements.txt') != ''
+      shell: bash
+      run: python -m pip install --requirement .github/scripts/requirements.txt
 
     - name: '☕ Select Java'
       if: hashFiles('pom.xml', 'build.gradle', 'build.gradle.kts') != ''

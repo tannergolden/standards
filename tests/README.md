@@ -80,6 +80,7 @@ _Every script, every shell block._
 | [`ruleset-preflight.py`](ruleset-preflight.py)                                     | An unreadable workflow directory is a token problem, and must say so.                         |
 | [`schedule-documentation.py`](schedule-documentation.py)                           | The schedule page states two rules the repository itself breaks.                              |
 | [`script-error-messages.py`](script-error-messages.py)                             | A script must name the problem, not print a Python traceback.                                 |
+| [`script-requirements.py`](script-requirements.py)                                 | The template's own scripts get their requirements before CI runs them.                        |
 | [`small-correctness.py`](small-correctness.py)                                     | Three narrow defects, each one an unknown being read as a benign answer.                      |
 | [`stub-delivery-docs.py`](stub-delivery-docs.py)                                   | Only one mechanism installs trigger stubs, and the docs must name it.                         |
 | [`template-identity-rewrite.py`](template-identity-rewrite.py)                     | Dotfiles are not suffixes, so three entries could never match.                                |
