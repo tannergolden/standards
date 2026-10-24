@@ -238,7 +238,7 @@ _[Tagline in italics.]_
 > except the description's length: the sheet's description is the
 > repository's description on GitHub, and that runs to
 > [about 150 characters over two lines](#the-repository-description).
-> [Drawn Pages](#-drawn-pages) says how.
+> [Drawn Pages](#%EF%B8%8F-drawn-pages) says how.
 
 ---
 
@@ -287,7 +287,7 @@ numbers above carry a source rather than a list.
 Those two commands print every icon and every token with its own name, so
 pick by name and copy it. A page drawn in a print carries the styles'
 **blueprint twins**, plates lettered in the same prints its sheets are drawn
-in; [Drawn Pages](#-drawn-pages) says how the parts fit together.
+in; [Drawn Pages](#%EF%B8%8F-drawn-pages) says how the parts fit together.
 
 Three constraints survive that freedom, and only three. Each is semantic
 rather than decorative, which is why it is a rule and not a preference:
@@ -711,7 +711,7 @@ The **Document Summary Phrase** (bolded in the footer) must be unique to the doc
 > On a drawn page the footer is the kit's footer block, and `closing` under
 > `banners:` in `.github/markdown.yaml` is its summary phrase, unique to the
 > page as above.
-> See [Drawn Pages](#-drawn-pages).
+> See [Drawn Pages](#%EF%B8%8F-drawn-pages).
 
 ---
 

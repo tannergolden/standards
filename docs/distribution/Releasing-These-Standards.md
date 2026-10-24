@@ -54,7 +54,7 @@ Nothing computes the version here: you type it into the dispatch form.
 - **A breaking change waits for the next major.** The workflow's header names three: renaming a
   required check, removing an input, and changing a default in a way that alters behaviour. The three
   required checks, and the stub job ids they hang on, are fixed in
-  [The Check-Name Contract](../../data/README.md#-the-check-name-contract).
+  [The Check-Name Contract](../../data/README.md#%EF%B8%8F-the-check-name-contract).
 - **It must move forward.** The version is `vX.Y.Z`, not yet tagged, and newer than the newest
   published version, compared as numbers, so `v1.10.0` follows `v1.9.0`.
 

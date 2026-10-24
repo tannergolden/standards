@@ -49,7 +49,7 @@ graph LR
 
 1. **A workflow names every first-party action in full, at `@v1`.** A `./` path inside a reusable
    workflow resolves against the calling repository
-   ([Things That Will Surprise You Once](../../../.github/workflows/README.md#-things-that-will-surprise-you-once)),
+   ([Things That Will Surprise You Once](../../../.github/workflows/README.md#%EF%B8%8F-things-that-will-surprise-you-once)),
    so there is no relative form to use. A workflow that calls another names it in full for the same
    reason, as `release.yml` calls `prune-releases.yml@v1`.
 2. **The actions follow `v1` whatever the stub pins.** A stub pinned to a version or a commit freezes
@@ -58,7 +58,7 @@ graph LR
    `labels-file` applies `data/labels.yml` as it stood in the release it resolved, so applying a
    registry edited here before it is released means naming the file. The `config` action works the
    same way: it copies the file from its own checkout unless the workflow's override input names one
-   in the calling repository ([Who Reads Each File](../../../config/README.md#-who-reads-each-file)).
+   in the calling repository ([Who Reads Each File](../../../config/README.md#%EF%B8%8F-who-reads-each-file)).
 4. **🚦 Self Checks is the one caller that reads the tree.** It calls `./.github/actions/harden` and
    `./.github/workflows/codeql.yml` by local path, so a pull request tests its own change. Inside
    `codeql.yml` the actions still resolve `@v1`, as they do for every consumer.
@@ -92,7 +92,7 @@ exception: it pins the runner-hardening action itself.
   shell.
 - **A job name a ruleset requires never changes inside a major.** A called workflow reports its
   check as `<caller job id> / <job name>`, so the name is half of every required check
-  ([The Check-Name Contract](../../../data/README.md#-the-check-name-contract)).
+  ([The Check-Name Contract](../../../data/README.md#%EF%B8%8F-the-check-name-contract)).
 
 ---
 
