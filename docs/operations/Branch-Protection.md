@@ -79,7 +79,7 @@ Reviews column = the **recommended team posture** once you have reviewers; the s
 > [!NOTE]
 > **Shipped default vs. team hardening.** Both branch rulesets in `data/rulesets/` ship with `required_approving_review_count: 0` - PRs are gated on **green CI only**, so a solo maintainer is never deadlocked approving their own pull requests. The review counts in the matrix above are the **recommended team configuration**: once you have a second maintainer, raise the count (and consider `dismiss_stale_reviews_on_push` and `require_code_owner_review`) by editing the ruleset JSON before you apply it, or afterwards under **Settings → Rules → Rulesets**.
 >
-> **Raise it together with one setting.** `apply-settings` turns on **Allow GitHub Actions to create and approve pull requests**, because with it the built-in token opens the pull requests of auto-format, auto-index and template sync, and approves Dependabot's. At 0 required approvals an approval from a workflow decides nothing. At 1 or more it is a way around review: a workflow can approve a pull request in a reviewer's place. So when you raise the count, turn the setting off with `can_approve_pull_request_reviews: false` in a [`settings-file` override](./Repository-Settings.md#departing-from-the-standard), and add a `BOT_ACCESS_TOKEN`, also as a Dependabot secret, which those workflows use instead.
+> **Raise it together with one setting.** `apply-settings` turns on **Allow GitHub Actions to create and approve pull requests**, because with it the built-in token opens the pull requests of auto-format, auto-index and template sync, and approves Dependabot's. At 0 required approvals an approval from a workflow decides nothing. At 1 or more it is a way around review: a workflow can approve a pull request in a reviewer's place. So when you raise the count, turn the setting off with `can_approve_pull_request_reviews: false` in a [`settings-file` override](./Repository-Settings.md#departing-from-the-standard), and add a `BOT_ACCESS_TOKEN`, also as a Dependabot secret, which those workflows use instead. Any workflow that a collaborator with write access pushes can read that secret, and an approval it gives counts as its account's, so make it a machine account's token rather than a maintainer's, require review from code owners, and keep that account out of `.github/CODEOWNERS`, so its approval never satisfies the rule.
 
 ---
 
@@ -95,7 +95,7 @@ Reviews column = the **recommended team posture** once you have reviewers; the s
 
 **Recommended team hardening** (enable as your team grows):
 
-- [ ] **Required Approvals ≥ 1**: Raise `required_approving_review_count` in the ruleset, and in the same change turn off Actions' pull request approval, with a `BOT_ACCESS_TOKEN` in its place (see the note above).
+- [ ] **Required Approvals ≥ 1**: Raise `required_approving_review_count` in the ruleset, and in the same change turn off Actions' pull request approval, with a machine account's `BOT_ACCESS_TOKEN` in its place and code owner review required (see the note above).
 - [ ] **Dismiss Stale Approvals**: New commits reset the approval state.
 - [ ] **Require Review from CODEOWNERS**: Uncomment and populate `.github/CODEOWNERS` first.
 - [ ] **Require Signed Commits**: Verified identity via GPG/SSH for auditability.
