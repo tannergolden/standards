@@ -63,7 +63,7 @@
       "sha_pinning_required": false
     },
     "workflow": {
-      "default_workflow_permissions": "write",
+      "default_workflow_permissions": "read",
       "can_approve_pull_request_reviews": true
     },
     "fork_pr_contributor_approval": "first_time_contributors",
@@ -81,7 +81,7 @@
     "permissions.enabled": "Actions is how every standard here reaches a repository: the checks, the governance, the release chain. A repository with it off has none of them, and this run cannot even be dispatched there; it exists so a hand-run from a clone puts it back.",
     "permissions.sha_pinning_required": "FALSE ON PURPOSE. GitHub's SHA-pinning requirement covers every action reference, and the stubs reach the composite actions published here as tannergolden/standards/actions/<name>@v1 - a tag, by design, so a fix reaches every repository at once. With the requirement on, every one of those references is refused and every workflow fails. The actions those composites wrap are pinned by SHA already; the moving tag is the one layer that cannot be.",
     "permissions.allowed_actions": "NOT WRITTEN, deliberately. An allowlist is real hardening with a real maintenance bill, and a repository that chose one by hand must not have it undone by a sync. Set it from an override: `allowed_actions: \"selected\"` with a `selected_actions` block, and the script applies both.",
-    "workflow.default_workflow_permissions": "Branch-Protection says to leave Workflow permissions on Read and write, and means it: every stub declares its own permissions ceiling and this setting caps them all. On read-only, a called workflow asking for issues: write fails before any job starts, with no log to read.",
+    "workflow.default_workflow_permissions": "READ, GitHub's own default for a new repository in a personal account. It is the token a job gets when it declares no permissions, and it caps nothing that declares them: anyone with write access sets the token for a job with the permissions key in its workflow file, adding or removing access as the job needs. Every workflow published here, and every stub in tannergolden/path, declares that key for every job, so each runs with exactly what it declares. Read-only protects the workflow that forgets: one with no permissions key can read and do nothing more. It satisfies OpenSSF Baseline OSPS-AC-04.01, and clears the OpenSSF SCM best-practice check token_default_permissions_is_read_write.",
     "workflow.can_approve_pull_request_reviews": "open-pr.sh opens pull requests as github-actions and dependabot-automerge.yml approves them; both are refused without this and can only tell you to come flip it by hand.",
     "fork_pr_contributor_approval": "Every first-time contributor's fork workflows wait for a maintainer, whether or not the account is new to GitHub. This is the floor: raise it to all_external_contributors in an override where the repository handles anything sensitive, since a first-time policy is satisfied by one merged typo fix. PUBLIC repositories only: GitHub refuses the endpoint on a private repository, which an outsider cannot fork, so the run skips it with a notice there.",
     "fork_pr_workflows_private_repos": "PRIVATE repositories only, skipped with a notice elsewhere. A private repository's collaborators push topic branches to the repository itself, which is what the branching strategy describes, so a workflow from a fork of it has no business running at all - and certainly not with a write token or the secrets. Approval is required for the case where one does.",

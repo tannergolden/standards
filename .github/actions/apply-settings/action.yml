@@ -7,7 +7,7 @@
 # title and body as the commit, head branches deleted on merge, auto-merge,
 # sign-off on web edits, Issues and Discussions on); the Actions policies
 # under Settings → Actions → General (Actions on, no SHA-pinning requirement,
-# the workflow token on read and write, pull request approval, the fork
+# the workflow token read-only by default, pull request approval, the fork
 # policies for public and private repositories, outside access, retention);
 # the security features (secret scanning and its push protection, generic and
 # AI detection, Dependabot alerts and security updates, private vulnerability

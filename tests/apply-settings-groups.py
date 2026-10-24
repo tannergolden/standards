@@ -70,7 +70,7 @@ REPO_PRIVATE = {**REPO_PUBLIC, "visibility": "private", "private": True, "securi
 # standard would. A value of None is a 404 (the GET fails); "" is a 204.
 HEALTHY = {
     "actions/permissions": {"enabled": True, "allowed_actions": "all", "sha_pinning_required": False},
-    "actions/permissions/workflow": {"default_workflow_permissions": "write", "can_approve_pull_request_reviews": True},
+    "actions/permissions/workflow": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": True},
     "actions/permissions/fork-pr-contributor-approval": {"approval_policy": "first_time_contributors"},
     "actions/permissions/fork-pr-workflows-private-repos": {
         "run_workflows_from_fork_pull_requests": False,
@@ -428,7 +428,7 @@ class TestADriftedRepository:
     def drifted(self, fake_gh, tmp_path):
         world = World(fake_gh, tmp_path)
         world.repo["has_wiki"] = True
-        world.answer("actions/permissions/workflow", {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": True})
+        world.answer("actions/permissions/workflow", {"default_workflow_permissions": "write", "can_approve_pull_request_reviews": True})
         world.answer("vulnerability-alerts", None)
         return world
 
@@ -495,7 +495,7 @@ class TestTheTokenAndTheTarget:
     def test_the_earlier_flat_actions_keys_still_compare(self, run_script, fake_gh, tmp_path):
         result = World(fake_gh, tmp_path).run(
             run_script,
-            settings={"actions": {"default_workflow_permissions": "write", "fork_pr_approval_policy": "first_time_contributors"}},
+            settings={"actions": {"default_workflow_permissions": "read", "fork_pr_approval_policy": "first_time_contributors"}},
         )
         assert result.returncode == 0, result
         assert "note: the settings file uses the earlier flat actions key(s)" in result.stdout
@@ -541,6 +541,32 @@ class TestEverySettingHasAReason:
         text = (ROOT / "docs/operations/Repository-Settings.md").read_text(encoding="utf-8")
         for group in module.GROUPS:
             assert f"`{group}`" in text, f"docs/operations/Repository-Settings.md never names the `{group}` group"
+
+
+WORKFLOWS = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / ".github/workflows").glob("*.yml"))
+
+
+class TestTheReadOnlyDefaultCapsNothingHere:
+    """The published token default is read-only, which a job never meets if it declares its own.
+
+    A `permissions:` key sets a job's token whatever the repository default
+    says, so the default is only what a job gets when it declares nothing.
+    The reason beside the setting says every workflow here declares the key
+    for every job; these hold it to that, so the default protects a workflow
+    that forgets the key rather than breaking one that leaned on write.
+    """
+
+    def test_the_shipped_default_is_read(self):
+        document = json.loads(SHIPPED.read_text(encoding="utf-8"))
+        assert document["actions"]["workflow"]["default_workflow_permissions"] == "read"
+
+    @pytest.mark.parametrize("rel", WORKFLOWS)
+    def test_every_job_declares_its_permissions(self, rel):
+        undeclared = [job for job, spec in load_yaml(rel)["jobs"].items() if "permissions" not in spec]
+        assert not undeclared, (
+            f"{rel}: {undeclared} declare no permissions, so they run with the repository default, "
+            "which is read-only on the standard"
+        )
 
 
 class TestTheDriftCheckIsWired:

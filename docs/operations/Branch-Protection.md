@@ -74,7 +74,7 @@ Reviews column = the **recommended team posture** once you have reviewers; the s
 >
 > **Settings and rulesets are separate jobs on purpose.** A wrong setting is a checkbox; a wrong ruleset blocks every merge in the repository. Keeping them apart means turning on secret scanning cannot cost you the merge button.
 >
-> **Leave _Workflow permissions_ on "Read and write".** Every stub declares its own ceiling, and that ceiling is capped by this setting: on "read-only" a called workflow asking for `issues: write` fails the run before any job starts, with no log to read. `apply-settings` writes this one too, and puts it back if something narrowed it.
+> **_Workflow permissions_ stay read-only.** That is GitHub's default for a new repository, and it is only the token a job gets when it declares no permissions. It caps nothing that does: a `permissions:` key in a workflow sets the token for its job whatever the default says, and every stub names the permissions each of its jobs needs. So read-only costs the stubs nothing, and protects a workflow that forgets the key. `apply-settings` writes this one too, and puts it back if something widened it.
 
 > [!NOTE]
 > **Shipped default vs. team hardening.** Both branch rulesets in `data/rulesets/` ship with `required_approving_review_count: 0` - PRs are gated on **green CI only**, so a solo maintainer is never deadlocked approving their own pull requests. The review counts in the matrix above are the **recommended team configuration**: once you have a second maintainer, raise the count (and consider `dismiss_stale_reviews_on_push` and `require_code_owner_review`) by editing the ruleset JSON before you apply it, or afterwards under **Settings → Rules → Rulesets**.
