@@ -56,9 +56,9 @@ Everything else is **event driven** and needs no schedule:
 | Pull request, issue, comment                                | `governance.yml`; `dependabot-automerge.yml` on PRs only             |
 | A merge group, in a merge queue                             | `checks.yml` and `governance.yml`'s `pr` job: the required checks    |
 | A watched workflow finishing on the default branch          | `ci-failure-alert.yml`                                               |
-| Release published                                           | `release.yml` - the `publish` and `prune-releases` jobs              |
+| Release published                                           | `release.yml` - the `publish` job                                    |
 | Push to a preview branch                                    | `preview-deploy.yml`                                                 |
-| Manual dispatch only                                        | `apply-standards.yml`; the `package` and `prune-drafts` tasks        |
+| Manual dispatch only                                        | `apply-standards.yml`; the `package`, `prune`, `prune-drafts` tasks  |
 | Manual dispatch only, by choice                             | `template-sync.yml` - the `sync` job, anywhere but `repo` and `path` |
 | Repository generated                                        | `lifecycle.yml` - the `init` job, once                               |
 | Pull request, and push to the default branch, in a template | `template-sync.yml` - the `check` job on the template's own list     |
@@ -70,9 +70,11 @@ Everything else is **event driven** and needs no schedule:
 > Giving it a schedule would turn an offer into a pull request that waits to be refused.
 
 > [!NOTE]
-> **Draft-release deletion is dispatch-only on purpose.** It deletes releases, and a destructive
-> action nobody chose to run is a different risk from a tidy-up nobody notices. It is a `task`
-> choice in `maintenance.yml`'s dispatch form, and no schedule can reach it - give it one and you
+> **Deleting a release is dispatch-only on purpose, a draft or a published one.** Each deletes
+> releases, and a destructive action nobody chose to run is a different risk from a tidy-up nobody
+> notices; a published release is also the changelog for its version, and carries its assets. Each
+> is a `task` choice in a dispatch form, `prune-drafts` in `maintenance.yml` and `prune` in
+> `release.yml`, and no schedule or release event can reach either - give one a trigger and you
 > have removed that distinction.
 
 ---

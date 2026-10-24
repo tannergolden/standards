@@ -40,12 +40,19 @@
 # forgets the input gets a plan rather than a deletion, which is the right
 # way round for something irreversible.
 #
+# THE STUB IS DISPATCH ONLY, AND PREVIEWS FIRST. A release page is the
+# changelog for its version: it carries the notes, and the assets built for
+# it, the SBOM among them. Deleting one is a decision a person makes, not a
+# side effect of publishing the next release, so the stub below runs only
+# when someone dispatches it, and the dispatch is a dry run until they turn
+# `dry-run` off. 🏷️ Cut Release, `release.yml`, is the
+# exception by design: a repository consumed by tag keeps only the major its
+# consumers pin and the version it points at.
+#
 # Called, not triggered. A consuming repository adds a stub:
 #
 #   name: '🧹 Prune Releases'
 #   on:
-#     release:
-#       types: [published]
 #     workflow_dispatch:
 #       inputs:
 #         dry-run:
@@ -62,7 +69,7 @@
 #       uses: tannergolden/standards/.github/workflows/prune-releases.yml@v1
 #       with:
 #         keep: 1
-#         dry-run: ${{ inputs.dry-run || false }}
+#         dry-run: ${{ inputs.dry-run }}
 #
 # ---
 

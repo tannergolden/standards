@@ -77,6 +77,7 @@ _Every script, every shell block._
 | [`release-callable.py`](release-callable.py)                                       | Cut Release is callable, and a call gets the same guards a dispatch does.                     |
 | [`release-guard.py`](release-guard.py)                                             | Cut Release must refuse a commit that is not on the release line.                             |
 | [`release-notes-errors.py`](release-notes-errors.py)                               | A hand-written error message must be reachable.                                               |
+| [`release-pruning.py`](release-pruning.py)                                         | Deleting a published release is a decision a person makes.                                    |
 | [`release-tag-contract.py`](release-tag-contract.py)                               | A repository consumed by tag carries two tags, and four files must agree.                     |
 | [`ruleset-preflight.py`](ruleset-preflight.py)                                     | An unreadable workflow directory is a token problem, and must say so.                         |
 | [`schedule-documentation.py`](schedule-documentation.py)                           | The schedule page states two rules the repository itself breaks.                              |

@@ -173,6 +173,10 @@ Called, never copied: the guards are the point, and a copy stops receiving them.
 
 Containers build **one architecture by default and any number natively**. Set `container-platforms: 'linux/amd64,linux/arm64'` and each architecture is built on a runner that _is_ that architecture, then combined into a single manifest list - so `docker pull` resolves correctly on Apple Silicon and Graviton without the image ever being emulated. The conventional alternative, QEMU emulation in one job, is both slow enough to time real builds out and an extra image to trust inside a job holding a registry credential. A single-architecture build skips the fan-out entirely and pushes exactly the tags you asked for.
 
+### 5. `prune-releases.yml` - Prune Releases, By Hand
+
+A published release is the changelog for its version: its page carries the notes, and the tarball and SBOM built for it. So nothing deletes one on its own. The template's release stub runs this prune only as its `prune` task, dispatched by a person, and the dispatch is a dry run until `dry-run` is turned off; it keeps the newest release, deletes the pages before it, and leaves every tag where it is. 🏷️ Cut Release is the exception by design: a repository consumed by tag keeps only the major its consumers pin and the version it points at, so each cut prunes what it superseded.
+
 ---
 
 ## ✅ Release Readiness Checklist

@@ -92,7 +92,7 @@ labels, settings and rulesets through the API and never touches your tree. See
 | :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `prune.yml`           | Scheduled sweep: superseded deployments and old workflow runs                                                                                                      |
 | `prune-drafts.yml`    | Deletes every draft release. Dispatch only, deliberately separate                                                                                                  |
-| `prune-releases.yml`  | ⚠️ Deletes PUBLISHED releases a newer one supersedes. `dry-run` defaults true; `delete-tags` sweeps every superseded version tag                                   |
+| `prune-releases.yml`  | ⚠️ Deletes PUBLISHED releases a newer one supersedes, from a dispatch-only stub. `dry-run` defaults true; `delete-tags` sweeps every superseded version tag        |
 | `prune-runs.yml`      | Deletes old workflow runs, with a day window and a recent-commit window                                                                                            |
 | `release-notes.yml`   | Maintains one evolving draft release per branch                                                                                                                    |
 | `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM                                                                                                         |
