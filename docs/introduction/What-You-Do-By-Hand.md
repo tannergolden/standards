@@ -113,7 +113,7 @@ Then register the **public** half on GitHub as a **Signing key** (Settings → S
 | **Keep the account `.github` repository public** | Only for private repositories: GitHub will not serve inherited community health files from a private `.github`.                                                                                                                 |
 | **Add a `BOT_ACCESS_TOKEN`**                     | So 🔄 Template Sync can update the stubs under `.github/workflows/`, and fetch a private template. Without it those files wait, named in an issue. See [🔄 Template Sync](../distribution/automation/Template-Sync.md#-tokens). |
 
-Optional hardening you may want later - environment protection, approval for all external forks, an action allowlist - is listed with the reasoning in [⚙️ Repository Settings → Deliberately Manual](../operations/Repository-Settings.md).
+Optional hardening you may want later - environment protection, an action allowlist - is listed with the reasoning in [⚙️ Repository Settings → Deliberately Manual](../operations/Repository-Settings.md).
 
 ---
 

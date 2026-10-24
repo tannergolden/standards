@@ -71,7 +71,7 @@ REPO_PRIVATE = {**REPO_PUBLIC, "visibility": "private", "private": True, "securi
 HEALTHY = {
     "actions/permissions": {"enabled": True, "allowed_actions": "all", "sha_pinning_required": False},
     "actions/permissions/workflow": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": True},
-    "actions/permissions/fork-pr-contributor-approval": {"approval_policy": "first_time_contributors"},
+    "actions/permissions/fork-pr-contributor-approval": {"approval_policy": "all_external_contributors"},
     "actions/permissions/fork-pr-workflows-private-repos": {
         "run_workflows_from_fork_pull_requests": False,
         "send_write_tokens_to_workflows": False,
@@ -495,7 +495,7 @@ class TestTheTokenAndTheTarget:
     def test_the_earlier_flat_actions_keys_still_compare(self, run_script, fake_gh, tmp_path):
         result = World(fake_gh, tmp_path).run(
             run_script,
-            settings={"actions": {"default_workflow_permissions": "read", "fork_pr_approval_policy": "first_time_contributors"}},
+            settings={"actions": {"default_workflow_permissions": "read", "fork_pr_approval_policy": "all_external_contributors"}},
         )
         assert result.returncode == 0, result
         assert "note: the settings file uses the earlier flat actions key(s)" in result.stdout
