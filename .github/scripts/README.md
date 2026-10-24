@@ -64,6 +64,6 @@ An action finds its script beside it, at `$GITHUB_ACTION_PATH/../../scripts/`, s
 
 <br />
 
-Built with ❤️ by [@tannergolden](https://github.com/tannergolden). Distributed under the MIT License.
+Built with ❤️ by [@tannergolden](https://github.com/tannergolden). Distributed under the terms in [LICENSE](/LICENSE).
 
 </div>

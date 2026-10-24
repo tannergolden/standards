@@ -111,6 +111,6 @@ If a secret is inadvertently committed to the repository, follow this immediate 
 
 <br />
 
-Built with ❤️ by the Engineering Team. Distributed under the MIT License.
+Built with ❤️ by the Engineering Team. Distributed under the terms in [LICENSE](/LICENSE).
 
 </div>

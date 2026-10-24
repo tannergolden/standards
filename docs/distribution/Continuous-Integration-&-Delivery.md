@@ -182,6 +182,6 @@ Every action in these workflows is pinned to a full commit SHA, and **the two re
 
 <br />
 
-Built with ❤️ by the Engineering Team. Distributed under the MIT License.
+Built with ❤️ by the Engineering Team. Distributed under the terms in [LICENSE](/LICENSE).
 
 </div>

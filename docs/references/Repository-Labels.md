@@ -221,6 +221,6 @@ _71 labels._ The registry is [`data/labels.yml`](../../data/labels.yml).
 
 <br />
 
-Built with ❤️ by the Engineering Team. Distributed under the MIT License.
+Built with ❤️ by the Engineering Team. Distributed under the terms in [LICENSE](/LICENSE).
 
 </div>

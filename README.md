@@ -171,6 +171,6 @@ here, and [Releasing These Standards](docs/distribution/Releasing-These-Standard
 
 <br />
 
-Built with ❤️ by [@tannergolden](https://github.com/tannergolden). Distributed under the MIT License.
+Built with ❤️ by [@tannergolden](https://github.com/tannergolden). Distributed under the terms in [LICENSE](/LICENSE).
 
 </div>

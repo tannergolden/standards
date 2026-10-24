@@ -264,6 +264,6 @@ and `dry-run` left **on**. Read the plans, then run it again with `dry-run` off.
 
 <br />
 
-Built with ❤️ by the Engineering Team. Distributed under the MIT License.
+Built with ❤️ by the Engineering Team. Distributed under the terms in [LICENSE](/LICENSE).
 
 </div>

@@ -82,6 +82,6 @@ All discovered issues are routed to a centralized dashboard for triage and resol
 
 <br />
 
-Built with ❤️ by the Engineering Team. Distributed under the MIT License.
+Built with ❤️ by the Engineering Team. Distributed under the terms in [LICENSE](/LICENSE).
 
 </div>

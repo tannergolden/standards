@@ -175,6 +175,6 @@ What the workflows do today decides what a `v2.0.0` involves:
 
 <br />
 
-Built with ❤️ by the Engineering Team. Distributed under the MIT License.
+Built with ❤️ by the Engineering Team. Distributed under the terms in [LICENSE](/LICENSE).
 
 </div>

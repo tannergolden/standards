@@ -56,6 +56,6 @@ Looking for repository-specific lookups instead - the label taxonomy or the A-Z 
 
 <br />
 
-Built with ❤️ by the Engineering Team. Distributed under the MIT License.
+Built with ❤️ by the Engineering Team. Distributed under the terms in [LICENSE](/LICENSE).
 
 </div>

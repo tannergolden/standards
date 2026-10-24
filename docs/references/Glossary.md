@@ -205,6 +205,6 @@ We believe that clear, unambiguous language is the foundation of effective engin
 
 <br />
 
-Built with ❤️ by the Engineering Team. Distributed under the MIT License.
+Built with ❤️ by the Engineering Team. Distributed under the terms in [LICENSE](/LICENSE).
 
 </div>

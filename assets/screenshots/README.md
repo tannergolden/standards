@@ -59,6 +59,6 @@ shows any more is easy to find. 🚦 Self Checks fails a push that leaves it sta
 
 <br />
 
-Built with ❤️ by the Engineering Team. Distributed under the terms in [LICENSE](../../LICENSE).
+Built with ❤️ by the Engineering Team. Distributed under the terms in [LICENSE](/LICENSE).
 
 </div>
