@@ -117,6 +117,24 @@ Optional hardening you may want later - environment protection, an action allowl
 
 ---
 
+## 7️⃣ When It Goes Public
+
+<a name="going-public"></a>
+
+Making a private repository public is one click, and it publishes more than the code. Do these first, in this order:
+
+| Step                                    | Why it is yours                                                                                                                                                                                                                                         |
+| :-------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scan the whole history**              | Every commit becomes public, a secret deleted in a later one included. Dispatch 🚦 Checks: a dispatched secret scan reads the whole history, where a push reads only itself. Rotate anything it finds, since removing the commit does not take it back. |
+| **Read the Actions logs**               | Every past run's log becomes readable by anyone. Delete the runs, and their artifacts, that you would not publish.                                                                                                                                      |
+| **Check the licence**                   | The public template ships MIT. The private template's proprietary licence does not belong on a public repository.                                                                                                                                       |
+| **Delete the vulnerability issue form** | Every issue on a public repository is public, so a report filed through `.github/ISSUE_TEMPLATE/Vulnerability-Report.yaml` is published the moment it is filed. Initialisation deletes the form only from a repository that is public when generated.   |
+| **Re-run 🎯 Apply Standards**           | Private vulnerability reporting, secret scanning, the fork pull request approval rule and the Actions event policy exist only on a public repository, so the settings skipped them until now.                                                           |
+
+The golden path template's validator fails a public repository that still carries the vulnerability issue form, which is usually the first sign the rest of this list is due. CodeQL and dependency review, which skip a private repository, start on their own.
+
+---
+
 ## 🚫 What You Never Do By Hand
 
 Reach for these and you are fighting the automation, not using it:
