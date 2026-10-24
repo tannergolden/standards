@@ -11,6 +11,10 @@ node_modules/
 .git/
 package-lock.json
 coverage/
+# Tool caches: git-ignored and machine-written, and a check run after the
+# tests would otherwise read pytest's README and mypy's JSON as files to format.
+.pytest_cache/
+.mypy_cache/
 # Jekyll/Liquid templates - Prettier's HTML/JSON formatters re-wrap
 # Liquid tags; the site chrome is hand-formatted instead.
 _layouts/
