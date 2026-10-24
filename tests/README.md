@@ -75,6 +75,7 @@ _Every script, every shell block._
 | [`prune-deployment-scope.py`](prune-deployment-scope.py)                           | An empty environment name must not widen a destructive prune.                                 |
 | [`prune-run-defaults.py`](prune-run-defaults.py)                                   | Two wrappers around one destructive action must not disagree on safety.                       |
 | [`README.md`](README.md)                                                           | This file.                                                                                    |
+| [`release-assets.py`](release-assets.py)                                           | A release carries the licence its assets were released under.                                 |
 | [`release-callable.py`](release-callable.py)                                       | Cut Release is callable, and a call gets the same guards a dispatch does.                     |
 | [`release-guard.py`](release-guard.py)                                             | Cut Release must refuse a commit that is not on the release line.                             |
 | [`release-notes-errors.py`](release-notes-errors.py)                               | A hand-written error message must be reachable.                                               |

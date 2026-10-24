@@ -135,6 +135,7 @@ Keep build artifacts for recent tags to enable one-click rollbacks.
 - Emit **build metadata** (commit SHA, tag, date) into the app/version endpoint (recommended).
 - Build **provenance is attested automatically** at publish on public repositories (`actions/attest-build-provenance` in `release-publish.yml`) - verify any artifact with `gh attestation verify`.
 - A **CycloneDX SBOM** rides along with every release, attached as `sbom-<tag>.cdx.json` - the dependency inventory the artifacts were built from. It is produced by cataloging the tree rather than by an ecosystem-native tool, so a Go, Rust, or Python release carries one exactly as a JavaScript release does. Best-effort: a repository with no dependency manifests attaches nothing rather than failing the release.
+- The **licence** rides along too: `LICENSE`, or `LICENSE.md`, `LICENSE.txt` or `COPYING`, is attached under its own name, so the terms a downloaded asset came under travel with it whatever the licence in git says later (OpenSSF OSPS-LE-03.02).
 
 ---
 

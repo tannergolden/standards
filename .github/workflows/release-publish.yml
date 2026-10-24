@@ -348,6 +348,17 @@ jobs:
             sed '/<!-- internal:start -->/,/<!-- internal:end -->/d' README.md > release/README.md
           fi
 
+          # The licence travels with the assets (OpenSSF OSPS-LE-03.02). A
+          # build tarball holds the output alone, and the licence in git can
+          # change after this release, so the terms these assets were
+          # released under are attached beside them, under the file's name.
+          for f in LICENSE LICENSE.md LICENSE.txt COPYING; do
+            if [ -f "$f" ]; then
+              cp "$f" "release/$f"
+              break
+            fi
+          done
+
           # The SBOM extension follows the format, because downstream tooling
           # globs on it. Computed here so the generator step stays a plain
           # `uses:` with nothing conditional in it.

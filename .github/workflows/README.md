@@ -95,7 +95,7 @@ labels, settings and rulesets through the API and never touches your tree. See
 | `prune-releases.yml`  | ⚠️ Deletes PUBLISHED releases a newer one supersedes, from a dispatch-only stub. `dry-run` defaults true; `delete-tags` sweeps every superseded version tag        |
 | `prune-runs.yml`      | Deletes old workflow runs, with a day window and a recent-commit window                                                                                            |
 | `release-notes.yml`   | Maintains one evolving draft release per branch                                                                                                                    |
-| `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM                                                                                                         |
+| `release-publish.yml` | Builds, packages, attests, and publishes. Attaches an SBOM and the licence                                                                                         |
 | `release.yml`         | ⚠️ Cuts `vX.Y.Z`, force-moves the `vX` every consumer pins, and prunes every older release, page and tag, unless the caller keeps them. Refuses an unmerged commit |
 | `publish-package.yml` | Publishes to npm, PyPI, crates.io, or any OCI registry. Each opt-in. Containers go multi-arch natively                                                             |
 | `preview-deploy.yml`  | Builds and deploys to a preview environment                                                                                                                        |
