@@ -86,6 +86,8 @@ inputs:
     description: >-
       Run the repository's own dependency install after the toolchains are
       available. Set to false for jobs that only need a runtime present.
+      `.github/scripts/requirements.txt` is installed either way, when it
+      exists: see the header.
     required: false
     default: 'true'
 
@@ -111,11 +113,13 @@ runs:
     # The repository's own scripts' requirements, installed into the Python
     # just set up and not gated on `install`: a caller that passes its own
     # setup command turns `install` off, and that command, like every stage
-    # after it, may run these scripts. See the header.
+    # after it, may run these scripts. See the header. Hashes are required,
+    # as the template's development container and 🔬 Verify Stub Ceilings
+    # require them, so all three accept the same file.
     - name: '📜 Install Script Requirements'
       if: hashFiles('.github/scripts/requirements.txt') != ''
       shell: bash
-      run: python -m pip install --requirement .github/scripts/requirements.txt
+      run: python -m pip install --require-hashes --requirement .github/scripts/requirements.txt
 
     - name: '☕ Select Java'
       if: hashFiles('pom.xml', 'build.gradle', 'build.gradle.kts') != ''

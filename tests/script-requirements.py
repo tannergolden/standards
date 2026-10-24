@@ -70,10 +70,13 @@ class TestTheStep:
         assert order.index("🐍 Setup Python") < order.index(STEP) < order.index("📦 Install Dependencies")
 
     def test_it_installs_the_file_into_the_python_just_set_up(self, run_shell, tmp_path):
+        """With the hashes required, as every other install of the file requires them."""
         env, log = fake_python(tmp_path)
         result = run_shell(workflow_step_shell(ACTION, None, STEP), cwd=tmp_path / "repo", env=env)
         assert result.returncode == 0, result
-        assert log.read_text(encoding="utf-8").split() == ["-m", "pip", "install", "--requirement", REQUIREMENTS]
+        assert log.read_text(encoding="utf-8").split() == [
+            "-m", "pip", "install", "--require-hashes", "--requirement", REQUIREMENTS,
+        ]
 
     def test_a_failed_install_fails_the_step(self, run_shell, tmp_path):
         """A script that cannot import what it names fails every stage after it, so this must not pass."""
