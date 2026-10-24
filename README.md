@@ -48,12 +48,13 @@ jobs:
 
 That stub has to live in your repository, because **GitHub only runs a workflow that is in the
 repository being pushed to**. It is the one file ever copied, and it arrives already written when
-you generate from the public template, [`tannergolden/path`](https://github.com/tannergolden/path):
-sixteen workflow files, fourteen of them stubs grouped and pinned to `@v1`, and two complete
-workflows of the template's own, `verify-stubs.yml` and `scorecard.yml`. After that, whenever you
-run it, **🔄 Template Sync** brings them up to date with the template as a pull request, merged
-with whatever you changed - all but `cut-release.yml`, which each repository keeps as its own to
-adopt or delete - see [Template Sync](docs/distribution/automation/Template-Sync.md).
+you generate from the public template, [`tannergolden/path`](https://github.com/tannergolden/path),
+which ships seventeen workflow files: fourteen stubs grouped and pinned to `@v1`, one more for
+[🔁 Intelligence Sync](https://github.com/tannergolden/intelligence) pinned to its own `@v0`, and two
+complete workflows of the template's own, `verify-stubs.yml` and `scorecard.yml`. After that,
+whenever you run it, **🔄 Template Sync** brings them up to date with the template as a pull
+request, merged with whatever you changed - all but `cut-release.yml`, which each repository keeps
+as its own to adopt or delete - see [Template Sync](docs/distribution/automation/Template-Sync.md).
 Initialisation deletes only what the template alone needs, which its list names, and, on a public
 repository, the issue form for vulnerability reports, which would publish them.
 

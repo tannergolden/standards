@@ -158,9 +158,10 @@ thing ever copied; everything behind the `uses:` stays here.
 
 Generate your repository from the public template,
 [tannergolden/path](https://github.com/tannergolden/path), and every trigger workflow arrives
-installed and grouped: sixteen files covering the checks, governance, the release chain,
-maintenance, the standards lifecycle, the machined indexes, template sync, the stub ceilings and an
-OpenSSF Scorecard. Fourteen are stubs pinned to `@v1`; `verify-stubs.yml` and `scorecard.yml` are
+installed and grouped: seventeen files covering the checks, governance, the release chain,
+maintenance, the standards lifecycle, the machined indexes, template sync, the stub ceilings, an
+OpenSSF Scorecard and the shared agent rules. Fourteen are stubs pinned to `@v1`; 🔁 Intelligence
+Sync calls `tannergolden/intelligence` at `@v0`; and `verify-stubs.yml` and `scorecard.yml` are
 complete workflows of the template's own. Template sync brings those files up to date afterwards, as
 a pull request, whenever you run it: all but `cut-release.yml`, which each repository keeps as its
 own. The checks run in the template too, the three required ones among them, so what it ships is
