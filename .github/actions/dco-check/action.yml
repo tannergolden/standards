@@ -6,8 +6,8 @@
 # carries the `Signed-off-by:` trailer required by the Developer Certificate
 # of Origin. Bot-authored commits and merge commits are exempt by contract,
 # decided per commit inside the script rather than by skipping the job, so
-# an all-bot pull request still reports a result instead of deadlocking on
-# a required check that never concludes.
+# a person's commit on a bot's pull request is still checked, and an all-bot
+# pull request reports a passing result.
 #
 # WHY THIS IS AN ACTION AND NOT A REUSABLE WORKFLOW: a composite action is
 # fetched with its whole repository, so `github.action_path` gives it the

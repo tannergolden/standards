@@ -40,7 +40,7 @@ Ensures that the title of every Pull Request matches the conventional pattern re
 - **Workflow**: `.github/workflows/semantic-pr.yml` (the `title` job, on a privileged trigger)
 - **Pattern**: `type(scope): description` (e.g., `feat(auth): add login support`)
 - **Branch naming**: a companion `branch-name` job in the same workflow enforces `<type>/<topic>` on the PR's source branch (18 accepted prefixes, set by the workflow's `branch-prefixes` input, plus the `agent-prefixes` compatibility list).
-- **DCO sign-off**: a companion `dco` job verifies the `Signed-off-by:` trailer mandated by CONTRIBUTING on every human-authored commit. Exemptions are per **commit**, never per PR: bot-authored commits and merge commits pass individually while the job still runs on every PR (a required check must never skip itself). The check reads commits through the API and never executes PR code, and it **fails closed**: `gh api` is the primary client with a retrying direct-HTTPS fallback, and if both clients fail the gate fails rather than passing blind.
+- **DCO sign-off**: a companion `dco` job verifies the `Signed-off-by:` trailer mandated by CONTRIBUTING on every human-authored commit. Exemptions are per **commit**, never per PR: bot-authored commits and merge commits pass individually while the job still runs on every PR, so a person's commit on a bot's branch is still checked. The check reads commits through the API and never executes PR code, and it **fails closed**: `gh api` is the primary client with a retrying direct-HTTPS fallback, and if both clients fail the gate fails rather than passing blind.
 - **Impact**: Blocks the "Merge" button if the title, the branch name, or a missing sign-off is non-compliant.
 
 ### 2. Auto-Formatter

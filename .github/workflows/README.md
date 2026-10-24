@@ -247,8 +247,12 @@ every published path resolves a pin and would exercise the released copy rather 
 
 ## ⚠️ Things That Will Surprise You Once
 
-- **A skipped required check never concludes.** It does not pass, it waits. That is why the DCO job
-  has no bot skip: an all-bot pull request would deadlock instead of passing.
+- **A required check whose caller job is skipped never reports.** The `<job id> / <job name>` check
+  is never created, so the pull request waits on it rather than passing. A job skipped _inside_ the
+  called workflow is different: GitHub reports it as Success, which satisfies a required check. The
+  DCO job still has no bot skip, for another reason: a skip keyed to whoever triggered the run, or
+  opened the pull request, would wave through a person's commits on a bot's branch, so bots are
+  exempted commit by commit inside the check.
 - **CodeQL, dependency review, and Scorecard publishing need a public repository** (or Advanced
   Security). They skip rather than fail, so a private repository does not go permanently red.
 - **The default `GITHUB_TOKEN` cannot push workflow files** and cannot trigger required checks on

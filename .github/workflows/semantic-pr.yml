@@ -14,10 +14,13 @@
 # check, reported by a caller as '<job id> / ✍️ DCO Sign-Off'. The stub job
 # id is fixed at `pr` (see data/README.md).
 #
-# The DCO job deliberately has no bot skip at the job level. A skipped
-# required check never concludes, which would deadlock every Dependabot pull
-# request rather than passing it. Bots are exempted per COMMIT inside the
-# check instead, so an all-bot pull request still reports success.
+# The DCO job deliberately has no bot skip at the job level. A skip keyed
+# to whoever triggered the run, or opened the pull request, would wave
+# through a person's commits pushed onto a bot's branch. Bots are exempted
+# per COMMIT inside the check instead, so an all-bot pull request reports
+# success and a mixed one is still checked. A skip here would not hang the
+# pull request: GitHub reports a job skipped inside a called workflow as
+# Success. Only a skipped CALLER job leaves the required check unreported.
 #
 # Called, not triggered. A consuming repository adds a stub:
 #
