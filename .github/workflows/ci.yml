@@ -143,6 +143,15 @@ on:
         required: false
         type: string
         default: 'warn'
+      timeout-minutes:
+        description: >-
+          How long the Lint, Test & Build job may run before GitHub stops it.
+          Fifteen minutes holds most projects; a suite that runs close to it
+          asks for more here, rather than failing on the day a runner is
+          slow.
+        required: false
+        type: number
+        default: 15
 
 permissions: {}
 
@@ -150,7 +159,7 @@ jobs:
   validate:
     name: '🧪 Lint, Test & Build'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
 
