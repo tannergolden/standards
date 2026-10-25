@@ -15,37 +15,37 @@
 #
 # ⚠️ WHAT ONLY THE TEMPLATE NEEDS IS DELETED HERE, NOT LEFT TO THE OWNER. A
 # template ships files that serve the template itself and nothing generated
-# from it: the sentinel, and in the private template the contract it is held
-# to against the public one, with everything enforcing it. Left behind they
-# were scaffolding every owner had to find and delete by hand - and the
-# parity test was not even inert, since a generated repository's own CI runs
-# every test beside its scripts. The template names each of them, one to a
-# line, under `# --- Only ever in the template` in `.github/template-sync`;
-# every one is deleted before anything is rewritten - but a workflow file,
-# below. Their lines stay in the list, switched off, so the owner still sees
-# what the template ships and can take one back with a sync.
+# from it: the sentinel, its changelog, and any contract it is held to, with
+# everything enforcing it. Left behind they were scaffolding every owner had
+# to find and delete by hand - and a test among them was not even inert,
+# since a generated repository's own CI runs every test beside its scripts.
+# The template names each of them, one to a line, under
+# `# --- Only ever in the template` in `.github/template-sync`; every one is
+# deleted before anything is rewritten - but a workflow file, below. Their
+# lines stay in the list, switched off, so the owner still sees what the
+# template ships and can take one back with a sync.
 #
 # ⚠️ NOTHING UNDER .github/workflows/ IS EVER CHANGED HERE. The push below
 # authenticates with the workflow token, and GitHub refuses any push from it
 # that creates, changes or deletes a file in that folder - the README beside
 # the workflows included - whatever the job's permissions say: no
-# `permissions:` key grants that right. Deleting the private template's
-# parity workflow once got a generated repository's push refused, and with it
-# the whole initialisation. So a workflow file only the template needs stays
+# `permissions:` key grants that right. Deleting a workflow only the template
+# needed once got a generated repository's push refused, and with it the
+# whole initialisation. So a workflow file only the template needs stays
 # where it is, named in the commit and the run for its owner to delete; no
 # identity is rewritten in that folder; and its folder log is never
 # redrawn, which it never needs, since nothing beside it changed.
 #
 # 🏷️ Cut Release is NOT one of them. It publishes the template's releases,
 # but any repository consumed by tag cuts its own the same way - the
-# Markdown Kit, generated from the public template, does - so it stays,
+# Markdown Kit, generated from the golden path template, does - so it stays,
 # inert until its owner adopts it.
 #
 # ⚠️ ON A PUBLIC REPOSITORY THE VULNERABILITY ISSUE FORM GOES TOO. Every
 # issue on a public repository is public, so a vulnerability reported
 # through `.github/ISSUE_TEMPLATE/Vulnerability-Report.yaml` would be
 # published the moment it was filed. Private vulnerability reporting is the
-# intake there, with the form the public template ships for it in
+# intake there, with the form the golden path template ships for it in
 # `.github/VULNERABILITY_REPORT.yml`. A private repository keeps the issue
 # form, since an issue there is as private as the repository. Whether the
 # repository is public is read from the repository object fetched below for
@@ -66,9 +66,9 @@
 # ⚠️ WHAT IT DOES NOT REWRITE: a repository on the template owner's account.
 # The SHARED repositories every consumer calls - `tannergolden/standards`,
 # `tannergolden/intelligence`, and the Markdown Kit, `tannergolden/markdown`,
-# whose folders the templates' assets/ READMEs link - are the commonest, but
-# the template itself, its sibling and the account's `.github` are the same
-# kind of thing: an ADDRESS on that account. Rewriting one to the new owner
+# whose folders the template's assets/ READMEs link - are the commonest, but
+# the template itself and the account's `.github` are the same kind of
+# thing: an ADDRESS on that account. Rewriting one to the new owner
 # names a repository that does not exist. Only the handle on its own is an
 # identity.
 # The distinction is the whole reason this uses targeted rules rather than a
@@ -213,7 +213,7 @@ def rewrite(
 
     Pure, and at module level, so the rules can be exercised directly. They
     used to sit inside `main()`, unreachable without a token, a network call
-    and a push - which is why the one rule both templates DOCUMENT WRONGLY,
+    and a push - which is why the one rule the template DOCUMENTED WRONGLY,
     the contact-link placeholder, had no test at all. A rule and its gate
     change together; this is the gate.
 
@@ -291,18 +291,17 @@ def substitute(
     #
     # ⚠️ A LIST OF SPARED NAMES BROKE EVERY ADDRESS NOT ON IT. Only
     # `/standards` was spared at first, then the three shared repositories;
-    # the "third route" remote pointing back at the template, and the
-    # private template's links to its public sibling and the account's
-    # `.github`, still came out naming a repository on the new owner's
-    # account that does not exist. No address in either template should
-    # follow the owner: a link meant as "this repository" carries the
-    # OWNER/REPOSITORY placeholder above, because a rewritten address would
-    # name `<owner>/<template>`, which is wrong as well.
+    # the "third route" remote pointing back at the template, and links to
+    # the template itself and the account's `.github`, still came out naming
+    # a repository on the new owner's account that does not exist. No address
+    # in a template should follow the owner: a link meant as "this repository"
+    # carries the OWNER/REPOSITORY placeholder above, because a rewritten
+    # address would name `<owner>/<template>`, which is wrong as well.
     #
     # `.github` is an address like any other and survives too. Health-file
-    # inheritance is per account, as the private template's README spells
-    # out, so the link keeps naming the repository the template's files come
-    # from rather than asserting that the new owner has one.
+    # inheritance is per account, so the link keeps naming the repository the
+    # template's files come from rather than asserting that the new owner has
+    # one.
     #
     # One pass, so an address is consumed whole before its name is looked
     # at: in `<owner>/<owner>` the second handle is a repository name, not an
@@ -399,36 +398,22 @@ def _template_sync():
 def shape_of(root: pathlib.Path) -> str:
     """The paragraph the initial commit gives the template's shape.
 
-    The two templates ship deliberately different shapes, so it is chosen by
-    what is actually IN the tree - the public path carries a structure and
-    its own community health files, the private one is a standards-wired
-    foundation - rather than by a name a fork could change.
-
-    ⚠️ THE STRUCTURE TELLS THEM APART, NOT WHERE THE SEEDS SIT. The private
-    template kept its seeds in .github/docs/, and that was what this read;
-    both keep them in docs/ now. Only the public one ships src/.
+    Chosen by what is actually IN the tree rather than by a name a fork could
+    change: the golden path carries a structure, src/ among it, beside its
+    seeds in docs/templates/, and any other tree is described in general.
     """
-    if not (root / "docs/templates").is_dir():
+    if (root / "docs/templates").is_dir() and (root / "src").is_dir():
         return (
-            "This is a golden-path template whose engineering standards are\n"
-            "followed by link to the shared standards repository rather than by\n"
-            "copy.\n"
-        )
-    if (root / "src").is_dir():
-        return (
-            "This is the public golden path. A working structure arrived with\n"
+            "This is the golden path. A working structure arrived with\n"
             "it - src/, tests/, packages/, benchmarks/, examples/, assets/,\n"
             "docs/ - along with the community health files, while every\n"
             "engineering standard is followed by link to the shared standards\n"
             "repository rather than by copy.\n"
         )
     return (
-        "This is the private golden path. A standards-wired foundation with\n"
-        "no imposed structure: the seed documents live under docs/, the\n"
-        "community health files are inherited from the account's .github\n"
-        "repository, and every engineering standard is followed by link to\n"
-        "the shared standards repository rather than by copy. Beside docs/,\n"
-        "its one folder is assets/, where the Markdown Kit draws the page.\n"
+        "This is a golden-path template whose engineering standards are\n"
+        "followed by link to the shared standards repository rather than by\n"
+        "copy.\n"
     )
 
 

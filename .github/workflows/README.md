@@ -158,7 +158,7 @@ thing ever copied; everything behind the `uses:` stays here.
 
 ### The fast way
 
-Generate your repository from the public template,
+Generate your repository from the golden path template,
 [tannergolden/path](https://github.com/tannergolden/path), and every trigger workflow arrives
 installed and grouped: eighteen files covering the checks, governance, the release chain,
 maintenance, the standards lifecycle, the machined indexes, template sync, the stub ceilings, an
@@ -168,7 +168,7 @@ complete workflows of the template's own. Template sync brings those files up to
 a pull request, whenever you run it: all but `cut-release.yml`, which each repository keeps as its
 own. The checks run in the template too, the three required ones among them, so what it ships is
 checked before a repository generated from it runs it. Jobs with an `is_template` guard naming the
-two golden path templates are silent there and come alive in the repository generated from one, and
+golden path template are silent there and come alive in the repository generated from it, and
 `release.yml` and initialisation stay silent in every template. `cut-release.yml` is the reverse: it
 runs only in a template until a repository released by tag - a kit, an action - adopts it.
 `template-sync.yml` checks its list there.

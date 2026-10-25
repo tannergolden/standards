@@ -7,8 +7,8 @@ repository, tested the way it would be broken: a template that releases, an
 owner who edits, deletes and opts out, and a sync pull request that gets
 merged whether or not it was clean.
 
-The one that matters most is TestNothingIsLostAcrossSyncs. Replaying the real
-history of both templates showed that a single baseline for the whole
+The one that matters most is TestNothingIsLostAcrossSyncs. Replaying a
+template's real history showed that a single baseline for the whole
 repository loses a change silently once a sync pull request with a conflict
 in it is merged. Nothing about any one run looks wrong; the loss only shows
 across two. So that scenario is played out in full here, and the property

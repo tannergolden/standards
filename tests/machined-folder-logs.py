@@ -167,8 +167,8 @@ class TestEachEntryDescribesItself:
 
     def test_a_purpose_paragraph_wins_over_a_title_line(self, tmp_path):
         path = write(
-            tmp_path / "parity.yml",
-            "# --- This Repository's Own Contract ---\n#\n# 📐 Template Parity\n#\n"
+            tmp_path / "contract.yml",
+            "# --- This Repository's Own Contract ---\n#\n# 🧾 Contract Check\n#\n"
             "# Purpose: enforce the contract, so drift fails a check.\n",
         )
         assert indexes.describe(str(path)) == "Enforce the contract, so drift fails a check."

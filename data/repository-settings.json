@@ -53,7 +53,7 @@
     "allow_update_branch": "Lets a pull request take the base branch without a merge commit, so strict required checks can be satisfied.",
     "web_commit_signoff_required": "The DCO check requires a Signed-off-by trailer on every human commit; this makes edits made in the browser comply instead of failing.",
     "has_issues": "The issue forms, the label taxonomy, and the intake chooser are all fronted by Issues. It is on by default everywhere; this puts it back if it was ever turned off.",
-    "has_discussions": "SUPPORT.md and the issue chooser route questions to Discussions, and the chooser's link 404s until this is on. The public template ships the discussion forms it expects.",
+    "has_discussions": "SUPPORT.md and the issue chooser route questions to Discussions, and the chooser's link 404s until this is on. The golden path template ships the discussion forms it expects.",
     "has_wiki": "Documentation is versioned in the tree and reviewed. A wiki is neither.",
     "has_projects": "Off by default rather than opinionated: turn it on deliberately if you use it."
   },

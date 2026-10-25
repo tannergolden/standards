@@ -34,10 +34,10 @@ class TestTheReusableWorkflow:
         jobs = self.jobs()
         assert jobs["check"]["if"].replace(" ", "") == "${{github.event.repository.is_template}}"
         # Outside a template, always; in a template derived from another, on a
-        # dispatch alone; in the two golden path templates, never.
+        # dispatch alone; in the golden path template, never.
         assert jobs["sync"]["if"].replace(" ", "") == (
             "${{!github.event.repository.is_template||(github.event_name=='workflow_dispatch'&&"
-            "!contains(fromJSON('[\"repo\",\"path\"]'),github.event.repository.name))}}")
+            "github.event.repository.name!='path')}}")
 
     def test_the_run_and_the_waiting_issue_both_follow_the_derivation(self):
         steps = self.jobs()["sync"]["steps"]
@@ -155,9 +155,9 @@ class TestResolvingTheTemplate:
         assert result.outputs["template"] == "tannergolden/path"
 
     def test_githubs_own_record_comes_last(self, run_shell, fake_gh, tmp_path):
-        fake_gh.route("repos/janedoe/widget", '{"template_repository": {"full_name": "tannergolden/repo"}}')
+        fake_gh.route("repos/janedoe/widget", '{"template_repository": {"full_name": "tannergolden/kit"}}')
         fake_gh.route("users/janedoe", "{}")
-        assert self.run(run_shell, fake_gh, tmp_path).outputs["template"] == "tannergolden/repo"
+        assert self.run(run_shell, fake_gh, tmp_path).outputs["template"] == "tannergolden/kit"
 
     def test_no_template_anywhere_stops_with_the_fix(self, run_shell, fake_gh, tmp_path):
         fake_gh.route("repos/janedoe/widget", '{"template_repository": null}')
@@ -173,19 +173,19 @@ class TestResolvingTheTemplate:
 
     def test_a_derived_templates_own_lock_names_what_it_follows(self, run_shell, fake_gh, tmp_path):
         mapping = self.derived(tmp_path)
-        (tmp_path / ".github/template-derive.lock").write_text(json.dumps({"template": "tannergolden/repo"}))
+        (tmp_path / ".github/template-derive.lock").write_text(json.dumps({"template": "tannergolden/kit"}))
         (tmp_path / ".github/template-sync.lock").write_text(json.dumps({"template": "tannergolden/path"}))
         fake_gh.route("users/janedoe", "{}")
         result = self.run(run_shell, fake_gh, tmp_path, MAP=mapping)
-        assert result.outputs["template"] == "tannergolden/repo"
+        assert result.outputs["template"] == "tannergolden/kit"
 
     def test_a_derivation_lock_outside_github_is_never_read(self, run_shell, fake_gh, tmp_path):
         mapping = self.derived(tmp_path, lock="../elsewhere.lock")
         (tmp_path.parent / "elsewhere.lock").write_text(json.dumps({"template": "someone/else"}))
-        fake_gh.route("repos/janedoe/widget", '{"template_repository": {"full_name": "tannergolden/repo"}}')
+        fake_gh.route("repos/janedoe/widget", '{"template_repository": {"full_name": "tannergolden/kit"}}')
         fake_gh.route("users/janedoe", "{}")
         result = self.run(run_shell, fake_gh, tmp_path, MAP=mapping)
-        assert result.outputs["template"] == "tannergolden/repo"
+        assert result.outputs["template"] == "tannergolden/kit"
 
 
 class TestReadingTheDerivation:
@@ -343,11 +343,11 @@ class TestTheActionDispatches:
         # mapping's own lock - which proves the action passed it through.
         sync_world.generate()
         mapping = tmp_path / "map.json"
-        mapping.write_text(json.dumps({"format": 1, "name": "📐 Parity", "lock": ".github/parity.lock"}))
+        mapping.write_text(json.dumps({"format": 1, "name": "🧬 Derived", "lock": ".github/template-derive.lock"}))
         result = self.run(run_shell, sync_world.repo, TEMPLATE_DIR=str(sync_world.template),
                           TEMPLATE="tannergolden/path", MAP=str(mapping))
         assert result.returncode == 1
-        assert "There is no .github/parity.lock yet" in result.output
+        assert "There is no .github/template-derive.lock yet" in result.output
 
 
 class TestTheSyncPullRequestStaysCurrent:

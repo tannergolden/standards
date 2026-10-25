@@ -176,7 +176,7 @@ Writes repository settings and branch and tag rulesets through the Apply Standar
 **Choose All repositories.** One token then reaches every repository that holds the
 stub, including any you generate after making it, so the token never needs editing:
 a new repository needs only its secret. It reaches everything else you own as well,
-`standards` and the templates included, and nothing there can read it, because a
+`standards` and the template included, and nothing there can read it, because a
 workflow reads only the secrets stored in its own repository and this one is stored
 only where the stub runs. What keeps that reach safe is everything else here: two
 permissions, seven days, and revoking it the moment the work is done.

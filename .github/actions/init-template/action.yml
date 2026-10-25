@@ -28,8 +28,8 @@
 # the API cannot be read; when neither does, the form stays with a warning.
 #
 # ⚠️ IT DOES NOT REWRITE A REPOSITORY ADDRESS. `<owner>/standards` is the
-# repository every consumer calls, and the template itself, its sibling, the
-# agent instruction publisher and the account's `.github` are the same kind
+# repository every consumer calls, and the template itself, the agent
+# instruction publisher and the account's `.github` are the same kind
 # of thing: a repository on the template owner's account. Pointing any of
 # them at the new owner would name a repository that does not exist; only the
 # handle on its own is an identity. That is why the substitution is a set of

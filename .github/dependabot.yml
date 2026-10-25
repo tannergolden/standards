@@ -31,8 +31,9 @@
 # updates put eight pull requests, eight merges and sixteen commits into
 # permanent history for what was a single sweep of the pins.
 #
-# The group name and pattern match the templates', so the three configurations
-# stay one file with three copies rather than three files that drifted.
+# The group name and pattern match the golden path template's, so the two
+# configurations stay one file with two copies rather than two files that
+# drifted.
 #
 # ---
 

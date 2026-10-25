@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 """The initial commit describes the template a repository came from, read from its tree.
 
-Both templates keep their seeds in docs/, so where the seeds sit no longer
-tells them apart, as it did while the private template kept them in
-.github/docs/. The structure does: only the public template ships src/.
+The golden path ships a structure, src/ among it, beside its seeds in
+docs/templates/, so that is what names it. Any other tree is described in
+general, whatever it holds.
 """
 
 from __future__ import annotations
@@ -12,6 +12,9 @@ from __future__ import annotations
 from conftest import load_script
 
 init = load_script(".github/scripts/init-template.py")
+
+GOLDEN = "This is the golden path."
+GENERAL = "golden-path template"
 
 
 def tree(root, *folders):
@@ -21,15 +24,15 @@ def tree(root, *folders):
 
 
 class TestTheShapeIsReadFromTheTree:
-    def test_the_public_template_ships_structure_beside_its_seeds(self, tmp_path):
-        assert "public golden path" in init.shape_of(tree(tmp_path, "docs/templates", "src", "assets"))
+    def test_the_golden_path_ships_structure_beside_its_seeds(self, tmp_path):
+        shape = init.shape_of(tree(tmp_path, "docs/templates", "src", "assets"))
+        assert shape.startswith(GOLDEN)
+        assert "src/, tests/, packages/, benchmarks/" in shape
 
-    def test_the_private_template_ships_its_seeds_and_no_structure(self, tmp_path):
+    def test_seeds_with_no_structure_are_described_in_general(self, tmp_path):
         shape = init.shape_of(tree(tmp_path, "docs/templates", "assets"))
-        assert "private golden path" in shape
-        assert "under docs/" in shape and ".github/docs" not in shape
+        assert GENERAL in shape and GOLDEN not in shape
 
-    def test_a_tree_with_no_seeds_is_named_by_neither(self, tmp_path):
+    def test_a_tree_with_no_seeds_is_described_in_general(self, tmp_path):
         shape = init.shape_of(tree(tmp_path, "src"))
-        assert "golden-path template" in shape
-        assert "public" not in shape and "private" not in shape
+        assert GENERAL in shape and GOLDEN not in shape

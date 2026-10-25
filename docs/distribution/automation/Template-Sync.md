@@ -200,7 +200,7 @@ not bookkeeping - its baseline moves, so the template's next edit to those lines
 > [!IMPORTANT]
 > **One baseline per repository would lose changes, and only across two runs.** A run with twenty
 > clean updates and one conflict gets merged; a single baseline then sits past the conflicted
-> change, and no later run ever sees it again. Replaying the real history of both templates showed
+> change, and no later run ever sees it again. Replaying a template's real history showed
 > it happening in most histories that met a conflict. Per-file baselines are the fix, and the test
 > suite carries a mutation test that fails if the design ever regresses.
 
@@ -316,8 +316,8 @@ TEMPLATE_SYNC_SEEDS=2000 python3 -m pytest tests/template-sync-properties.py -k 
 
 A repository that is not generated from its template, but keeps itself in step with one by contract,
 syncs through a **mapping** instead of a list: the action's `map:` input names a JSON file the
-contract was written out as. `tannergolden/repo` does this with `tannergolden/path`, through its 📐
-Template Parity contract. A mapping changes four things:
+contract was written out as. A template derived from another syncs this way, through its
+`.github/template-derive.json`, as the next section sets out. A mapping changes four things:
 
 - **Paths and text are the contract's.** A folder can be relocated, text the contract replaces -
   a footer - is replaced, and excluded paths never arrive. Nothing passes through init's identity
@@ -326,16 +326,16 @@ Template Parity contract. A mapping changes four things:
 - **The repository's own list is amended, not redrawn**: a file that arrives gains its line, and one
   that leaves loses it, so the list still names every file the repository ships.
 - **A file deleted here is drift, not a choice.** It is reported as needing you, and its baseline
-  is kept, until the contract records the difference. The issue is named after the mapping: **📐
-  Template Parity Sync is waiting on you**.
+  is kept, until the contract records the difference. The issue is named after the mapping, so a
+  mapping named 🔄 Template Sync opens **🔄 Template Sync is waiting on you**.
 
 ---
 
 ## 🧬 A Template Derived From Another
 
-The two golden path templates, the ones named `repo` and `path`, follow no template themselves. A
-repository generated from one of them can be made a template of its own - a vault, a kit, a service
-skeleton - and still take its golden path template's fixes. It runs both jobs: its `check`
+The golden path template, the one named `path`, follows no template itself. A repository generated
+from it can be made a template of its own - a vault, a kit, a service skeleton - and still take
+the golden path template's fixes. It runs both jobs: its `check`
 keeps its own list whole, since that list is the one its own generated repositories read, and a
 dispatch of **🔄 Template Sync** syncs it from the template it came from, as a mapped sync.
 
@@ -354,7 +354,7 @@ dispatch of **🔄 Template Sync** syncs it from the template it came from, as a
   template's, which would fold this template's own lines under Your rules; the sync job stops
   instead and says what to write.
 - **The rest of its workflows run as they do anywhere else.** The stubs that are silent in a
-  template are silent only in the two golden path templates, so a derived template keeps its
+  template are silent only in the golden path template, so a derived template keeps its
   checks, its governance and its maintenance. Initialisation and `release.yml` stay silent in every
   template: a template never initialises itself, and it releases with **🏷️ Cut Release**, which its
   own generated repositories follow.
@@ -374,9 +374,9 @@ dispatch of **🔄 Template Sync** syncs it from the template it came from, as a
   that is switched on or names anything but one file. It changes nothing under
   `.github/workflows/`, because GitHub refuses the workflow token any push that does: a workflow
   listed there stays, named for each owner to delete, no identity in that folder is rewritten, and
-  its log is never redrawn. Keep such a workflow inert outside the template, as 📐 Template
-  Parity's guard does: it runs only in a template named `repo` or `path`, since `is_template` is
-  true in a derived template too. A stub any repository might adopt -
+  its log is never redrawn. Keep such a workflow inert outside the template with a guard that
+  names it, such as `github.event.repository.is_template && github.event.repository.name == 'path'`,
+  since `is_template` is true in a derived template too. A stub any repository might adopt -
   🏷️ Cut Release, which a kit consumed by tag uses too - belongs with the owner's files instead,
   where it arrives and stays.
 - **Release with 🏷️ Cut Release.** Generated repositories follow the moving major, so a merge to the

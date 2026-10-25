@@ -54,7 +54,7 @@ We adhere to a standardized structure so that any developer - or agent - can nav
 `README.md` that says what belongs in it, so every repository's documents read the same way.
 
 Every folder lists its files in a `README.md`, whose log the indexer draws. These standards add
-three root folders the templates do not need: `config/` for tool configuration read **by** a tool
+three root folders the golden path template does not need: `config/` for tool configuration read **by** a tool
 during a run, `data/` for the rulesets, labels and settings written **to** a repository, and,
 until v2, `actions/`, whose forwarders keep each action's old address working
 ([ADR-0001](../adrs/ADR-0001-Actions-And-Scripts-Live-In-Github.md)).
