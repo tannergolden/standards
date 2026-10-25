@@ -80,10 +80,13 @@ Allowing it there is safe because the file never checks out pull-request code: i
 write through the API, and the one checkout behind it takes the base branch. **An event rule is an
 allowlist**: the workflow it targets runs on the events it names and on no other, so the list
 names every event the stub uses, and a trigger added to the stub has to be added to the policy too.
-`workflow_call` is the one extra: the stub declares no such trigger, so nothing can call it, but the
+`workflow_call` is one extra: the stub declares no such trigger, so nothing can call it, but the
 shared workflow it calls for triage sits at the same path in the standards, and GitHub does not say
 which file it checks a called workflow's rule against. Allowing the event keeps that call running
-either way.
+either way. `pull_request` and `merge_group` are the others. The golden path template's stub no
+longer uses them, since its required `pr` check moved to `semantic-pr.yml`, but a repository that
+has not taken that change still runs the check from `governance.yml`, and dropping either event
+would block it there.
 
 The run lists the repository's policies, finds this one by its name and reads it, then creates it
 when it is absent, updates it in place when its enforcement, its workflow paths or its events have

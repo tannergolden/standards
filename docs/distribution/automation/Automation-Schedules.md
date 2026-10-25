@@ -50,19 +50,19 @@ with nothing to sync back here.
 
 Everything else is **event driven** and needs no schedule:
 
-| Trigger                                                     | Workflows                                                            |
-| :---------------------------------------------------------- | :------------------------------------------------------------------- |
-| Push and pull request                                       | `checks.yml`, `auto-format.yml`, `verify-stubs.yml`                  |
-| Push to the default branch                                  | `auto-index.yml`, which proposes its result as a pull request        |
-| Pull request, issue, comment                                | `governance.yml`; `dependabot-automerge.yml` on PRs only             |
-| A merge group, in a merge queue                             | `checks.yml` and `governance.yml`'s `pr` job: the required checks    |
-| A watched workflow finishing on the default branch          | `ci-failure-alert.yml`                                               |
-| Release published                                           | `release.yml` - the `publish` job                                    |
-| Push to a preview branch                                    | `preview-deploy.yml`                                                 |
-| Manual dispatch only                                        | `apply-standards.yml`; the `package`, `prune`, `prune-drafts` tasks  |
-| Manual dispatch only, by choice                             | `template-sync.yml` - the `sync` job, anywhere but `repo` and `path` |
-| Repository generated                                        | `lifecycle.yml` - the `init` job, once                               |
-| Pull request, and push to the default branch, in a template | `template-sync.yml` - the `check` job on the template's own list     |
+| Trigger                                                     | Workflows                                                                      |
+| :---------------------------------------------------------- | :----------------------------------------------------------------------------- |
+| Push and pull request                                       | `checks.yml`, `auto-format.yml`, `verify-stubs.yml`                            |
+| Push to the default branch                                  | `auto-index.yml`, which proposes its result as a pull request                  |
+| Pull request, issue, comment                                | `semantic-pr.yml` and `governance.yml`; `dependabot-automerge.yml` on PRs only |
+| A merge group, in a merge queue                             | `checks.yml` and `semantic-pr.yml`: the required checks                        |
+| A watched workflow finishing on the default branch          | `ci-failure-alert.yml`                                                         |
+| Release published                                           | `release.yml` - the `publish` job                                              |
+| Push to a preview branch                                    | `preview-deploy.yml`                                                           |
+| Manual dispatch only                                        | `apply-standards.yml`; the `package`, `prune`, `prune-drafts` tasks            |
+| Manual dispatch only, by choice                             | `template-sync.yml` - the `sync` job, anywhere but `repo` and `path`           |
+| Repository generated                                        | `lifecycle.yml` - the `init` job, once                                         |
+| Pull request, and push to the default branch, in a template | `template-sync.yml` - the `check` job on the template's own list               |
 
 > [!NOTE]
 > **Template sync is dispatch-only on purpose, too.** Whether a repository takes its template's
