@@ -72,6 +72,7 @@ _Every script, every shell block._
 | [`make-target-probes.py`](make-target-probes.py)                                   | Every `make` target probe finds a target that is there, under the shell Actions runs it with. |
 | [`merge-queue.py`](merge-queue.py)                                                 | Every required check passes on a merge group, where there is no pull request.                 |
 | [`npm-publish-probe.py`](npm-publish-probe.py)                                     | The already-published probe must read the registry as the publisher.                          |
+| [`private-pull-request-scan.py`](private-pull-request-scan.py)                     | A private repository's pull request is scanned without the pull request API.                  |
 | [`prune-deployment-scope.py`](prune-deployment-scope.py)                           | An empty environment name must not widen a destructive prune.                                 |
 | [`prune-run-defaults.py`](prune-run-defaults.py)                                   | Two wrappers around one destructive action must not disagree on safety.                       |
 | [`README.md`](README.md)                                                           | This file.                                                                                    |

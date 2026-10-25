@@ -123,8 +123,10 @@ jobs:
             echo "scan=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Everywhere but a private repository's pull request, which the next
+      # step scans instead.
       - name: '🔍 Run Gitleaks'
-        if: ${{ steps.preflight.outputs.scan == 'true' }}
+        if: ${{ steps.preflight.outputs.scan == 'true' && !(github.event_name == 'pull_request' && github.event.repository.private) }}
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -133,6 +135,38 @@ jobs:
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
           GITLEAKS_ENABLE_SUMMARY: true
+
+      # A PRIVATE REPOSITORY'S PULL REQUEST IS SCANNED HERE, NOT BY THE
+      # ACTION. On `pull_request` the action first lists the pull request's
+      # commits through the API, and a private repository answers that only
+      # to a token holding `pull-requests: read`. Under the ceiling above the
+      # call was refused with a 403 before anything was scanned, so this
+      # required check failed every pull request in every private
+      # repository. Asking for the scope would instead fail, at startup,
+      # every stub that does not grant it, so the same gitleaks scans the
+      # same commits from the full-history checkout, which needs nothing
+      # beyond `contents: read`.
+      #
+      # The version is the one the pinned action installs: move the two
+      # together. The tarball is pinned by the SHA-256 its release publishes,
+      # so a scanner that gates every merge never runs unverified.
+      - name: '🔍 Run Gitleaks (private pull request)'
+        if: ${{ steps.preflight.outputs.scan == 'true' && github.event_name == 'pull_request' && github.event.repository.private }}
+        env:
+          GITLEAKS_VERSION: '8.24.3'
+          GITLEAKS_SHA256: '9991e0b2903da4c8f6122b5c3186448b927a5da4deef1fe45271c3793f4ee29c'
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          TARBALL="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL --retry 3 -o "${RUNNER_TEMP}/${TARBALL}" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${TARBALL}"
+          echo "${GITLEAKS_SHA256}  ${RUNNER_TEMP}/${TARBALL}" | sha256sum --check --strict
+          tar -xzf "${RUNNER_TEMP}/${TARBALL}" -C "${RUNNER_TEMP}" gitleaks
+          # The pull request's own commits, as the action takes them: first
+          # parents only, merges left out, and exit code 2 on a finding.
+          "${RUNNER_TEMP}/gitleaks" git --redact --verbose --exit-code 2 \
+            --log-opts="--no-merges --first-parent ${BASE_SHA}..${HEAD_SHA}" .
 
       - name: '📝 Report Failure'
         if: ${{ failure() }}
