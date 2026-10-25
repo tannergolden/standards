@@ -60,7 +60,7 @@ Everything else is **event driven** and needs no schedule:
 | Release published                                           | `release.yml` - the `publish` job                                    |
 | Push to a preview branch                                    | `preview-deploy.yml`                                                 |
 | Manual dispatch only                                        | `apply-standards.yml`; the `package`, `prune`, `prune-drafts` tasks  |
-| Manual dispatch only, by choice                             | `template-sync.yml` - the `sync` job, anywhere but `repo` and `path` |
+| Manual dispatch only, by choice                             | `template-sync.yml` - the `sync` job, in every repository but `path` |
 | Repository generated                                        | `lifecycle.yml` - the `init` job, once                               |
 | Pull request, and push to the default branch, in a template | `template-sync.yml` - the `check` job on the template's own list     |
 

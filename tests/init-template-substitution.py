@@ -7,11 +7,10 @@ owner's. One of its rules replaces the `OWNER/REPOSITORY` placeholder that
 the issue chooser's contact links carry, because GitHub substitutes nothing
 in a contact link and there is no expression syntax there to do it with.
 
-NOTHING TESTED THAT RULE, and both templates went on to describe it
-incorrectly for months - the public one telling new owners the chooser link
-was "left visibly wrong on purpose" and something they must fix by hand,
-the private one claiming an inherited chooser gets rewritten locally. Two
-documents drifted in opposite directions away from one untested line.
+NOTHING TESTED THAT RULE, and the template went on to describe it
+incorrectly for months, telling new owners the chooser link was "left
+visibly wrong on purpose" and something they must fix by hand: a document
+that drifted away from one untested line.
 
 The rules also have to NOT fire on a repository address. `tannergolden/standards`,
 `tannergolden/intelligence` and `tannergolden/markdown` are the shared
@@ -20,10 +19,10 @@ everyone. A blanket handle replace would rewrite them and point every
 workflow and every link to the kit at a repository that does not exist.
 
 FOR A LONG TIME ONLY A LIST OF NAMES WAS SPARED. The template's own "third
-route" remote, and the private template's links to its public sibling and to
-the account's `.github`, were still rewritten to the new owner's account,
-where none of them exist. The lines below are copied from the templates as
-they ship, so a rule that breaks one of them fails here.
+route" remote, and links to the template itself and to the account's
+`.github`, were still rewritten to the new owner's account, where none of
+them exist. The lines below are copied from what a template ships, so a
+rule that breaks one of them fails here.
 """
 
 from __future__ import annotations
@@ -51,7 +50,7 @@ def rewrite(text: str, *, display: str = "New Owner", year: int = 2031) -> str:
 
 
 class TestTheContactLinkPlaceholder:
-    """The rule with no gate, and the one both templates documented wrongly."""
+    """The rule with no gate, and the one the template documented wrongly."""
 
     def test_the_placeholder_becomes_the_new_repository(self):
         assert rewrite("url: 'https://github.com/OWNER/REPOSITORY/discussions'") == (
@@ -59,7 +58,7 @@ class TestTheContactLinkPlaceholder:
         )
 
     def test_a_contact_link_in_a_chooser_is_rewritten_in_place(self):
-        """The shape the templates actually ship, rather than a bare token.
+        """The shape the template actually ships, rather than a bare token.
 
         Deliberately NOT read from a sibling checkout of the template: a
         test that skips whenever the other repository is absent would skip
@@ -98,7 +97,7 @@ class TestTheSharedStandardsPathSurvives:
 
 
 class TestEverySharedRepositorySurvives:
-    """The Markdown Kit is shared too: the templates' assets/ READMEs link it,
+    """The Markdown Kit is shared too: the template's assets/ READMEs link it,
     and a rewritten link would send a new owner to a kit that does not exist."""
 
     def test_a_link_to_each_shared_repository_is_left_alone(self):
@@ -109,22 +108,18 @@ class TestEverySharedRepositorySurvives:
 
 class TestEveryRepositoryAddressSurvives:
     """A repository on the template owner's account exists there and nowhere
-    else, whichever repository it is. Each line here is one the templates ship
+    else, whichever repository it is. Each line here is one a template ships
     and one the old rule broke."""
 
     @pytest.mark.parametrize(
         "line",
         [
-            # The agent instruction publisher, linked from both READMEs.
-            "| **[`tannergolden/intelligence`](https://github.com/tannergolden/intelligence)** "
-            "| one workflow stub | a release moving a tag, with no pull request |",
+            # The agent instruction publisher, linked from the README.
+            "[`tannergolden/intelligence`](https://github.com/tannergolden/intelligence), and",
             # The "third route": a remote pointing back at the template itself.
             "> git remote add template https://github.com/tannergolden/path",
-            "> git remote add template https://github.com/tannergolden/repo",
-            # The private template, comparing itself with its public sibling.
-            "|                    | [`tannergolden/path`](https://github.com/tannergolden/path) "
-            "(public) | This one (private)                               |",
-            "baseline: tannergolden/path",
+            # The template naming itself, bare, in its own list.
+            "# Every path tannergolden/path ships, and whether 🔄 Template Sync, when you run",
             # The account's health files: an address, and kept as one.
             "Inherited from [`tannergolden/.github`](https://github.com/tannergolden/.github)",
         ],

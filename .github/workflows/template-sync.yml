@@ -18,14 +18,13 @@
 #   sync   in a generated repository: fetch the template at the major it
 #          follows, merge, and propose the result as a pull request.
 #
-# ⚠️ A TEMPLATE DERIVED FROM ANOTHER RUNS BOTH. A repository generated from a
-# golden path template - one of the two named `repo` and `path` - can be made
-# a template of its own and still follow the one it came from. It checks its
-# list like any template, and a dispatch syncs it too, through the mapping in
-# its `.github/template-derive.json`: a mapped sync amends a list rather than
+# ⚠️ A TEMPLATE DERIVED FROM ANOTHER RUNS BOTH. A repository generated from
+# the golden path template, `path`, can be made a template of its own and
+# still follow the one it came from. It checks its list like any template,
+# and a dispatch syncs it too, through the mapping in its
+# `.github/template-derive.json`: a mapped sync amends a list rather than
 # redrawing it, so the list stays the one its own generated repositories
-# read. The two golden path templates sync from nothing here; the private one
-# follows the public one through 📐 Template Parity instead.
+# read. The golden path template itself syncs from nothing here.
 #
 # ⚠️ A SYNC RUNS ONLY WHEN THE OWNER ASKS FOR ONE. The stub gives the sync job
 # `workflow_dispatch` and nothing else - no schedule - so a repository whose
@@ -137,9 +136,9 @@ jobs:
     name: '🔄 Sync With The Template'
     # A generated repository, on the dispatch its stub runs for. A template
     # derived from another, on a dispatch too: its stub runs on every push
-    # for the check above, and a push must never sync it. Never one of the
-    # two golden path templates, which follow nothing here.
-    if: ${{ !github.event.repository.is_template || (github.event_name == 'workflow_dispatch' && !contains(fromJSON('["repo", "path"]'), github.event.repository.name)) }}
+    # for the check above, and a push must never sync it. Never the golden
+    # path template, which follows nothing here.
+    if: ${{ !github.event.repository.is_template || (github.event_name == 'workflow_dispatch' && github.event.repository.name != 'path') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

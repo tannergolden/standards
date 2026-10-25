@@ -48,7 +48,7 @@ jobs:
 
 That stub has to live in your repository, because **GitHub only runs a workflow that is in the
 repository being pushed to**. It is the one file ever copied, and it arrives already written when
-you generate from the public template, [`tannergolden/path`](https://github.com/tannergolden/path),
+you generate from the golden path template, [`tannergolden/path`](https://github.com/tannergolden/path),
 which ships seventeen workflow files: fourteen stubs grouped and pinned to `@v1`, one more for
 [🔁 Intelligence Sync](https://github.com/tannergolden/intelligence) pinned to its own `@v0`, and two
 complete workflows of the template's own, `verify-stubs.yml` and `scorecard.yml`. After that,

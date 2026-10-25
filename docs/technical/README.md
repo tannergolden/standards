@@ -22,7 +22,7 @@ _One area to a folder._
 
 ## 💡 What This Folder Is For
 
-The specifications a repository on these standards builds to, one area to a folder. The interface comes first: how every document looks and reads. Each repository's own technical pages live in its own `docs/technical/`, which the templates seed beside the fill-in standards, and this repository's are in [`internals/`](internals/README.md): how the automation it publishes is built and tested.
+The specifications a repository on these standards builds to, one area to a folder. The interface comes first: how every document looks and reads. Each repository's own technical pages live in its own `docs/technical/`, which the golden path template seeds beside the fill-in standards, and this repository's are in [`internals/`](internals/README.md): how the automation it publishes is built and tested.
 
 ---
 

@@ -9,7 +9,7 @@ survives the template reshaping its list, nothing a sync starts is ever
 abandoned, and a sync never goes backwards.
 
 The last three classes come from the first repository generated for real,
-tannergolden/markdown, played against the public template's next releases:
+tannergolden/markdown, played against the golden path template's next releases:
 a machined index conflicted over rows nobody wrote, two additions to the end
 of .gitignore conflicted, and a release that only forgot switched-off files
 proposed a pull request that changed nothing but the lock. The one after them

@@ -32,8 +32,8 @@
 # refuses init's token any change under .github/workflows/; no sync touches
 # it either while its line is off.
 #
-# ⚠️ THE BASELINE IS PER FILE, AND THAT IS NOT A DETAIL. Replaying the real
-# history of both templates showed that one baseline for the whole repository
+# ⚠️ THE BASELINE IS PER FILE, AND THAT IS NOT A DETAIL. Replaying a
+# template's real history showed that one baseline for the whole repository
 # loses changes silently: a sync pull request with twenty clean updates and
 # one conflict gets merged, the baseline moves past the conflict, and no
 # later sync ever sees that change again. A file that did not merge keeps the
@@ -766,13 +766,14 @@ def rewriter(identity: Identity | None, template: str) -> Callable[[str, bytes],
 # A mapping: for a repository defined as a delta of its template
 # =============================================================================
 #
-# Some repositories are not generated from a template but DEFINED against
-# one: tannergolden/repo is tannergolden/path with four permitted
-# differences, written down as data in its own contract. A mapping is that
-# contract in the form this script reads - which template paths never come
-# here, which folders sit somewhere else, and which text differs inside them
-# - and with one, the same per-file merge keeps such a repository current
-# with its template while every difference it is defined by survives.
+# Some repositories follow a template without being redrawn from it,
+# because they are DEFINED against it: a template derived from another is
+# the one it came from with the differences that make it its own, written
+# down as data in its own contract. A mapping is that contract in the form
+# this script reads - which template paths never come here, which folders
+# sit somewhere else, and which text differs inside them - and with one,
+# the same per-file merge keeps such a repository current with its template
+# while every difference it is defined by survives.
 #
 # ⚠️ IT IS NOT A LIST, AND THERE IS NO OWNER TO ASK. The contract already
 # says what may differ, so everything it does not leave out is synced. A
@@ -1156,8 +1157,8 @@ def state_of(side: Side) -> FileState:
 # 🗂️ Machined Indexes from the files beside it, and a redraw re-pads every
 # row of a table when one longer entry arrives - so an owner who adds a single
 # file to a folder has changed every row of its log. Played against the first
-# real repository generated from the public template, the template's next new
-# stub conflicted in the workflows README for no other reason.
+# real repository generated from the golden path template, the template's
+# next new stub conflicted in the workflows README for no other reason.
 #
 # So a block's rows are taken out of all three sides before they are compared
 # or merged, the file is merged as the prose and markers it is, and each block

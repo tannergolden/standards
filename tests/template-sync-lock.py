@@ -68,7 +68,7 @@ class TestTheNoteForPeople:
         assert "never edit it by hand" in doc["//"] and "🔄 Template Sync" in doc["//"]
 
     def test_a_mapped_lock_names_its_own_writer(self):
-        assert "📐 Template Parity Sync" in sync.dump_lock(load(lock()), "📐 Template Parity Sync")
+        assert "🧬 Derived Template Sync" in sync.dump_lock(load(lock()), "🧬 Derived Template Sync")
 
     def test_the_note_is_read_past_whatever_it_says(self):
         assert load(lock(**{"//": "anything at all"})).template == "tannergolden/path"

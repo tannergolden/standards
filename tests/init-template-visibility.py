@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """A public repository never keeps the issue form that would publish a vulnerability.
 
-The public template ships `.github/ISSUE_TEMPLATE/Vulnerability-Report.yaml`,
+The golden path template ships `.github/ISSUE_TEMPLATE/Vulnerability-Report.yaml`,
 an issue form for security reports, which is the intake a private repository
 needs: an issue there is as private as the repository. On a public
 repository every issue is public, so a vulnerability filed through that form

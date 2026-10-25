@@ -3,22 +3,22 @@
 """What only the template needs never reaches a generated repository, bar a workflow.
 
 A template names each file that serves only itself, one to a line, under
-`# --- Only ever in the template` in `.github/template-sync`: its sentinel, and
-in the private template the parity contract with everything enforcing it.
+`# --- Only ever in the template` in `.github/template-sync`: its sentinel,
+and any contract it is held to with everything enforcing it.
 Initialisation deletes every one of them, records no baseline for any, and
 redraws every folder log from what is left, so a new owner never finds
 scaffolding to clear away by hand.
 
 Every one but a workflow file. Init pushes with the workflow token, and
 GitHub refuses any push from it that changes a file under .github/workflows/:
-deleting the parity workflow cost a repository generated from the private
-template its whole initialisation. So that one stays, named for its
+deleting a template-only workflow once cost a generated repository its whole
+initialisation. So that one stays, named for its
 owner to delete, and nothing else in its folder changes either - not its
 identity, not its folder log.
 
 A stub any repository might adopt is not among them. 🏷️ Cut Release
 publishes the template's releases, but the Markdown Kit - generated from the
-public template - cuts its own the same way, so it stays wherever the list
+golden path template - cuts its own the same way, so it stays wherever the list
 files it.
 
 These play that out on real repositories: init's real `main()` with only the
@@ -40,7 +40,7 @@ sync = load_script(".github/scripts/template-sync.py")
 ONLY = "# --- Only ever in the template ----------------------------------------------"
 WORKFLOWS = ".github/workflows/"
 
-# The fixture template, grown into the shape the private one has: a stub
+# The fixture template, grown into the shape a real one has: a stub
 # every repository keeps, files only the template needs - one of them a
 # workflow - and three folder logs that name them.
 LIST = (
@@ -49,12 +49,12 @@ LIST = (
              "/.github/scripts/README.md\n/.github/workflows/README.md\n/.github/workflows/checks.yml\n")
     .replace("#/README.md\n#/LICENSE\n", "#/README.md\n#/LICENSE\n#/.github/workflows/cut-release.yml\n")
     .replace("#/.github/TEMPLATE_INIT\n",
-             "#/.github/TEMPLATE_INIT\n#/.github/scripts/parity.py\n#/.github/template-parity.yml\n"
-             "#/.github/workflows/template-parity.yml\n")
+             "#/.github/TEMPLATE_INIT\n#/.github/scripts/template-only.py\n#/.github/template-only.yml\n"
+             "#/.github/workflows/template-only.yml\n")
 )
 # What init deletes, and the workflow it leaves for the owner.
-DELETED = [".github/scripts/parity.py", ".github/template-parity.yml"]
-LEFT = [".github/workflows/template-parity.yml"]
+DELETED = [".github/scripts/template-only.py", ".github/template-only.yml"]
+LEFT = [".github/workflows/template-only.yml"]
 ONLY_HERE = DELETED + LEFT
 FILES = {
     ".github/template-sync": LIST,
@@ -65,15 +65,15 @@ FILES = {
         "<!-- AUTO-INDEX:BEGIN dir=. style=log -->\n<!-- AUTO-INDEX:END -->\n\n"
         "Built with ❤️ by [@tannergolden](https://github.com/tannergolden).\n"
     ),
-    ".github/scripts/parity.py": "# Holds the template to its contract.\nprint('parity')\n",
+    ".github/scripts/template-only.py": "# Serves the template alone.\nprint('template only')\n",
     ".github/workflows/README.md": (
         "# Workflows\n\n"
         "<!-- AUTO-INDEX:BEGIN dir=. style=log -->\n<!-- AUTO-INDEX:END -->\n\n"
         "Built with ❤️ by [@tannergolden](https://github.com/tannergolden).\n"
     ),
     ".github/workflows/cut-release.yml": "# Publishes this repository's releases.\nname: cut release\n",
-    ".github/workflows/template-parity.yml": "# Holds the template to its contract.\nname: parity\n",
-    ".github/template-parity.yml": "# The contract, as data.\nbaseline: tannergolden/path\n",
+    ".github/workflows/template-only.yml": "# Serves the template alone.\nname: template only\n",
+    ".github/template-only.yml": "# Data only the template reads.\nkeep: true\n",
 }
 LOGS = ["README.md", ".github/scripts/README.md", ".github/workflows/README.md"]
 
@@ -98,7 +98,7 @@ def initialise(world, monkeypatch, tmp_path) -> tuple[str, str]:
     The push is refused as GitHub refuses it: init pushes with the workflow
     token, and a push that changes anything under .github/workflows/ is
     turned away whatever the job's permissions - which is how a repository
-    generated from the private template stayed uninitialised.
+    generated from a template once stayed uninitialised.
 
     Returns the commit message it wrote and the step summary it left.
     """
@@ -152,7 +152,7 @@ class TestReadingTheHeading:
     def test_a_pattern_or_a_folder_under_the_heading_takes_nothing(self, line):
         """`#/.github` reads as the folder and everything in it, so it is no safer than `#/**`."""
         text = f"# --- Kept current\n/docs/guide.md\n\n{ONLY}\n{line}\n\n# --- Your rules ---\n"
-        assert sync.template_only(text, [".github/template-parity.yml", ".github/workflows/x.yml"]) == set()
+        assert sync.template_only(text, [".github/template-only.yml", ".github/workflows/x.yml"]) == set()
 
     def test_a_later_line_naming_the_same_file_takes_it_back(self):
         text = f"{ONLY}\n#/notes.md\n\n# --- Yours\n#/notes.md\n\n# --- Your rules ---\n"
@@ -164,8 +164,8 @@ class TestReadingTheHeading:
         assert sync.template_only(text, ["docs/guide.md"]) == set()
 
     def test_another_heading_is_only_a_heading(self):
-        text = "# --- Template only\n#/.github/template-parity.yml\n\n# --- Your rules ---\n"
-        assert sync.template_only(text, [".github/template-parity.yml"]) == set()
+        text = "# --- Template only\n#/.github/template-only.yml\n\n# --- Your rules ---\n"
+        assert sync.template_only(text, [".github/template-only.yml"]) == set()
 
     @pytest.mark.parametrize("text", [None, ""])
     def test_no_list_names_nothing(self, text):
@@ -259,9 +259,9 @@ class TestInitDeletesWhatOnlyTheTemplateNeeds:
 class TestNothingUnderTheWorkflowsChanges:
     """GitHub refuses the workflow token every change there, so init makes none.
 
-    A repository generated from the private template failed exactly here:
-    init deleted the parity workflow and redrew the log beside it, and the
-    push of the whole initialisation was refused.
+    A generated repository failed exactly here: init deleted a template-only
+    workflow and redrew the log beside it, and the push of the whole
+    initialisation was refused.
     """
 
     def test_init_pushes_no_change_under_github_workflows(self, shaped, monkeypatch, tmp_path):
@@ -297,14 +297,14 @@ class TestEveryFolderLogIsRedrawn:
         shaped.generate(init=False)
         initialise(shaped, monkeypatch, tmp_path)
         scripts = shaped.text(".github/scripts/README.md")
-        assert "[`parity.py`]" not in scripts
+        assert "[`template-only.py`]" not in scripts
         root = shaped.text("README.md")
-        for gone in ("[`TEMPLATE_INIT`]", "[`template-parity.yml`]"):
+        for gone in ("[`TEMPLATE_INIT`]", "[`template-only.yml`]"):
             assert gone not in root
         assert "[`template-sync.lock`](.github/template-sync.lock)" in root
         # The workflow left for its owner is still there, so its log still names it.
         workflows = shaped.text(".github/workflows/README.md")
-        assert "[`template-parity.yml`]" in workflows
+        assert "[`template-only.yml`]" in workflows
         assert "[`cut-release.yml`]" in workflows and "[`checks.yml`]" in workflows
 
     def test_the_logs_are_what_machined_indexes_would_draw(self, shaped, monkeypatch, tmp_path):
@@ -347,16 +347,16 @@ class TestTheSyncsThatFollow:
         result = shaped.run_sync()
         assert shaped.outcomes(result)[".github/scripts/README.md"] == "updated"
         text = shaped.text(".github/scripts/README.md")
-        assert "Every tool." in text and "[`parity.py`]" not in text
+        assert "Every tool." in text and "[`template-only.py`]" not in text
 
     def test_taking_the_hash_off_one_brings_it_back_as_new(self, shaped):
         shaped.generate()
         listed = shaped.text(".github/template-sync").replace(
-            "#/.github/template-parity.yml\n", "/.github/template-parity.yml\n")
+            "#/.github/template-only.yml\n", "/.github/template-only.yml\n")
         shaped.owner({".github/template-sync": listed})
         result = shaped.run_sync()
-        assert shaped.outcomes(result)[".github/template-parity.yml"] == "added"
-        assert shaped.read(".github/template-parity.yml") is not None
+        assert shaped.outcomes(result)[".github/template-only.yml"] == "added"
+        assert shaped.read(".github/template-only.yml") is not None
 
 
 class TestALockRecoveredLater:
@@ -391,15 +391,15 @@ class TestTheTemplatesOwnCheck:
         assert shaped.sync.check(shaped.template) == []
 
     def test_a_line_switched_on_under_the_heading_fails(self, shaped):
-        problems = self.check_with(shaped, LIST.replace("#/.github/template-parity.yml", "/.github/template-parity.yml"))
-        assert any("switched on under" in p and "#/.github/template-parity.yml" in p for p in problems), problems
+        problems = self.check_with(shaped, LIST.replace("#/.github/template-only.yml", "/.github/template-only.yml"))
+        assert any("switched on under" in p and "#/.github/template-only.yml" in p for p in problems), problems
 
     def test_a_pattern_under_the_heading_fails(self, shaped):
         problems = self.check_with(shaped, LIST.replace(
-            "#/.github/template-parity.yml\n#/.github/workflows/template-parity.yml\n",
-            "#/.github/*parity.yml\n#/.github/workflows/template-parity.yml\n"))
+            "#/.github/template-only.yml\n#/.github/workflows/template-only.yml\n",
+            "#/.github/*only.yml\n#/.github/workflows/template-only.yml\n"))
         assert any("is a pattern under" in p for p in problems), problems
 
     def test_a_folder_under_the_heading_fails(self, shaped):
-        problems = self.check_with(shaped, LIST.replace("#/.github/template-parity.yml\n", "#/.github\n"))
+        problems = self.check_with(shaped, LIST.replace("#/.github/template-only.yml\n", "#/.github\n"))
         assert any("`#/.github` names a file the template does not ship" in p for p in problems), problems
