@@ -417,10 +417,10 @@ def shape_of(root: pathlib.Path) -> str:
     if (root / "src").is_dir():
         return (
             "This is the public golden path. A working structure arrived with\n"
-            "it - src/, tests/, packages/, benchmarks/, assets/, docs/ - along\n"
-            "with the community health files, while every engineering standard\n"
-            "is followed by link to the shared standards repository rather than\n"
-            "by copy.\n"
+            "it - src/, tests/, packages/, benchmarks/, examples/, assets/,\n"
+            "docs/ - along with the community health files, while every\n"
+            "engineering standard is followed by link to the shared standards\n"
+            "repository rather than by copy.\n"
         )
     return (
         "This is the private golden path. A standards-wired foundation with\n"
