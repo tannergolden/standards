@@ -31,7 +31,7 @@ A clean repository is a fast repository. We prioritize organization and automati
 
 ## 🏗️ Standard Repository Topology
 
-We adhere to a standardized structure so that any developer - or agent - can navigate the project within seconds of cloning. This is the shipped layout; add `src/`, `tests/`, `packages/`, and `benchmarks/` as your project grows (all four are pre-reserved in the template's layout):
+We adhere to a standardized structure so that any developer - or agent - can navigate the project within seconds of cloning. This is the shipped layout; add `src/`, `tests/`, `packages/`, `benchmarks/`, and `examples/` as your project grows (all five are pre-reserved in the template's layout):
 
 ```txt
 / (repo root)
