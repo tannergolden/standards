@@ -73,6 +73,7 @@ MFA = "MFA"
 mojibake = "mojibake"
 MTBF = "MTBF"
 MTTR = "MTTR"
+Nd = "Nd" # chess notation: a knight's move to the d-file, as in Nd2
 Netlify = "Netlify"
 npm = "npm"
 nvm = "nvm"
