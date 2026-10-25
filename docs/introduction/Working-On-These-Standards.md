@@ -29,9 +29,11 @@ pinned to it runs the change on its next workflow run, with no pull request of i
 [Releasing These Standards](../distribution/Releasing-These-Standards.md) covers that step.
 
 The proof therefore has to happen here, before the release. **🚦 Self Checks**
-([`self-checks.yml`](../../.github/workflows/self-checks.yml)) runs on every push and pull request,
-and on Mondays at 04:00 UTC. It calls what it tests by local path, `./.github/actions/harden` and
-`./.github/workflows/codeql.yml`, so it tests the tree under review rather than the last release.
+([`self-checks.yml`](../../.github/workflows/self-checks.yml)) runs on every pull request, every push
+to `Development`, and on Mondays at 04:00 UTC. Any other branch is checked through its pull request,
+so a commit does not run the suite once for every branch it is pushed to. It calls what it tests by
+local path, `./.github/actions/harden` and `./.github/workflows/codeql.yml`, so it tests the tree
+under review rather than the last release.
 How each layer resolves is in [Automation Architecture](../technical/internals/Automation-Architecture.md).
 
 ---

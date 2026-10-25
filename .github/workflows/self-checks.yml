@@ -35,7 +35,11 @@
 name: '🚦 Self Checks'
 
 on:
+  # Development alone. Every other branch is checked through its pull
+  # request, so a commit runs the suite there and once more where it lands,
+  # rather than once for every branch it is pushed to.
   push:
+    branches: [Development]
   pull_request:
   schedule:
     - cron: '0 4 * * 1' # weekly, so a moving upstream is caught on untouched code

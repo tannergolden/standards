@@ -34,8 +34,9 @@ Our documentation is more than just text; it is a **visual engine** designed for
 
 This repository has no configurable style profile and no `docs-style` checker.
 What it does have is `self-checks.yml`, which runs `make lint-docs` on every
-push and once a week, so the column below says where each rule is actually
-checked, and admits where the answer is nowhere:
+pull request, every push to `Development` and once a week, so the column below
+says where each rule is actually checked, and admits where the answer is
+nowhere:
 
 | Rule                              | Checked by                                                                         |
 | :-------------------------------- | :--------------------------------------------------------------------------------- |
