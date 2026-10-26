@@ -95,3 +95,51 @@ class TestTheCandidateStep:
         )
         assert result.returncode == 0
         assert "No check-command given" in result.output
+
+
+CROSS = "🔗 Verify Cross-Repository References Resolve"
+
+
+class TestTheCrossRepositoryReferences:
+    """A release cannot ship a call to another repository's action that is not there yet."""
+
+    @staticmethod
+    def tree(tmp_path, *calls: str):
+        workflows = tmp_path / ".github" / "workflows"
+        workflows.mkdir(parents=True)
+        (tmp_path / ".github" / "actions").mkdir()
+        (tmp_path / "actions").mkdir()
+        (workflows / "ci.yml").write_text("".join(f"      - uses: {call}\n" for call in calls), encoding="utf-8")
+
+    def run(self, run_shell, fake_gh, tmp_path):
+        return run_shell(workflow_step_shell(RELEASE, "release", CROSS), cwd=tmp_path, env=fake_gh.env())
+
+    def test_it_runs_only_for_these_standards(self):
+        step = next(s for s in load_yaml(RELEASE)["jobs"]["release"]["steps"] if s.get("name") == CROSS)
+        assert "github.repository == 'tannergolden/standards'" in step["if"]
+
+    def test_an_action_that_exists_at_its_ref_passes(self, run_shell, fake_gh, tmp_path):
+        self.tree(tmp_path, "tannergolden/environment/.github/actions/toolchain@v1")
+        fake_gh.route("repos/tannergolden/environment/contents/.github/actions/toolchain/action.yml?ref=v1", "{}")
+        result = self.run(run_shell, fake_gh, tmp_path)
+        assert result.returncode == 0, result
+
+    def test_an_action_missing_at_its_ref_refuses_the_release(self, run_shell, fake_gh, tmp_path):
+        self.tree(tmp_path, "tannergolden/environment/.github/actions/toolchain@v1")
+        fake_gh.route("repos/tannergolden/environment/contents/", "", code=1)
+        result = self.run(run_shell, fake_gh, tmp_path)
+        assert result.returncode != 0
+        assert "::error" in result.output and "tannergolden/environment/.github/actions/toolchain@v1" in result.output
+
+    def test_a_workflow_is_looked_up_as_the_file_it_names(self, run_shell, fake_gh, tmp_path):
+        self.tree(tmp_path, "tannergolden/intelligence/.github/workflows/sync.yml@v0")
+        fake_gh.route("repos/tannergolden/intelligence/contents/.github/workflows/sync.yml?ref=v0", "{}")
+        result = self.run(run_shell, fake_gh, tmp_path)
+        assert result.returncode == 0, result
+        assert not any("action.yml" in call for call in fake_gh.calls)
+
+    def test_these_standards_own_references_are_left_to_the_step_before_it(self, run_shell, fake_gh, tmp_path):
+        self.tree(tmp_path, "tannergolden/standards/.github/actions/harden@v1")
+        result = self.run(run_shell, fake_gh, tmp_path)
+        assert result.returncode == 0, result
+        assert fake_gh.calls == []

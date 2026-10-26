@@ -218,6 +218,45 @@ jobs:
           [ "$missing" -eq 0 ] || exit 1
           echo "Every referenced action exists at this commit."
 
+      # The same promise for what these standards call from other
+      # repositories, such as the environment's toolchain action: each has
+      # to exist at the ref it is called at, or every consumer's checks that
+      # reach it fail on their next run. Those repositories are not checked
+      # out here, so each is read through the API, and a reference that
+      # cannot be confirmed refuses the release rather than being assumed.
+      - name: '🔗 Verify Cross-Repository References Resolve'
+        if: ${{ github.repository == 'tannergolden/standards' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          missing=0
+          while read -r ref; do
+            [ -n "$ref" ] || continue
+            repo="$(printf '%s' "$ref" | cut -d/ -f1-2)"
+            target="${ref%@*}"
+            path="${target#"$repo"/}"
+            at="${ref##*@}"
+            case "$path" in
+              *.yml | *.yaml) files=("$path") ;;
+              *) files=("$path/action.yml" "$path/action.yaml") ;;
+            esac
+            found=0
+            for file in "${files[@]}"; do
+              if gh api "repos/${repo}/contents/${file}?ref=${at}" --silent 2>/dev/null; then
+                found=1
+                break
+              fi
+            done
+            if [ "$found" -eq 0 ]; then
+              echo "::error title=Release::A workflow calls ${ref}, and ${repo} has no ${path} at ${at} that this run could read. Release it there first."
+              missing=1
+            fi
+          done < <(grep -rhoE 'tannergolden/[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+@[A-Za-z0-9._-]+' .github/workflows/ .github/actions/ actions/ \
+                   | grep -v '^tannergolden/standards/' | sort -u)
+          [ "$missing" -eq 0 ] || exit 1
+          echo "Every action and workflow called from another repository exists at its ref."
+
       # A check-command that runs the repository's own scripts needs what
       # they import. A repository generated from the golden path template
       # names that in `.github/scripts/requirements.txt`, and its check is
