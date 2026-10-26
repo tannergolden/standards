@@ -35,7 +35,7 @@ We prioritize security from the very first commit. Our objective is to minimize 
 1. **Never Commit Secrets**: Use `.env.example` placeholders only.
 2. **Prefer OIDC**: Use short-lived tokens via OpenID Connect instead of static cloud keys.
 3. **Isolate Environments**: Maintain strictly distinct secrets for `Development`, `Preview`, and `Release`.
-4. **Automate Scanning**: Every Pull Request is gated by automated secret detection (on org-owned repositories, add the free `GITLEAKS_LICENSE` secret - without it the gate stays green but scans nothing).
+4. **Automate Scanning**: Every Pull Request is gated by automated secret detection, with gitleaks at the version the environment pins, on every repository whoever owns it.
 
 ---
 

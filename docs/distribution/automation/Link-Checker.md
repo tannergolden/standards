@@ -41,7 +41,7 @@ The validation engine runs in three modes:
 
 ## ⚙️ Configuration Details
 
-The pipeline utilizes the `lycheeverse/lychee-action` and is orchestrated within the repository's CI/CD layer.
+The pipeline runs `lychee`, installed at the version the environment pins through its toolchain action, and is orchestrated within the repository's CI/CD layer.
 
 | Setting            | Value                          | Purpose                                                                                                                                     |
 | :----------------- | :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |

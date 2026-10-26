@@ -76,7 +76,7 @@ We believe that clear, unambiguous language is the foundation of effective engin
 
 ## G
 
-- **Gitleaks**: The CI secret scanner behind the required `🔍 Scan for Secrets` check (on org-owned repositories it needs a free `GITLEAKS_LICENSE` secret to actually scan).
+- **Gitleaks**: The CI secret scanner behind the required `🔍 Scan for Secrets` check, at the version the environment's toolchain pins.
 - **these standards**: The recommended, standardized workflow for delivering value in this repository.
 - **Governance**: The policies and principles that regulate code quality and security.
 
