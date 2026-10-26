@@ -71,7 +71,10 @@ jobs:
       # Used by nothing since the scan stopped needing a license, which is
       # when it opened its escalation issue. Still declared because every
       # stub grants it, and 🔬 Verify Stub Ceilings fails a stub that grants
-      # more than the job declares; it can go once the stubs drop it.
+      # more than the job declares. To drop it, drop it here first, in a
+      # standards release, and from each stub after, which that check then
+      # reports until it does: a stub that stops granting it while this job
+      # still declares it fails at startup.
       issues: write # unused, and declared because every stub grants it
 
     steps:
@@ -90,44 +93,76 @@ jobs:
 
       # gitleaks at the version the environment pins, checked against its
       # SHA-256 before it runs: the same binary the image and every cloud
-      # session hold.
+      # session hold. The binaries alone, from GitHub's releases, so the
+      # required check waits on nothing from PyPI or npm.
       - name: '🧰 Toolchain'
         uses: tannergolden/environment/.github/actions/toolchain@v1
+        with:
+          tools: binaries
 
-      # ONE SCAN, FROM THE CHECKOUT, FOR EVERY EVENT. It takes what
-      # gitleaks-action took: a pull request's own commits, first parents
-      # only and merges left out; a push's commits; on a dispatch or the
-      # weekly schedule, the whole history. A pull request's commits come
+      # ONE SCAN, FROM THE CHECKOUT, FOR EVERY EVENT: a pull request's
+      # commits from its base to its head, a push's commits from where the
+      # branch was to where it is, and on a dispatch or the weekly schedule
+      # the whole history. Every parent is followed, so a commit that arrives
+      # through a merge is scanned like any other; merge commits themselves
+      # carry no change of their own to scan. A pull request's commits come
       # from its base and head in the event rather than from the pull
       # request API, which a private repository answers only to a token
       # holding `pull-requests: read`; asking for that scope would fail, at
       # startup, every stub that does not grant it. --redact keeps every
       # secret out of the log, and a finding exits 2 and fails the check.
+      #
+      # A PULL REQUEST IS SCANNED WITH ITS BASE'S ALLOWLIST. gitleaks reads
+      # .gitleaks.toml and .gitleaksignore from the checkout, which on a pull
+      # request is the pull request's own, so it could allow the very secret
+      # it adds. The base's copies take their place before the scan, so a
+      # change to either applies once it is merged, in a pull request of its
+      # own. An inline `gitleaks:allow` still works, on the secret's own
+      # line, where a reviewer sees both.
       - name: '🔍 Run Gitleaks'
         env:
           EVENT: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
         run: |
           set -euo pipefail
           report="${RUNNER_TEMP}/gitleaks.json"
+          none=0000000000000000000000000000000000000000
           scope=()
           case "$EVENT" in
             pull_request)
-              scope=(--log-opts="--no-merges --first-parent ${BASE_SHA}..${HEAD_SHA}")
+              for file in .gitleaks.toml .gitleaksignore; do
+                rm -f "$file"
+                if git cat-file -e "${BASE_SHA}:${file}" 2>/dev/null; then
+                  git show "${BASE_SHA}:${file}" > "$file"
+                fi
+              done
+              scope=(--log-opts="--no-merges ${BASE_SHA}..${HEAD_SHA}")
               ;;
             push)
-              first="$(jq -r '.commits[0].id // empty' "$GITHUB_EVENT_PATH")"
-              last="$(jq -r '.commits[-1].id // empty' "$GITHUB_EVENT_PATH")"
-              if [ -z "$first" ]; then
-                echo "This push carries no commits, so there is nothing to scan."
+              if [ "$AFTER" = "$none" ]; then
+                echo "This push deleted its branch, so there is nothing to scan."
                 exit 0
               fi
-              # A push that starts a repository has no parent to count from.
-              if git rev-parse --quiet --verify "${first}^" >/dev/null; then
-                scope=(--log-opts="--no-merges --first-parent ${first}^..${last}")
+              # Where the branch was, when the checkout holds it. A new
+              # branch was nowhere, and a force-push can start from a commit
+              # no branch holds any more: then from the push's first commit.
+              if [ "$BEFORE" != "$none" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+                scope=(--log-opts="--no-merges ${BEFORE}..${AFTER}")
               else
-                scope=(--log-opts="--no-merges --first-parent ${last}")
+                first="$(jq -r '.commits[0].id // empty' "$GITHUB_EVENT_PATH")"
+                if [ -z "$first" ]; then
+                  echo "This push carries no new commits, so there is nothing to scan."
+                  exit 0
+                fi
+                # A push that starts a repository has no parent to count from.
+                if git rev-parse --quiet --verify "${first}^" >/dev/null; then
+                  scope=(--log-opts="--no-merges ${first}^..${AFTER}")
+                else
+                  scope=(--log-opts="--no-merges ${AFTER}")
+                fi
               fi
               ;;
             workflow_dispatch | schedule) ;;
