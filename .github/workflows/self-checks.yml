@@ -30,9 +30,9 @@
 # provides it, so `harden` runs second here rather than first. In a consuming
 # repository it is fetched remotely and stays the opening step.
 #
-# THE TOOLS ARE THE EXCEPTION: every checker below comes from the
-# environment's toolchain action, which is another repository's, so it is
-# called at its release, as every consumer's checks call it. That is what
+# THE TOOLS ARE THE EXCEPTION: every check tool below, CodeQL aside, comes
+# from the environment's toolchain action, which is another repository's, so
+# it is called at its release, as every consumer's checks call it. That is what
 # pins each checker, for the reason `.ruff.toml` sets out at length: an
 # unpinned checker turns an upstream release into a red check on code
 # nobody touched.
@@ -79,6 +79,8 @@ jobs:
 
       - name: '🧰 Toolchain'
         uses: tannergolden/environment/.github/actions/toolchain@v1
+        with:
+          tools: all
 
       # The suite reads `run:` blocks out of the workflows that ship and
       # executes them against a temporary directory, so it tests the real
@@ -110,6 +112,8 @@ jobs:
 
       - name: '🧰 Toolchain'
         uses: tannergolden/environment/.github/actions/toolchain@v1
+        with:
+          tools: python
 
       # `ruff check` only. `.ruff.toml` configures `[lint]` and nothing else,
       # so linting is the rule this repository actually adopted. Adding
@@ -150,8 +154,10 @@ jobs:
 
       - name: '🧰 Toolchain'
         uses: tannergolden/environment/.github/actions/toolchain@v1
+        with:
+          tools: binaries,python
 
-      # actionlint 1.7.12, the newest release, refuses the `cache-mode` key
+      # The actionlint the environment pins refuses the `cache-mode` key
       # GitHub added to workflows. Once a release accepts it, give the jobs
       # that publish, in publish-package.yml and release-publish.yml,
       # `cache-mode: none`, so no cache can reach what users install.
@@ -278,6 +284,8 @@ jobs:
 
       - name: '🧰 Toolchain'
         uses: tannergolden/environment/.github/actions/toolchain@v1
+        with:
+          tools: python,node
 
       # ⚠️ THE GENERATORS HAD NO GATE, AND THE DRIFT THEY PROMISED TO CATCH
       # HAD ALREADY SHIPPED. `update-doc-indexes.py`'s docstring says an

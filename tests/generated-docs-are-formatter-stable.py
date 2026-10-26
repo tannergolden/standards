@@ -21,17 +21,12 @@ CELLS changed is still stale.
 from __future__ import annotations
 
 import re
-import shutil
 import subprocess
 
-import pytest
-from conftest import ROOT
+from conftest import ROOT, requires
 
 DOC = ROOT / "docs/references/Repository-Labels.md"
 SCRIPT = ROOT / ".github/scripts/update-label-docs.py"
-
-requires_npx = pytest.mark.skipif(shutil.which("npx") is None, reason="npx not installed")
-
 
 def check() -> int:
     return subprocess.run(
@@ -74,14 +69,14 @@ class TestPaddingIsNotDrift:
             DOC.write_text(original, encoding="utf-8")
 
 
-@requires_npx
+@requires("prettier")
 class TestTheTwoToolsAgree:
     def test_the_document_is_prettier_clean_and_check_clean_at_once(self):
         """The property that was impossible before: both gates green on the
-        same bytes."""
+        same bytes, with the Prettier the environment's toolchain pins."""
         done = subprocess.run(
             [
-                "npx", "--yes", "prettier@3.8.1",
+                "prettier",
                 "--config", "config/prettierrc.json",
                 "--ignore-path", "config/prettierignore",
                 "--check", str(DOC.relative_to(ROOT)),

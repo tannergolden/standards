@@ -419,6 +419,8 @@ jobs:
       # SHA-256 before it runs.
       - name: '🧰 Toolchain'
         uses: tannergolden/environment/.github/actions/toolchain@v1
+        with:
+          tools: binaries
 
       # Each typo first becomes a warning on its line, as the typos action
       # wrote them, then the check itself runs, and its status is the job's.
@@ -460,13 +462,16 @@ jobs:
       # SHA-256 before it runs.
       - name: '🧰 Toolchain'
         uses: tannergolden/environment/.github/actions/toolchain@v1
+        with:
+          tools: binaries
 
       # Scan the whole tree with '/'-rooted links resolved against the
       # repository root. Excludes, verbosity, and accepted status codes all
       # come from the config: tune there, not here. As the lychee action
-      # did, the report is Markdown with a checkbox per link, a tree with no
-      # links at all fails as the configuration error it almost always is,
-      # and broken links fail the job when `fail-on-broken-links` says so.
+      # did, the report is Markdown, a count of each outcome and every broken
+      # link under its file, a tree with no links at all fails as the
+      # configuration error it almost always is, and broken links fail the
+      # job when `fail-on-broken-links` says so.
       #
       # ⚠️ THE REPORT'S PATH IS SET HERE, NOT IN THE CONFIG FILE: a CLI flag
       # beats a config key, so `output` in lychee.toml would never take

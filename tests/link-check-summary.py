@@ -23,21 +23,27 @@ import stat
 
 import pytest
 import tomllib
-from conftest import ROOT, load_yaml, workflow_step_shell
+from conftest import ROOT, load_yaml, requires, workflow_step_shell
 
 CI = ".github/workflows/ci.yml"
 CHECK = "🔗 Link Check"
 SUMMARY = "📊 Link Check Summary"
 
-# A stand-in for lychee: it writes a Markdown report with the total it is
-# told, where --output says, and exits as it is told.
+# A stand-in for lychee: it records its arguments, writes the summary table
+# lychee 0.24 writes, cells padded the same way, with the total it is told,
+# where --output says, and exits as it is told.
 FAKE_LYCHEE = """#!/usr/bin/env bash
+printf '%s\\n' "$@" > "$LYCHEE_ARGS"
 out=""
 while [ $# -gt 0 ]; do
   [ "$1" = --output ] && out="$2"
   shift
 done
-printf '| 🔍 Total | %s |\\n' "${FAKE_TOTAL:-5}" > "$out"
+{
+  printf '# Summary\\n\\n| Status         | Count |\\n|----------------|-------|\\n'
+  printf '| 🔍 Total       | %-5s |\\n' "${FAKE_TOTAL:-5}"
+  printf '| 🚫 Errors      | %-5s |\\n' "${FAKE_ERRORS:-0}"
+} > "$out"
 exit "${FAKE_EXIT:-0}"
 """
 
@@ -112,6 +118,7 @@ class TestLycheeRunsAsTheActionRanIt:
                 workflow_step_shell(CI, "link-checker", CHECK),
                 env={
                     "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+                    "LYCHEE_ARGS": str(tmp_path / "_lychee_args"),
                     "CONFIG": "lychee.toml",
                     "FAIL": fail,
                     "REPORT": "./lychee.md",
@@ -120,6 +127,12 @@ class TestLycheeRunsAsTheActionRanIt:
             )
 
         return _check
+
+    def test_it_runs_as_the_action_ran_it(self, check, tmp_path):
+        assert check("true").returncode == 0
+        args = (tmp_path / "_lychee_args").read_text(encoding="utf-8").splitlines()
+        assert args == ["--mode", "task", "--format", "markdown", "--output", "./lychee.md",
+                        "--config", "lychee.toml", "--root-dir", ".", "."]
 
     def test_broken_links_fail_when_asked_to(self, check):
         assert check("true", FAKE_EXIT="2").returncode == 2
@@ -135,3 +148,48 @@ class TestLycheeRunsAsTheActionRanIt:
     def test_a_clean_check_passes_and_leaves_its_report(self, check, tmp_path):
         assert check("true").returncode == 0
         assert (tmp_path / "lychee.md").is_file()
+
+    def test_a_total_that_ends_in_zero_is_not_empty(self, check):
+        assert check("true", FAKE_TOTAL="10").returncode == 0
+
+
+@requires("lychee")
+class TestTheRealLychee:
+    """The same step, run by the lychee the toolchain pins, on links it can check offline."""
+
+    @pytest.fixture
+    def check(self, run_shell, tmp_path):
+        tree = tmp_path / "tree"
+        tree.mkdir()
+
+        def _check(fail: str, pages: dict[str, str]):
+            for name, text in pages.items():
+                (tree / name).write_text(text, encoding="utf-8")
+            result = run_shell(
+                workflow_step_shell(CI, "link-checker", CHECK),
+                cwd=tree,
+                env={"CONFIG": str(ROOT / "config/lychee.toml"), "FAIL": fail, "REPORT": "./lychee.md"},
+            )
+            report = tree / "lychee.md"
+            return result, report.read_text(encoding="utf-8") if report.exists() else ""
+
+        return _check
+
+    def test_a_link_that_resolves_passes(self, check):
+        result, report = check("true", {"README.md": "See [the guide](guide.md).\n", "guide.md": "# Guide\n"})
+        assert result.returncode == 0, result
+        assert re.search(r"Total\s+\|\s+1\s", report), report
+
+    def test_a_broken_link_fails_only_when_asked_to(self, check):
+        pages = {"README.md": "See [the guide](missing.md).\n"}
+        broken, report = check("true", pages)
+        assert broken.returncode != 0, broken
+        assert "missing.md" in report
+        advisory, _ = check("false", pages)
+        assert advisory.returncode == 0, advisory
+
+    def test_a_tree_with_no_links_fails_either_way(self, check):
+        for fail in ("true", "false"):
+            result, report = check(fail, {"README.md": "# Nothing to follow\n"})
+            assert result.returncode == 1, (fail, result, report)
+            assert "found no links at all" in result.output

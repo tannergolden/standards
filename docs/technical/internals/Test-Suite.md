@@ -104,6 +104,11 @@ def test_refuses_an_older_version(run_shell, fake_gh, git_repo):
 - **No network.** Every `gh` call goes to `fake_gh`, which puts its scripted `gh` first on `PATH`.
   `run_shell` clears the environment and points `HOME` at the test's own directory, so a step run
   without the fake finds none of your credentials.
+- **A stand-in, then the real tool.** A step that runs a check tool is run with a stand-in on `PATH`
+  that records what it was asked, and again with the real tool wherever `requires(tool)` finds one,
+  as it does in 🚦 Self Checks, where the environment's toolchain puts every one on `PATH`.
+  `spelling-check.py`, `link-check-summary.py` and `private-pull-request-scan.py` do both, on files
+  they write themselves.
 - **No warnings, no surprise passes.** `filterwarnings = error` turns a warning into a failure, and
   `xfail_strict = true` fails a test marked to fail that passes instead.
 

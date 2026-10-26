@@ -10,8 +10,8 @@
 # findings such as undocumented permissions and missing concurrency limits
 # fail the job too.
 #
-# Both tools are version-pinned: actionlint through the Go module proxy,
-# zizmor by hash-checked PyPI install.
+# Both tools, and the shellcheck actionlint runs on each `run:` block, come
+# from the environment's toolchain action, each checked against its pin.
 #
 # Called, not triggered. A consuming repository adds a stub:
 #
@@ -87,6 +87,8 @@ jobs:
       # against its SHA-256 before it runs.
       - name: '🧰 Toolchain'
         uses: tannergolden/environment/.github/actions/toolchain@v1
+        with:
+          tools: binaries,python
 
       - name: '🔍 actionlint (Actions semantics)'
         env:

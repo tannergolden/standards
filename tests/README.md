@@ -88,6 +88,7 @@ _Every script, every shell block._
 | [`script-error-messages.py`](script-error-messages.py)                             | A script must name the problem, not print a Python traceback.                                 |
 | [`script-requirements.py`](script-requirements.py)                                 | The template's own scripts get their requirements before CI runs them.                        |
 | [`small-correctness.py`](small-correctness.py)                                     | Three narrow defects, each one an unknown being read as a benign answer.                      |
+| [`spelling-check.py`](spelling-check.py)                                           | The spelling check annotates each typo on its line, then fails on any.                        |
 | [`stub-delivery-docs.py`](stub-delivery-docs.py)                                   | Only one mechanism installs trigger stubs, and the docs must name it.                         |
 | [`template-identity-rewrite.py`](template-identity-rewrite.py)                     | Dotfiles are not suffixes, so three entries could never match.                                |
 | [`template-sync-decisions.py`](template-sync-decisions.py)                         | Every decision the planner can make, for every situation it can be in.                        |
