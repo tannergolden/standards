@@ -34,7 +34,7 @@ As a repository increases in complexity, documentation cross-references often dr
 The validation engine runs in three modes:
 
 1. **Continuous**: As a job inside `checks.yml`, it scans on every push and pull request to the long-lived branches.
-2. **Scheduled Scan**: Every Sunday at 03:00 UTC it audits the whole repository, catching external links that rotted since the last change.
+2. **Scheduled Scan**: Every Monday at 03:00 UTC it audits the whole repository, catching external links that rotted since the last change.
 3. **Manual Override**: Triggerable via the **Actions** tab for instant verification after major documentation rewrites.
 
 ---
@@ -48,7 +48,7 @@ The pipeline runs `lychee`, installed at the version the environment pins throug
 | **Workflow**       | `.github/workflows/checks.yml` | Execution logic and reporting.                                                                                                              |
 | **Scope**          | `.`                            | Recursive scan of all files.                                                                                                                |
 | **Exclusions**     | Set in `config/lychee.toml`    | Self-referential badge raw URLs, GitHub `commit`/`tree`/`blob` deep links, localhost/example hosts, Liquid placeholders, and build folders. |
-| **Failure Policy** | **Advisory** (`fail: false`)   | Findings surface in the job summary without blocking CI. Pass `fail-on-broken-links: true` from your stub to make it a hard gate.           |
+| **Failure Policy** | **Advisory** (the default)     | Findings surface in the job summary without blocking CI. Pass `fail-on-broken-links: true` from your stub to make it a hard gate.           |
 
 ---
 

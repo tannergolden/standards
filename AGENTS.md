@@ -123,9 +123,11 @@ comment, a release note or a workflow's output.
 - Anything that changes a required check's name, removes an input or changes a default's behaviour breaks every
   consumer's branch protection or runs, and waits for the next major
   ([Releasing These Standards](docs/distribution/Releasing-These-Standards.md)).
-- No file here pins a checker's version. Every check installs its tools through
+- No workflow here pins a tool the toolchain holds: typos, lychee, gitleaks, actionlint, shellcheck, zizmor, ruff,
+  pytest and Prettier. Every check that runs one installs it through
   `tannergolden/environment/.github/actions/toolchain@v1`, and the development container is that repository's
-  image, so a version moves there and reaches the checks with its next release.
+  image, so a version moves there and reaches the checks with its next release. Checks that run as actions of
+  their own, such as REUSE, CodeQL and dependency review, keep their pinned actions.
 - The scripts that act on a repository through the API do not share a dry-run default; check the table in
   [Running A Script By Hand](docs/introduction/Working-On-These-Standards.md#-running-a-script-by-hand) before the
   first run.

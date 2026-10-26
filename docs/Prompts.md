@@ -44,7 +44,7 @@ _Written for this repository. Copied whole._
   [Add, Rename Or Restyle A Label](#add-rename-or-restyle-a-label) ✏️,
   [Change The Commit Types](#change-the-commit-types) ✏️,
   [Change A Shared Config File](#change-a-shared-config-file) ✏️,
-  [Move A Pinned Tool To A New Version](#move-a-pinned-tool-to-a-new-version) ✏️
+  [Try A Check Tool's Next Version](#try-a-check-tools-next-version) ✏️
 - **The engines every repository runs:** [Change What Initialisation Does](#change-what-initialisation-does) ✏️,
   [Change What The Indexer Draws](#change-what-the-indexer-draws) ✏️,
   [Change How Template Sync Merges](#change-how-template-sync-merges) ✏️
@@ -433,29 +433,29 @@ Make the change, and update anything here that states it, such as the file's lea
 </done_when>
 ```
 
-### Move A Pinned Tool To A New Version
+### Try A Check Tool's Next Version
 
-**Use when** you want ruff, pytest, Prettier, actionlint or zizmor moved to a new version. **Fill in** `{{TOOL}}`, the tool and the version to move to.
+**Use when** the environment is about to move a tool the checks run, such as ruff, pytest, Prettier, actionlint or zizmor, and you want to know first what the new version finds here. **Fill in** `{{TOOL}}`, the tool and the version it would move to.
 
 ```text
 <context>
 The tool: {{TOOL}}.
-Each tool is pinned in more than one file, and the Tools table in docs/introduction/Working-On-These-Standards.md says where. lint-workflows.yml also pins actionlint and zizmor for every consumer's workflow lint, and installs zizmor with hashes.
+No file here pins it. Every check installs it through tannergolden/environment's toolchain action, and the version moves in that repository's toolchain/, as Moving A Version in its toolchain/README.md says. Once a release there moves its v1, 🚦 Self Checks and every consumer's checks run the new version the next time each runs.
 </context>
 
 <task>
-Find every copy of the old version by searching the whole tree, documents and tests included, and change them all in one commit. For zizmor, take the new hashes from PyPI's own listing of that release.
+Run the new version over this repository, and report what it finds before the environment moves it.
 </task>
 
 <constraints>
-- Run the new version over this repository first: make lint for ruff, make lint-format for Prettier, and actionlint, and zizmor with config/zizmor.yml. Fix what it finds here, and if the new actionlint or zizmor reports anything new, tell me before you move lint-workflows.yml, since every consumer's lint job would fail at the next release.
-- If you cannot read PyPI's listing, stop and ask me for the hashes.
+- Pin nothing here, and add no install of the tool to a workflow, a test or a document: tests/toolchain-from-the-environment.py fails on one.
+- Run it as the checks do: make lint for ruff, make test for pytest, make lint-format for Prettier, and actionlint, and zizmor with config/zizmor.yml, over the workflows and actions. If actionlint or zizmor reports anything new, say so, since every consumer's workflow lint reports it too once the environment releases it.
+- Fix here only what the new version finds in this repository, in a pull request of its own, and say which findings would reach consumers.
 - If any detail above is still a placeholder in double braces, ask me for it before you start.
 </constraints>
 
 <done_when>
-- A search finds the old version only where it means something else, and make setup, make lint, make lint-docs, make lint-format and make test pass at the new one.
-- You report each file you changed.
+- You report each command with the last line of its output at the new version, every new finding, and whether the environment can move it as it stands.
 </done_when>
 ```
 

@@ -52,15 +52,17 @@ Checks installs through the environment's toolchain action, and adds jq for the 
 | Prettier           | `make lint-format`                                         |
 | actionlint, zizmor | 🧰 Workflows & Actions                                     |
 
-Outside the container, install the same tools with the environment's own installer,
+Outside the container, on Linux, install the same tools with the environment's own installer,
 `toolchain/install.sh --user`, from a checkout of
-[`tannergolden/environment`](https://github.com/tannergolden/environment), and jq from your system;
-`make setup` says which are missing.
+[`tannergolden/environment`](https://github.com/tannergolden/environment), and jq from your system.
+The installer is built for Linux only, so on a Mac, work in the container. `make setup` checks that
+ruff, pytest and Prettier are on `PATH`.
 
 > [!IMPORTANT]
-> **No file here pins a checker's version.** They are the environment's: move one in
-> `tannergolden/environment`, and its next release reaches 🚦 Self Checks, every consumer's checks
-> and this container together.
+> **No workflow here pins a tool the toolchain holds.** Those versions are the environment's: move
+> one in `tannergolden/environment`, and once a release moves its `v1`, 🚦 Self Checks and every
+> consumer's checks run it the next time each runs, and this container once it pulls `:1` again.
+> The action and the image both come from the environment's releases, `v1.0.0` the first.
 
 ---
 
@@ -146,7 +148,7 @@ the clone.
 | 📄 Generated documents: an index is stale   | A document or file added, moved or retitled without a redraw                | `make docs-index`, then commit what it changed                                                                                                                          |
 | 📄 Generated documents: frontmatter         | A document without the hidden frontmatter, or with a field it may not carry | The annotation names the file, the line and the problem: [Frontmatter Metadata](../technical/interface/Document-Styling-&-Formatting.md#%EF%B8%8F-frontmatter-metadata) |
 | 📄 Generated documents: the type list       | One copy of the commit types changed alone                                  | `make check-types` names the copy that differs                                                                                                                          |
-| 🎨 Formatting                               | A file Prettier would rewrite                                               | `npx --yes prettier@3.8.1 --config config/prettierrc.json --ignore-path config/prettierignore --write <file>`                                                           |
+| 🎨 Formatting                               | A file Prettier would rewrite                                               | `prettier --config config/prettierrc.json --ignore-path config/prettierignore --write <file>`                                                                           |
 | 🧹 ruff                                     | A lint finding in a script or a test                                        | `make lint-fix`, then fix what is left by hand                                                                                                                          |
 | 🛡️ zizmor                                   | A security finding in a workflow or an action                               | Fix it. One that does not apply is accepted with its reason beside it: in `config/zizmor.yml`, keyed by file name, or inline as `# zizmor: ignore[<audit>]`             |
 | 📐 Every YAML and JSON parses               | A comment or a trailing comma in a JSON file                                | Every JSON file here is strict JSON                                                                                                                                     |

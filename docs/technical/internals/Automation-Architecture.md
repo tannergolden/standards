@@ -32,6 +32,7 @@ graph LR
     A -->|"../../scripts/"| SC["Script"]
     A -->|"../../../data/ and ../../../config/"| D["Data and config"]
     F["Forwarder at the old address"] -->|"actions/name@v1"| A
+    W -->|"environment toolchain@v1"| T["Check tools"]
 ```
 
 | Layer             | Lives in                                      | Called as                                                            | Resolved at                                                       |
@@ -42,6 +43,7 @@ graph LR
 | Script            | `.github/scripts/`                            | `${GITHUB_ACTION_PATH}/../../scripts/<file>`, from an action         | The action's ref: it arrives with the action                      |
 | Data and config   | `data/` and `config/`                         | `${GITHUB_ACTION_PATH}/../../../data/` or `/config/`, from an action | The action's ref                                                  |
 | Forwarder         | `actions/<name>/action.yml`                   | The old address, `tannergolden/standards/actions/<name>@v1`          | The old address's ref, passing every input to the action at `@v1` |
+| Check tools       | `tannergolden/environment`'s `toolchain/`     | `tannergolden/environment/.github/actions/toolchain@v1`, as a step   | The environment's `v1`, whatever the stub pins                    |
 
 ---
 
@@ -53,7 +55,8 @@ graph LR
    so there is no relative form to use. A workflow that calls another names it in full for the same
    reason, as `release.yml` calls `prune-releases.yml@v1`.
 2. **The actions follow `v1` whatever the stub pins.** A stub pinned to a version or a commit freezes
-   the workflow's own jobs, while the actions inside them still resolve `@v1`.
+   the workflow's own jobs, while the actions inside them still resolve `@v1`, and so do the check
+   tools, which the jobs install through the environment's toolchain action at its own `v1`.
 3. **Shared files come from the action's ref, not the caller's tree.** `sync-labels` with no
    `labels-file` applies `data/labels.yml` as it stood in the release it resolved, so applying a
    registry edited here before it is released means naming the file. The `config` action works the

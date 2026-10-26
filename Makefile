@@ -36,7 +36,7 @@ help: ## Show the available targets
 setup: ## Check ruff, pytest and Prettier are on PATH, as the development container has them
 	@missing=""; for tool in ruff pytest prettier; do command -v $$tool >/dev/null 2>&1 || missing="$$missing $$tool"; done; \
 	if [ -n "$$missing" ]; then \
-		echo "Missing:$$missing. Work in the development container, or run toolchain/install.sh --user from a checkout of tannergolden/environment." >&2; \
+		echo "Missing:$$missing. Work in the development container, or, on Linux, run toolchain/install.sh --user from a checkout of tannergolden/environment." >&2; \
 		exit 1; \
 	fi
 

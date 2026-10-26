@@ -4,12 +4,13 @@
 
 A merge queue asks every required check to report on the merge group as
 well as on the pull request, so the template's stubs behind all three now
-trigger on `merge_group`. The pinned gitleaks action takes push,
-pull_request, workflow_dispatch and schedule and exits 1 on anything else,
-so on `merge_group` the required secret scan failed every queued pull
-request. The scan is skipped there instead: GitHub reports a job skipped
-inside a called workflow as Success, which a required check accepts, and
-only a skipped CALLER job leaves the check unreported.
+trigger on `merge_group`. The gitleaks action the scan ran then took push,
+pull_request, workflow_dispatch and schedule and exited 1 on anything else,
+as the scan that replaced it still does, so on `merge_group` the required
+secret scan failed every queued pull request. The scan is skipped there
+instead: GitHub reports a job skipped inside a called workflow as Success,
+which a required check accepts, and only a skipped CALLER job leaves the
+check unreported.
 
 The sign-off check moved from `pull_request_target` to `pull_request` with
 the same change, since it only reads through the API, and on a merge group

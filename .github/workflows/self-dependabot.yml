@@ -16,8 +16,8 @@
 # published workflow is exercised by the diff that makes it rather than by
 # the last release.
 #
-# THIS IS THE REPOSITORY WHERE A STALE PIN COSTS THE MOST. Twenty-three
-# third-party actions across sixty-four call sites are published from here and
+# THIS IS THE REPOSITORY WHERE A STALE PIN COSTS THE MOST. Twenty
+# third-party actions across sixty-two call sites are published from here and
 # executed by every repository pinned to `@v1`, so this has both the most
 # update traffic to keep moving and the shortest path from a stale revision to
 # somebody else's pipeline.

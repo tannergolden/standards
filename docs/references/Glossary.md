@@ -58,7 +58,7 @@ We believe that clear, unambiguous language is the foundation of effective engin
 ## D
 
 - **DCO (Developer Certificate of Origin)**: The provenance contract behind the `Signed-off-by:` trailer (`git commit -s`); a required merge check verifies it on every human-authored commit.
-- **Devcontainer**: The shipped one-click environment (`.devcontainer/` - Node 22 + Python 3.12, `postCreateCommand: make setup`) for Codespaces and devcontainer-aware editors.
+- **Devcontainer**: A repository's one-click environment in `.devcontainer/`, for Codespaces and devcontainer-aware editors. The template ships a language-neutral one; this repository's names the `tannergolden/environment` image, `ghcr.io/tannergolden/environment:1`, which holds every check tool.
 - **DORA Metrics**: KPIs for delivery performance (Lead Time, Deployment Frequency, MTTR, CFR).
 - **Draft Release**: The single evolving pre-release git-cliff maintains per branch (superseded drafts are pruned); publishing it triggers the release pipeline.
 - **Dry Run**: Executing validation without applying terminal state changes.
@@ -76,7 +76,7 @@ We believe that clear, unambiguous language is the foundation of effective engin
 
 ## G
 
-- **Gitleaks**: The CI secret scanner behind the required `🔍 Scan for Secrets` check, at the version the environment's toolchain pins.
+- **Gitleaks**: The CI secret scanner behind the required `🔍 Scan for Secrets` check, at the version `tannergolden/environment`'s toolchain pins.
 - **these standards**: The recommended, standardized workflow for delivering value in this repository.
 - **Governance**: The policies and principles that regulate code quality and security.
 

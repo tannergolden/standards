@@ -24,7 +24,7 @@ _Reproducible runtimes. Automated tooling. AI-assisted development._
 We prioritize **Process over Products**. Whether you use Node, Python, Rust, or Go, all local operations must be mapped to the standardized `make` interface to ensure Continuous Integration (CI) parity.
 
 > [!IMPORTANT]
-> Use the exact tool versions pinned in the repository's configuration files (e.g., `.nvmrc`, `.python-version`) for the project's own runtime. Always prefer version managers over direct system installs to avoid technical drift. The check tools, from actionlint to Prettier, are not yours to pin: they come from [`tannergolden/environment`](https://github.com/tannergolden/environment), which CI installs through its toolchain action, at the versions its image holds.
+> Use the exact tool versions pinned in the repository's configuration files (e.g., `.nvmrc`, `.python-version`) for the project's own runtime. Always prefer version managers over direct system installs to avoid technical drift. The tools the shared checks run, typos, lychee, gitleaks, actionlint, shellcheck and zizmor, are not yours to pin: the standards' checks install them from [`tannergolden/environment`](https://github.com/tannergolden/environment) through its toolchain action, at the versions its image holds. A linter or formatter your own `make lint` runs stays yours, and so does Prettier: 🎨 Auto-Format runs the one in your `devDependencies`.
 
 ---
 
@@ -88,7 +88,7 @@ Every project standardized on this system must implement the following `make` ta
 | **`make deploy`**    | Promote the current artifact to a specific environment.         |
 
 > [!TIP]
-> **Instant environment, two ways.** A devcontainer in your own repository gives you a one-click reproducible environment in Codespaces or any devcontainer-aware editor. The shipped one is deliberately language-neutral; add the toolchain features your project needs. To work with every check tool at the version CI runs, name the environment's image instead: `{ "image": "ghcr.io/tannergolden/environment:1" }`.
+> **Instant environment, two ways.** A devcontainer in your own repository gives you a one-click reproducible environment in Codespaces or any devcontainer-aware editor. The shipped one is deliberately language-neutral; add the toolchain features your project needs. To work with every check tool at the version CI runs, name the environment's image instead: `{ "image": "ghcr.io/tannergolden/environment:1" }`, and switch off the two `.devcontainer` lines in `.github/template-sync`, so 🔄 Template Sync does not merge the template's container back.
 
 ---
 

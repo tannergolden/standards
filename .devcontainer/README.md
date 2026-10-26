@@ -53,8 +53,10 @@ Self Checks fails a push that leaves it stale.
 ## ⚙️ Keeping It In Step
 
 - Nothing here pins a checker. The image and 🚦 Self Checks take every version
-  from the same toolchain, in `tannergolden/environment`, so the two cannot
-  disagree.
+  from the same toolchain, in `tannergolden/environment`, so they agree once
+  this container runs the release Self Checks does. It keeps the image it
+  pulled until it pulls `:1` again, and a release moves the action's `v1`
+  minutes before it publishes the image.
 - jq comes from Ubuntu's archive when the container is created, as the
   image's own system packages do.
 - A new image reaches this container after

@@ -101,7 +101,10 @@ reference that can test a change **to** an action.
 ## 🌿 Consuming These Standards
 
 **Pin a tag, never a branch.** Nothing published here executes in your repository until you move
-the pin.
+the pin, with two exceptions that follow their own `v1` whatever you pin: the composite actions the
+workflows call, and the check tools those workflows install from
+[`tannergolden/environment`](https://github.com/tannergolden/environment)
+([What Resolves Where](docs/technical/internals/Automation-Architecture.md#-what-resolves-where)).
 
 | Pin            | Meaning                                                              |
 | :------------- | :------------------------------------------------------------------- |
