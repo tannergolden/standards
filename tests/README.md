@@ -101,6 +101,7 @@ _Every script, every shell block._
 | [`template-sync-workflow.py`](template-sync-workflow.py)                           | The workflow, the action and init: the shell around the engine, as shipped.                   |
 | [`toolchain-from-the-environment.py`](toolchain-from-the-environment.py)           | Every checker comes from the environment's toolchain, at the version it pins.                 |
 | [`trusted-publishing.py`](trusted-publishing.py)                                   | Npm and crates.io publish without a stored token, and say why when they cannot.               |
+| [`unreadable-pull-requests.py`](unreadable-pull-requests.py)                       | A pull request list the API refuses must not fail the run that asks for it.                   |
 
 <!-- AUTO-INDEX:END -->
 

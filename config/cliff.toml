@@ -84,6 +84,9 @@ body = """
 {% for commit in commits | filter(attribute="group", value="⏪ Reverts") %}\
 - **{{ commit.scope | default(value="general") }}**: {{ commit.message | upper_first }}
 {% endfor %}
+{#- Empty when git-cliff runs offline, as the release workflows run it where
+    the pull request list cannot be read: the thanks would then name no one. #}
+{%- if github.contributors | length > 0 %}
 
 ---
 
@@ -92,6 +95,7 @@ body = """
 {% for contributor in github.contributors %}\
 - [@{{ contributor.username }}](https://github.com/{{ contributor.username }})
 {% endfor %}
+{%- endif %}
 """
 
 # Remove leading and trailing whitespace from the template

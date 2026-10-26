@@ -116,6 +116,29 @@ jobs:
           name: cliff.toml
           override: ${{ inputs.cliff-config }}
 
+      # The shared template thanks contributors by GitHub username, which
+      # git-cliff looks up through the API, the pull request list included,
+      # and it stops the whole draft when that list is refused. This job
+      # asks for no pull-request scope, because a caller that does not grant
+      # one fails at startup, so a private repository answers 403; one with
+      # pull requests turned off answers 404. Asking for one page first tells
+      # those apart from a readable list, and git-cliff then runs offline:
+      # the draft keeps every section but the names.
+      - name: '🔌 Check The Pull Request List'
+        id: remote
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          if ANSWER=$(gh api "repos/${REPO}/pulls?state=closed&per_page=1" --silent 2>&1); then
+            echo "offline=" >> "$GITHUB_OUTPUT"
+          else
+            STATUS=$(printf '%s' "$ANSWER" | grep -oE 'HTTP [0-9]+' | tail -n 1 || true)
+            echo "offline=--offline" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Release notes::The pull request list cannot be read (${STATUS:-no HTTP status}), so the draft names no contributors."
+          fi
+
       - name: '🔎 Check for existing tags'
         id: tags
         run: |
@@ -131,7 +154,7 @@ jobs:
         uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
         with:
           config: ${{ steps.cliff-config.outputs.path }}
-          args: --bumped-version
+          args: --bumped-version ${{ steps.remote.outputs.offline }}
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
@@ -189,7 +212,7 @@ jobs:
         uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
         with:
           config: ${{ steps.cliff-config.outputs.path }}
-          args: --verbose ${{ steps.range.outputs.range_args }} --strip header
+          args: --verbose ${{ steps.range.outputs.range_args }} ${{ steps.remote.outputs.offline }} --strip header
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
 

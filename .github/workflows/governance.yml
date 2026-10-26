@@ -192,19 +192,46 @@ jobs:
         with:
           egress-policy: audit
 
+      # A repository can turn pull requests off (Settings, Features). Its
+      # API then answers 404 for every pull request, Dependabot's included,
+      # though Dependabot still opens them and this event still fires. The
+      # size labeler stops the job on that 404, and the failure reads like
+      # a broken labeler config. Asking first turns it into one warning that
+      # names the cause. Any other error is left to the labeling steps,
+      # which report it as they always have.
+      - name: '🔎 Check The Pull Request Can Be Read'
+        id: readable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          if ANSWER=$(gh api "repos/${REPO}/pulls/${NUMBER}" --silent 2>&1); then
+            echo "readable=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$ANSWER" == *'(HTTP 404)'* ]]; then
+            echo "readable=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Governance::Pull request #${NUMBER} cannot be read (HTTP 404), so it was not labeled. Pull requests are most likely turned off in this repository's settings, which hides every one, Dependabot's included."
+          else
+            echo "readable=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: '📂 Checkout Calling Repository'
+        if: ${{ steps.readable.outputs.readable == 'true' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: '📄 Resolve labeler configuration'
         id: labeler-config
+        if: ${{ steps.readable.outputs.readable == 'true' }}
         uses: tannergolden/standards/.github/actions/config@v1
         with:
           name: labeler.yml
           override: ${{ inputs.labeler-config }}
 
       - name: '🏷️ Label Areas & Types'
+        if: ${{ steps.readable.outputs.readable == 'true' }}
         uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
         with:
           repo-token: '${{ secrets.GITHUB_TOKEN }}'
@@ -212,6 +239,7 @@ jobs:
           sync-labels: true
 
       - name: '👕 Label Size'
+        if: ${{ steps.readable.outputs.readable == 'true' }}
         uses: codelytv/pr-size-labeler@19c335e7695ba922de938806dd129f0a9b992644 # v1.12.0
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -226,6 +254,7 @@ jobs:
           xl_label: 'size: extra large'
 
       - name: '⚔️ Label Merge Conflicts'
+        if: ${{ steps.readable.outputs.readable == 'true' }}
         uses: eps1lon/actions-label-merge-conflict@0273be72a0bbd58fcd71d0d6c02c209b50d1e5e1 # v3.1.0
         with:
           dirtyLabel: 'status: conflict'

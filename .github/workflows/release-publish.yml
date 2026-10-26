@@ -188,6 +188,27 @@ jobs:
           name: cliff.toml
           override: ${{ inputs.cliff-config }}
 
+      # git-cliff stops when the API refuses the pull request list it reads
+      # contributors from: 403 where this job has no pull-request scope, 404
+      # where pull requests are turned off. Then it runs offline, and the
+      # notes keep everything but the names. The same step, and the reason
+      # for it, is in release-notes.yml.
+      - name: '🔌 Check The Pull Request List'
+        id: remote
+        if: ${{ steps.gate.outputs.proceed == 'true' && steps.gate.outputs.mode == 'manual' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          if ANSWER=$(gh api "repos/${REPO}/pulls?state=closed&per_page=1" --silent 2>&1); then
+            echo "offline=" >> "$GITHUB_OUTPUT"
+          else
+            STATUS=$(printf '%s' "$ANSWER" | grep -oE 'HTTP [0-9]+' | tail -n 1 || true)
+            echo "offline=--offline" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Release publish::The pull request list cannot be read (${STATUS:-no HTTP status}), so the notes name no contributors."
+          fi
+
       - name: '🔎 Check for existing tags'
         id: tags
         if: ${{ steps.gate.outputs.proceed == 'true' && steps.gate.outputs.mode == 'manual' }}
@@ -204,7 +225,7 @@ jobs:
         uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
         with:
           config: ${{ steps.cliff-config.outputs.path }}
-          args: --bumped-version
+          args: --bumped-version ${{ steps.remote.outputs.offline }}
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
@@ -274,7 +295,7 @@ jobs:
         uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
         with:
           config: ${{ steps.cliff-config.outputs.path }}
-          args: --verbose --strip header --limit-commits 100
+          args: --verbose ${{ steps.remote.outputs.offline }} --strip header --limit-commits 100
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
 

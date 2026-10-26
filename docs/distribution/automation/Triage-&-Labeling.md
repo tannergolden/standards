@@ -62,6 +62,7 @@ The logic for our triage system resides in these infrastructure files:
 
 - **Pull Requests**: Triggered by `pull_request_target` on `opened`, `synchronize`, and `reopened` - the triage job labels **PRs only**. It needs that event to label a fork's pull request, which the read-only token of `pull_request` cannot, and checks out only the base branch. A public repository keeps it through the Actions event policy 🎯 Apply Standards writes, which GitHub requires from 2 December 2026 at the latest ([Repository Settings](../../operations/Repository-Settings.md#the-governance-stubs-event-policy)).
 - **Issues**: Labeled by the **issue forms themselves** at creation (each form declares its labels, e.g. `type: bug` + `status: needs triage`); the workflow's issue events serve the first-time-contributor welcome, not labeling.
+- **Pull requests turned off**: A repository can turn pull requests off in its settings. The API then answers 404 for every pull request, though Dependabot still opens them and the event still fires, so the triage job asks for the pull request first and, on a 404, labels nothing and leaves a warning naming the cause instead of failing. Any other error still reaches the labeling steps.
 
 > [!TIP]
 > Labeler-managed labels are **re-asserted on every push**: the path labeler runs with `sync-labels: true`, so a manual override of an `area:` label (or a size label) is reverted on the next `synchronize` event. To override durably, adjust the path map in `config/labeler.yml`, or use labels outside the managed map - those are never touched.
