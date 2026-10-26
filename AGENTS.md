@@ -82,7 +82,8 @@ comment, a release note or a workflow's output.
 
 ## Commands
 
-- `make setup` installs the pinned ruff and pytest; `make help` lists every target.
+- `make setup` says whether ruff, pytest and Prettier are on PATH, as they are in the development container;
+  `make help` lists every target.
 - `make lint`, `make lint-docs`, `make lint-format` and `make test`: the loop before a push.
 - `make docs-index` redraws every machined index and label table in place.
 - `actionlint`, and `zizmor --no-progress --persona=pedantic --config config/zizmor.yml .github/workflows
@@ -122,8 +123,9 @@ comment, a release note or a workflow's output.
 - Anything that changes a required check's name, removes an input or changes a default's behaviour breaks every
   consumer's branch protection or runs, and waits for the next major
   ([Releasing These Standards](docs/distribution/Releasing-These-Standards.md)).
-- A pinned version lives in more than one file: ruff and pytest in the `Makefile`, `self-checks.yml` and
-  `devcontainer.json`. Change every copy in the same commit.
+- No file here pins a checker's version. Every check installs its tools through
+  `tannergolden/environment/.github/actions/toolchain@v1`, and the development container is that repository's
+  image, so a version moves there and reaches the checks with its next release.
 - The scripts that act on a repository through the API do not share a dry-run default; check the table in
   [Running A Script By Hand](docs/introduction/Working-On-These-Standards.md#-running-a-script-by-hand) before the
   first run.

@@ -23,10 +23,6 @@
 #
 # ---
 
-RUFF_VERSION ?= 0.15.8
-PRETTIER_VERSION ?= 3.8.1
-PYTEST_VERSION ?= 9.1.1
-
 .PHONY: help setup lint lint-fix lint-docs lint-format test docs-index check-types
 
 help: ## Show the available targets
@@ -34,8 +30,15 @@ help: ## Show the available targets
 		| sort \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
-setup: ## Install the pinned development tools
-	pip install --quiet "ruff==$(RUFF_VERSION)" "pytest==$(PYTEST_VERSION)"
+# Every checker comes from tannergolden/environment, at the version its
+# toolchain pins: the development container is its image, and CI installs
+# the same toolchain. Nothing here pins one, so this only says what is missing.
+setup: ## Check ruff, pytest and Prettier are on PATH, as the development container has them
+	@missing=""; for tool in ruff pytest prettier; do command -v $$tool >/dev/null 2>&1 || missing="$$missing $$tool"; done; \
+	if [ -n "$$missing" ]; then \
+		echo "Missing:$$missing. Work in the development container, or run toolchain/install.sh --user from a checkout of tannergolden/environment." >&2; \
+		exit 1; \
+	fi
 
 lint: ## Lint the Python scripts, with the rules declared in .ruff.toml
 	ruff check .
@@ -52,7 +55,7 @@ lint-docs: ## Fail when a generated document, a document's frontmatter or the co
 	python3 .github/scripts/check-type-parity.py
 
 lint-format: ## Check formatting against the published Prettier config
-	npx --yes "prettier@$(PRETTIER_VERSION)" --config config/prettierrc.json --ignore-path config/prettierignore --check "**/*.{md,yml,yaml,json,js}"
+	prettier --config config/prettierrc.json --ignore-path config/prettierignore --check "**/*.{md,yml,yaml,json,js}"
 
 test: ## Run the test suite
 	python3 -m pytest

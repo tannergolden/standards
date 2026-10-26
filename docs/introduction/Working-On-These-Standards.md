@@ -40,23 +40,27 @@ How each layer resolves is in [Automation Architecture](../technical/internals/A
 
 ## ⚙️ Tools
 
-The [development container](../../.devcontainer/README.md) brings Python, Node, git, and pytest and
-ruff at the pinned versions. The rest of what the checks use:
+The [development container](../../.devcontainer/README.md) is the environment image,
+`ghcr.io/tannergolden/environment:1`, which holds every tool the checks use, at the versions 🚦 Self
+Checks installs through the environment's toolchain action, and adds jq for the suite:
 
-| Tool                      | Needed by                                                   | How to get it                                                   |
-| :------------------------ | :---------------------------------------------------------- | :-------------------------------------------------------------- |
-| ruff 0.15.8, pytest 9.1.1 | `make lint`, `make test`                                    | `make setup`                                                    |
-| PyYAML                    | The suite: `tests/conftest.py` imports it                   | Your Python                                                     |
-| jq                        | The suite: its fake `gh` applies `--jq` with the real `jq`  | Your system                                                     |
-| Node                      | `make lint-format`, which runs Prettier 3.8.1 through `npx` | Your system                                                     |
-| actionlint 1.7.12         | 🧰 Workflows & Actions                                      | `go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12` |
-| zizmor 1.26.1             | 🧰 Workflows & Actions                                      | `pip install zizmor==1.26.1`                                    |
+| Tool               | Needed by                                                  |
+| :----------------- | :--------------------------------------------------------- |
+| ruff, pytest       | `make lint`, `make test`                                   |
+| PyYAML             | The suite: `tests/conftest.py` imports it                  |
+| jq                 | The suite: its fake `gh` applies `--jq` with the real `jq` |
+| Prettier           | `make lint-format`                                         |
+| actionlint, zizmor | 🧰 Workflows & Actions                                     |
+
+Outside the container, install the same tools with the environment's own installer,
+`toolchain/install.sh --user`, from a checkout of
+[`tannergolden/environment`](https://github.com/tannergolden/environment), and jq from your system;
+`make setup` says which are missing.
 
 > [!IMPORTANT]
-> **A pinned version lives in more than one file.** ruff and pytest are pinned in the
-> [`Makefile`](../../Makefile), in the `env:` of `self-checks.yml` and in `devcontainer.json`;
-> Prettier in the first two; actionlint and zizmor in their `self-checks.yml` steps alone. Change
-> every copy in the same commit, or your machine checks something CI does not.
+> **No file here pins a checker's version.** They are the environment's: move one in
+> `tannergolden/environment`, and its next release reaches 🚦 Self Checks, every consumer's checks
+> and this container together.
 
 ---
 

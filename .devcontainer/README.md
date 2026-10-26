@@ -1,6 +1,6 @@
 <!--
 title: '🐳 DEVELOPMENT CONTAINER'
-description: 'The development container for working on these standards: Python, Node, and the test tools at the versions CI pins.'
+description: 'The development container for working on these standards: the environment image, with every tool the checks run at the versions CI installs, and jq for the suite.'
 type: index
 -->
 
@@ -21,10 +21,12 @@ _The same tools, at the same versions._
 ## 💡 What This Folder Is For
 
 Open the repository in a dev container - <kbd>Reopen in Container</kbd> in VS
-Code, or a Codespace - and this folder decides what you get: an Ubuntu base
-image, git, the common shell utilities, Python for the scripts, Node for
-Prettier, and pytest and ruff at the versions 🚦 Self Checks pins, so
-`make test` and `make lint` run here as they run in CI.
+Code, or a Codespace - and this folder decides what you get: the environment
+image, `ghcr.io/tannergolden/environment:1`. It holds git, Python, Node.js
+and every tool the checks run, at the versions 🚦 Self Checks installs through
+the environment's toolchain action, and jq is added when the container is
+created, for the suite's fake `gh`. So `make test`, `make lint` and
+`make lint-format` run here as they run in CI.
 
 `.gitattributes` marks this folder `export-ignore`, so `git archive` leaves it
 out of a source tarball. It is for developing these standards, not for shipping
@@ -50,11 +52,13 @@ Self Checks fails a push that leaves it stale.
 
 ## ⚙️ Keeping It In Step
 
-- The pytest and ruff versions in `postCreateCommand` are the ones
-  `PYTEST_VERSION` and `RUFF_VERSION` pin in 🚦 Self Checks and the Makefile.
-  Change all three together, or the container checks something CI does not.
-- Prettier runs through `npx` at the version the Makefile pins, so Node is all
-  the container needs for it.
+- Nothing here pins a checker. The image and 🚦 Self Checks take every version
+  from the same toolchain, in `tannergolden/environment`, so the two cannot
+  disagree.
+- jq comes from Ubuntu's archive when the container is created, as the
+  image's own system packages do.
+- A new image reaches this container after
+  `docker pull ghcr.io/tannergolden/environment:1` and a rebuild.
 - Rebuild the container after any change here.
 
 > [!NOTE]
