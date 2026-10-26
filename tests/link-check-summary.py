@@ -1,57 +1,71 @@
 # SPDX-FileCopyrightText: 2026 Tanner Golden
 # SPDX-License-Identifier: MIT
-"""The link-check summary step must read the file the action writes.
+"""The link-check summary step must read the file lychee writes.
 
 `config/lychee.toml` set `output = "./lychee.md"` and `ci.yml` guarded its
-summary step on `[ -f ./lychee.md ]`. That guard was never true.
+summary step on `[ -f ./lychee.md ]`. That guard was never true: lychee took
+its `--output` from the command line, and a CLI flag overrides a config-file
+key, so lychee never honoured the config value and the summary step did
+nothing on every CI run in every consuming repository.
 
-lycheeverse/lychee-action always passes `--output` on the command line, and
-a CLI flag overrides a config-file key, so lychee never honoured the config
-value. The action writes to its own `output` input, whose default is
-`./lychee/out.md`. The summary step therefore did nothing on every CI run in
-every consuming repository: it looked like a report step and produced no
-report.
-
-The fix names the path once, in the workflow, where the action can actually
-be told about it.
+The path is named once, in the workflow, as `REPORT`: the link check writes
+it and the summary reads it. The check now runs lychee itself, from the
+environment's toolchain, and keeps what the lychee action did: a Markdown
+report, a failure when no link was found at all, and a failure on broken
+links only when `fail-on-broken-links` says so.
 """
 
 from __future__ import annotations
 
+import os
 import re
+import stat
 
 import pytest
 import tomllib
 from conftest import ROOT, load_yaml, workflow_step_shell
 
 CI = ".github/workflows/ci.yml"
+CHECK = "🔗 Link Check"
+SUMMARY = "📊 Link Check Summary"
+
+# A stand-in for lychee: it writes a Markdown report with the total it is
+# told, where --output says, and exits as it is told.
+FAKE_LYCHEE = """#!/usr/bin/env bash
+out=""
+while [ $# -gt 0 ]; do
+  [ "$1" = --output ] && out="$2"
+  shift
+done
+printf '| 🔍 Total | %s |\\n' "${FAKE_TOTAL:-5}" > "$out"
+exit "${FAKE_EXIT:-0}"
+"""
+
+
+def steps() -> list[dict]:
+    return load_yaml(CI)["jobs"]["link-checker"]["steps"]
 
 
 @pytest.fixture(scope="module")
 def link_step() -> dict:
-    steps = load_yaml(CI)["jobs"]["link-checker"]["steps"]
-    return next(s for s in steps if "lychee-action" in str(s.get("uses", "")))
+    return next(s for s in steps() if s.get("name") == CHECK)
 
 
-class TestTheActionIsToldWhereToWrite:
-    def test_the_step_sets_an_output_path(self, link_step):
-        """The defect: nothing told the action, so it used its own default."""
-        assert "output" in (link_step.get("with") or {}), (
-            "the lychee step does not set `output:`, so the action writes to its "
-            "own default and the summary step below reads a file that never exists"
-        )
+class TestTheReportIsNamedOnce:
+    def test_the_check_writes_its_report_to_report(self, link_step):
+        """The defect: nothing told lychee, so it wrote somewhere else."""
+        assert link_step["env"]["REPORT"]
+        assert '--output "$REPORT"' in link_step["run"]
 
     def test_the_summary_reads_that_same_path(self, link_step):
-        configured = link_step["with"]["output"].strip()
-        shell = workflow_step_shell(CI, "link-checker", "📊 Link Check Summary")
-        assert configured in shell, (
-            f"the action writes {configured!r} but the summary step reads something else:\n{shell}"
-        )
+        summary = next(s for s in steps() if s.get("name") == SUMMARY)
+        assert summary["env"]["REPORT"] == link_step["env"]["REPORT"]
+        assert '"$REPORT"' in workflow_step_shell(CI, "link-checker", SUMMARY)
 
-    def test_the_summary_still_guards_on_the_file_existing(self, link_step):
+    def test_the_summary_still_guards_on_the_file_existing(self):
         # A missing report is not a failure: the link check may have been
         # skipped or produced nothing.
-        shell = workflow_step_shell(CI, "link-checker", "📊 Link Check Summary")
+        shell = workflow_step_shell(CI, "link-checker", SUMMARY)
         assert re.search(r"if \[ -f", shell)
 
 
@@ -60,7 +74,7 @@ class TestTheConfigNoLongerClaimsToSetIt:
         """A key the CLI always overrides is a key that lies about itself."""
         config = tomllib.loads((ROOT / "config/lychee.toml").read_text(encoding="utf-8"))
         assert "output" not in config, (
-            "config/lychee.toml sets `output`, which the action's own --output flag "
+            "config/lychee.toml sets `output`, which the workflow's --output flag "
             "always overrides; it reads as configuration and is inert"
         )
 
@@ -71,9 +85,53 @@ class TestTheConfigNoLongerClaimsToSetIt:
 
 class TestTheReportIsNotCommitted:
     def test_the_output_path_is_git_ignored(self, link_step):
-        configured = link_step["with"]["output"].strip().lstrip("./")
+        configured = link_step["env"]["REPORT"].strip().lstrip("./")
         ignored = (ROOT / ".gitignore").read_text(encoding="utf-8")
         root = configured.split("/")[0]
         assert root in ignored, (
             f"{configured} is written into the tree but {root!r} is not in .gitignore"
         )
+
+
+class TestLycheeRunsAsTheActionRanIt:
+    def test_it_comes_from_the_toolchain_before_the_check(self, link_step):
+        uses = [str(step.get("uses", "")) for step in steps()]
+        toolchain = next(i for i, u in enumerate(uses) if u.startswith("tannergolden/environment/.github/actions/toolchain@"))
+        assert toolchain < steps().index(link_step)
+
+    @pytest.fixture
+    def check(self, run_shell, tmp_path):
+        bin_dir = tmp_path / "_bin"
+        bin_dir.mkdir()
+        tool = bin_dir / "lychee"
+        tool.write_text(FAKE_LYCHEE, encoding="utf-8")
+        tool.chmod(tool.stat().st_mode | stat.S_IEXEC)
+
+        def _check(fail: str, **env: str):
+            return run_shell(
+                workflow_step_shell(CI, "link-checker", CHECK),
+                env={
+                    "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+                    "CONFIG": "lychee.toml",
+                    "FAIL": fail,
+                    "REPORT": "./lychee.md",
+                    **env,
+                },
+            )
+
+        return _check
+
+    def test_broken_links_fail_when_asked_to(self, check):
+        assert check("true", FAKE_EXIT="2").returncode == 2
+
+    def test_broken_links_pass_when_not(self, check):
+        assert check("false", FAKE_EXIT="2").returncode == 0
+
+    def test_no_links_at_all_fail_either_way(self, check):
+        result = check("false", FAKE_TOTAL="0")
+        assert result.returncode == 1
+        assert "::error" in result.output
+
+    def test_a_clean_check_passes_and_leaves_its_report(self, check, tmp_path):
+        assert check("true").returncode == 0
+        assert (tmp_path / "lychee.md").is_file()

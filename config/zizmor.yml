@@ -114,10 +114,16 @@ rules:
   # workflow its action, at the moving major: moving that tag is how a release
   # of the universal rules reaches every repository that carries the stub.
   #
+  # tannergolden/environment is the same case again. The checks here install
+  # their tools through its toolchain action at the moving major, and moving
+  # that tag is how a release of the toolchain reaches every repository's
+  # checks. The action checks every download against the pins in the tag.
+  #
   # `ref-pin` still REQUIRES a ref: `@main` or a bare `uses:` is a finding.
   unpinned-uses:
     config:
       policies:
         'tannergolden/standards/*': ref-pin
         'tannergolden/intelligence/*': ref-pin
+        'tannergolden/environment/*': ref-pin
         '*': hash-pin

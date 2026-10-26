@@ -75,8 +75,13 @@ class TestTheFormatterIsGatedToo:
         )
 
     def test_the_version_is_pinned(self):
-        doc = load_yaml(SELF_CHECKS)
-        assert "PRETTIER_VERSION" in doc["env"], "an unpinned formatter reddens untouched code"
+        """An unpinned formatter reddens untouched code: it comes pinned from the toolchain."""
+        steps = load_yaml(SELF_CHECKS)["jobs"]["data"]["steps"]
+        uses = [str(step.get("uses", "")) for step in steps]
+        toolchain = next(i for i, u in enumerate(uses) if u.startswith("tannergolden/environment/.github/actions/toolchain@"))
+        prettier = next(i for i, step in enumerate(steps) if "prettier" in str(step.get("run", "")))
+        assert toolchain < prettier, "prettier runs before the toolchain installs the pinned one"
+        assert "npx" not in steps[prettier]["run"], "npx fetches whatever version it is asked for, outside the pins"
 
     def test_the_make_target_and_the_gate_agree(self):
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")

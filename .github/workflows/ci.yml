@@ -415,11 +415,21 @@ jobs:
           name: _typos.toml
           override: ${{ inputs.typos-config }}
 
+      # typos at the version the environment pins, checked against its
+      # SHA-256 before it runs.
+      - name: '🧰 Toolchain'
+        uses: tannergolden/environment/.github/actions/toolchain@v1
+
+      # Each typo first becomes a warning on its line, as the typos action
+      # wrote them, then the check itself runs, and its status is the job's.
       - name: '📝 Check Spelling'
-        uses: crate-ci/typos@7f9d0819ca1c008ade73f4b41fa9d258d48f605b # v1.51.1
-        with:
-          files: .
-          config: ${{ steps.typos-config.outputs.path }}
+        env:
+          CONFIG: ${{ steps.typos-config.outputs.path }}
+        run: |
+          typos . --config "$CONFIG" --format json \
+            | jq -r 'select(.type == "typo") | "::warning file=\(.path | ltrimstr("./")),line=\(.line_num),col=\(.byte_offset + 1)::\"\(.typo)\" should be \"" + ((.corrections // []) | join("\" or \"")) + "\"."' \
+            || true
+          typos . --config "$CONFIG"
 
   link-checker:
     name: '🔗 Check Links'
@@ -446,30 +456,47 @@ jobs:
           name: lychee.toml
           override: ${{ inputs.lychee-config }}
 
+      # lychee at the version the environment pins, checked against its
+      # SHA-256 before it runs.
+      - name: '🧰 Toolchain'
+        uses: tannergolden/environment/.github/actions/toolchain@v1
+
+      # Scan the whole tree with '/'-rooted links resolved against the
+      # repository root. Excludes, verbosity, and accepted status codes all
+      # come from the config: tune there, not here. As the lychee action
+      # did, the report is Markdown with a checkbox per link, a tree with no
+      # links at all fails as the configuration error it almost always is,
+      # and broken links fail the job when `fail-on-broken-links` says so.
+      #
+      # ⚠️ THE REPORT'S PATH IS SET HERE, NOT IN THE CONFIG FILE: a CLI flag
+      # beats a config key, so `output` in lychee.toml would never take
+      # effect. The summary step below reads this same REPORT.
       - name: '🔗 Link Check'
-        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         id: link-check
-        with:
-          # Scan the whole tree with '/'-rooted links resolved against the
-          # repository root. Excludes, verbosity, and accepted status codes
-          # all come from the config: tune there, not here.
-          args: '--config ${{ steps.lychee-config.outputs.path }} --root-dir . .'
-          fail: ${{ inputs.fail-on-broken-links }}
-          # ⚠️ SET HERE, NOT IN THE CONFIG FILE. The action always passes
-          # `--output` on the command line, and a CLI flag beats a config
-          # key, so `output` in lychee.toml could never take effect. The
-          # summary step below reads this exact path; naming it once is what
-          # keeps the two in step.
-          output: './lychee.md'
         env:
+          CONFIG: ${{ steps.lychee-config.outputs.path }}
+          FAIL: ${{ inputs.fail-on-broken-links }}
+          REPORT: ./lychee.md
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          status=0
+          lychee --mode task --format markdown --output "$REPORT" --config "$CONFIG" --root-dir . . || status=$?
+          if [ -f "$REPORT" ] && grep -Eq 'Total\s+\|\s+0' "$REPORT"; then
+            echo "::error title=Link check::lychee found no links at all, which almost always means its configuration excludes everything."
+            exit 1
+          fi
+          if [ "$FAIL" = true ]; then
+            exit "$status"
+          fi
 
       - name: '📊 Link Check Summary'
         if: always()
+        env:
+          REPORT: ./lychee.md
         run: |
-          if [ -f ./lychee.md ]; then
+          if [ -f "$REPORT" ]; then
             echo "### 🔗 Link Check Report" >> "$GITHUB_STEP_SUMMARY"
-            cat ./lychee.md >> "$GITHUB_STEP_SUMMARY"
+            cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
           fi
 
   # A pull-request-time gate like the rest of this workflow, so it lives

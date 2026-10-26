@@ -30,6 +30,13 @@
 # provides it, so `harden` runs second here rather than first. In a consuming
 # repository it is fetched remotely and stays the opening step.
 #
+# THE TOOLS ARE THE EXCEPTION: every checker below comes from the
+# environment's toolchain action, which is another repository's, so it is
+# called at its release, as every consumer's checks call it. That is what
+# pins each checker, for the reason `.ruff.toml` sets out at length: an
+# unpinned checker turns an upstream release into a red check on code
+# nobody touched.
+#
 # ---
 
 name: '🚦 Self Checks'
@@ -51,18 +58,6 @@ concurrency:
 
 permissions: {}
 
-env:
-  # Pinned for the reason `.ruff.toml` sets out at length: an unpinned linter
-  # turns an unrelated upstream release into a red check on code nobody
-  # touched. That file pins WHAT is checked; this pins the checker.
-  RUFF_VERSION: '0.15.8'
-  # Pinned for the same reason as ruff: an unpinned test runner turns an
-  # upstream release into a red check on code nobody touched.
-  PYTEST_VERSION: '9.1.1'
-  # Pinned for the same reason again: a formatter that moves reformats code
-  # nobody touched, and this one gates the tree.
-  PRETTIER_VERSION: '3.8.1'
-
 jobs:
   tests:
     name: '🧪 Tests'
@@ -82,6 +77,9 @@ jobs:
           egress-policy: audit
           notice: '🧪 Running the suite over the scripts and the workflow shell.'
 
+      - name: '🧰 Toolchain'
+        uses: tannergolden/environment/.github/actions/toolchain@v1
+
       # The suite reads `run:` blocks out of the workflows that ship and
       # executes them against a temporary directory, so it tests the real
       # code rather than a copy that can drift. It reaches no network: a
@@ -90,7 +88,6 @@ jobs:
       - name: '🧪 pytest'
         run: |
           set -euo pipefail
-          pip install --quiet "pytest==${PYTEST_VERSION}"
           python3 -m pytest
 
   scripts:
@@ -111,6 +108,9 @@ jobs:
           egress-policy: audit
           notice: '🐍 Linting the scripts these actions ship and invoke.'
 
+      - name: '🧰 Toolchain'
+        uses: tannergolden/environment/.github/actions/toolchain@v1
+
       # `ruff check` only. `.ruff.toml` configures `[lint]` and nothing else,
       # so linting is the rule this repository actually adopted. Adding
       # `ruff format --check` here would redden this gate on its first run
@@ -119,7 +119,6 @@ jobs:
       - name: '🧹 ruff (rules from .ruff.toml)'
         run: |
           set -euo pipefail
-          pip install --quiet "ruff==${RUFF_VERSION}"
           ruff check .
 
       - name: '🔍 Every script parses'
@@ -149,6 +148,9 @@ jobs:
           egress-policy: audit
           notice: '🧰 actionlint and zizmor over the workflows and actions published here.'
 
+      - name: '🧰 Toolchain'
+        uses: tannergolden/environment/.github/actions/toolchain@v1
+
       # actionlint 1.7.12, the newest release, refuses the `cache-mode` key
       # GitHub added to workflows. Once a release accepts it, give the jobs
       # that publish, in publish-package.yml and release-publish.yml,
@@ -156,15 +158,13 @@ jobs:
       - name: '🔍 actionlint (Actions semantics)'
         run: |
           set -euo pipefail
-          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-          "$(go env GOPATH)/bin/actionlint" -color
+          actionlint -color
 
       - name: '🛡️ zizmor (Actions security audit)'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          pip install --quiet 'zizmor==1.26.1'
           zizmor --no-progress --persona=pedantic --config config/zizmor.yml \
             .github/workflows .github/actions actions
 
@@ -276,6 +276,9 @@ jobs:
           egress-policy: audit
           notice: '📋 Validating the rulesets, labels and settings written to repositories.'
 
+      - name: '🧰 Toolchain'
+        uses: tannergolden/environment/.github/actions/toolchain@v1
+
       # ⚠️ THE GENERATORS HAD NO GATE, AND THE DRIFT THEY PROMISED TO CATCH
       # HAD ALREADY SHIPPED. `update-doc-indexes.py`'s docstring says an
       # index "can never disagree with the tree";
@@ -301,7 +304,7 @@ jobs:
       - name: '🎨 Formatting matches the published config'
         run: |
           set -euo pipefail
-          npx --yes "prettier@${PRETTIER_VERSION}" \
+          prettier \
             --config config/prettierrc.json \
             --ignore-path config/prettierignore \
             --check "**/*.{md,yml,yaml,json,js}"

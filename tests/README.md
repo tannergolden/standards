@@ -65,14 +65,14 @@ _Every script, every shell block._
 | [`java-selection.py`](java-selection.py)                                           | A non-integer java-version must fall back, not crash the step.                                |
 | [`label-registry-parsing.py`](label-registry-parsing.py)                           | The label registry is YAML, so both quoting styles must parse.                                |
 | [`label-validation-is-single.py`](label-validation-is-single.py)                   | One validator for the label taxonomy, not two that disagree.                                  |
-| [`link-check-summary.py`](link-check-summary.py)                                   | The link-check summary step must read the file the action writes.                             |
+| [`link-check-summary.py`](link-check-summary.py)                                   | The link-check summary step must read the file lychee writes.                                 |
 | [`machined-blocks.py`](machined-blocks.py)                                         | A block marked with its own hash must still match it.                                         |
 | [`machined-folder-logs.py`](machined-folder-logs.py)                               | A folder log is generated from the folder, or it is a list that drifts.                       |
 | [`make-setup-probe.py`](make-setup-probe.py)                                       | `make setup` is optional everywhere, so nowhere may assume it exists.                         |
 | [`make-target-probes.py`](make-target-probes.py)                                   | Every `make` target probe finds a target that is there, under the shell Actions runs it with. |
 | [`merge-queue.py`](merge-queue.py)                                                 | Every required check passes on a merge group, where there is no pull request.                 |
 | [`npm-publish-probe.py`](npm-publish-probe.py)                                     | The already-published probe must read the registry as the publisher.                          |
-| [`private-pull-request-scan.py`](private-pull-request-scan.py)                     | A private repository's pull request is scanned without the pull request API.                  |
+| [`private-pull-request-scan.py`](private-pull-request-scan.py)                     | Every event is scanned by the toolchain's gitleaks, without the pull request API.             |
 | [`prune-deployment-scope.py`](prune-deployment-scope.py)                           | An empty environment name must not widen a destructive prune.                                 |
 | [`prune-run-defaults.py`](prune-run-defaults.py)                                   | Two wrappers around one destructive action must not disagree on safety.                       |
 | [`README.md`](README.md)                                                           | This file.                                                                                    |
@@ -98,6 +98,7 @@ _Every script, every shell block._
 | [`template-sync-properties.py`](template-sync-properties.py)                       | Template sync under random histories, and the broken designs it rejects.                      |
 | [`template-sync-run.py`](template-sync-run.py)                                     | Template sync, end to end, on real repositories.                                              |
 | [`template-sync-workflow.py`](template-sync-workflow.py)                           | The workflow, the action and init: the shell around the engine, as shipped.                   |
+| [`toolchain-from-the-environment.py`](toolchain-from-the-environment.py)           | Every checker comes from the environment's toolchain, at the version it pins.                 |
 | [`trusted-publishing.py`](trusted-publishing.py)                                   | Npm and crates.io publish without a stored token, and say why when they cannot.               |
 
 <!-- AUTO-INDEX:END -->

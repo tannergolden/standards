@@ -82,6 +82,12 @@ jobs:
           name: zizmor.yml
           override: ${{ inputs.zizmor-config }}
 
+      # actionlint, zizmor and the shellcheck actionlint runs on every
+      # `run:` block, each at the version the environment pins and checked
+      # against its SHA-256 before it runs.
+      - name: '🧰 Toolchain'
+        uses: tannergolden/environment/.github/actions/toolchain@v1
+
       - name: '🔍 actionlint (Actions semantics)'
         env:
           # SC2129 ("consider { cmd; } >> file") is a style-level suggestion:
@@ -89,9 +95,7 @@ jobs:
           # grouped form reads worse. Correctness-level shellcheck findings
           # (quoting, word splitting) still fail this job.
           SHELLCHECK_OPTS: --exclude=SC2129
-        run: |
-          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-          "$(go env GOPATH)/bin/actionlint" -color
+        run: actionlint -color
 
       - name: '🛡️ zizmor (Actions security audit)'
         env:
@@ -100,15 +104,6 @@ jobs:
           WORKFLOWS_PATH: ${{ inputs.workflows-path }}
         run: |
           set -euo pipefail
-          # Hash-checked install: a version pin alone trusts PyPI; the hashes
-          # pin the exact artifacts (Scorecard: Pinned-Dependencies).
-          cat > "${RUNNER_TEMP}/zizmor-requirements.txt" <<'REQ'
-          zizmor==1.26.1 \
-            --hash=sha256:6a958d8a0941d7e1d0de8436670b5cb7fc64c8028b4d16e3f519ccc77f953cef \
-            --hash=sha256:0c2cc575007a4db99d89d5acc6120cfa7b61504bc2394c3b50af348c73f1916e
-          REQ
-          pip install --quiet --require-hashes -r "${RUNNER_TEMP}/zizmor-requirements.txt"
-
           # Pedantic persona: style-level audits (undocumented permissions,
           # concurrency limits, anonymous definitions) are part of the gate.
           zizmor --no-progress --persona=pedantic --config "$CONFIG" "$WORKFLOWS_PATH"
