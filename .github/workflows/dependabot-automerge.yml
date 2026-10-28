@@ -9,7 +9,8 @@
 #
 # MAJOR VERSION BUMPS ARE DELIBERATELY EXCLUDED. A major bump is where
 # breaking changes live, and it deserves a human read of the changelog. Those
-# pull requests get a notice and are otherwise left alone.
+# pull requests get a notice and are otherwise left alone, and a major in any
+# of a pull request's commits counts, not only one in its head commit.
 #
 # Approving and enabling auto-merge are both best-effort. Either can fail on
 # repository settings a maintainer has not turned on, and failing the job
@@ -88,6 +89,31 @@ jobs:
         with:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
 
+      # ⚠️ A MAJOR IN ANY COMMIT HOLDS THE WHOLE PULL REQUEST. The metadata
+      # above comes from the head commit's first metadata block alone, and a
+      # pull request from a multi-ecosystem group, one a month for every
+      # ecosystem a repository has, can carry more than one block: a major in
+      # any other would pass as the head's patch, and be approved and merged
+      # with it. So every commit's message is read here, every block in each,
+      # and a failure to list them fails the job rather than approving what it
+      # could not read. The steps below go ahead only on an explicit `false`.
+      - name: '🔎 Check Every Commit for a Major Update'
+        id: major
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+        run: |
+          set -euo pipefail
+          messages="$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/commits" --jq '.[].commit.message')"
+          if [ "$UPDATE_TYPE" = 'version-update:semver-major' ] ||
+            grep -q 'update-type: version-update:semver-major' <<< "$messages"; then
+            echo 'found=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'found=false' >> "$GITHUB_OUTPUT"
+          fi
+
       # ⚠️ THE TITLE BECOMES THE COMMIT SUBJECT ON A SQUASH MERGE, and this
       # repository requires a lowercase subject: semantic-pr's subjectPattern
       # is `[a-z].*` after an optional emoji. Dependabot writes "Bump", and
@@ -127,21 +153,19 @@ jobs:
             echo "::warning::Could not retitle. The squash subject will keep its capital letter."
 
       - name: '🖐️ Flag Major Update for Human Review'
-        if: ${{ steps.meta.outputs.update-type == 'version-update:semver-major' }}
-        env:
-          DEPENDENCY_NAMES: ${{ steps.meta.outputs.dependency-names }}
+        if: ${{ steps.major.outputs.found == 'true' }}
         run: |
-          echo "::notice title=Major bump, needs a human::${DEPENDENCY_NAMES} is a major version bump, so it is not auto-approved or auto-merged. Read the changelog before merging."
+          echo "::notice title=Major bump, needs a human::An update in this pull request crosses a major version, so it is not auto-approved or auto-merged. Read the changelogs before merging."
           {
             echo "### 🖐️ Major version bump"
             echo ""
-            echo "\`${DEPENDENCY_NAMES}\` crosses a major version, which is where breaking changes live."
+            echo "An update in this pull request crosses a major version, which is where breaking changes live."
             echo "This pull request was deliberately left for a human to review and merge."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: '👍 Approve Dependabot PR'
         id: approve
-        if: ${{ steps.meta.outputs.update-type != 'version-update:semver-major' }}
+        if: ${{ steps.major.outputs.found == 'false' }}
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.BOT_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
@@ -150,7 +174,7 @@ jobs:
             echo "::warning::Could not approve. Enable 'Allow GitHub Actions to create and approve pull requests' in Settings, or set a BOT_ACCESS_TOKEN secret."
 
       - name: '🚀 Enable Auto-Merge'
-        if: ${{ steps.meta.outputs.update-type != 'version-update:semver-major' }}
+        if: ${{ steps.major.outputs.found == 'false' }}
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -165,7 +189,7 @@ jobs:
           {
             echo "### 🤖 Dependabot automation failed"
             echo ""
-            echo "1. **Metadata fetch:** the action could not read the update metadata, usually a transient API error."
+            echo "1. **Metadata fetch:** the action could not read the update metadata, or the pull request's commits could not be listed, usually a transient API error."
             echo "2. **Approve:** the review could not be posted; check that the token has \`pull-requests: write\`."
             echo ""
             echo "Enabling auto-merge is best-effort and only ever warns, so it is never the cause of this failure."

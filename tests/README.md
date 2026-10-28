@@ -47,6 +47,7 @@ _Every script, every shell block._
 | [`conftest.py`](conftest.py)                                                       | Shared fixtures for the standards test suite.                                                 |
 | [`container-tagging.py`](container-tagging.py)                                     | `latest` must never follow a prerelease, whatever fired the run.                              |
 | [`dco-truncation.py`](dco-truncation.py)                                           | A required gate must not pass because it only saw part of the evidence.                       |
+| [`dependabot-major-updates.py`](dependabot-major-updates.py)                       | A major update in any commit of a Dependabot pull request holds all of it.                    |
 | [`doc-index-gate.py`](doc-index-gate.py)                                           | A check that inspected zero files must not report success.                                    |
 | [`documentation-inventories.py`](documentation-inventories.py)                     | An inventory that claims to be complete must be complete.                                     |
 | [`documented-commands-exist.py`](documented-commands-exist.py)                     | Every `make` command a script here tells someone to run must exist.                           |
