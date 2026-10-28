@@ -69,29 +69,34 @@ entry, because there is no `package.json` and no Python dependency file to
 watch - an ecosystem pointing at a manifest that is not there produces a
 standing error on the Dependabot tab rather than being quietly ignored.
 
-Two entries cover it: the workflows directory, and the composite actions.
+One entry covers both places the pins live, the workflows directory and the composite actions, so a
+month's updates arrive as one pull request. A group spans the directories of its own entry and never
+another entry's: as two entries, they arrived as two pull requests a month.
 
 <details>
 <summary>Click to view the shipped configuration</summary>
 
 ```yaml
 updates:
+  # A glob, so a new action is covered the day it is added.
   - package-ecosystem: 'github-actions'
-    directory: '/'
+    directories: ['/', '/.github/actions/*']
     schedule: { interval: 'monthly', time: '07:00', timezone: 'Etc/UTC' }
     commit-message: { prefix: 'build', include: 'scope' }
     groups:
       github-actions:
         patterns: ['*']
-
-  # A glob, so a new action is covered the day it is added.
-  - package-ecosystem: 'github-actions'
-    directories: ['/.github/actions/*']
-    schedule: { interval: 'monthly', time: '07:00', timezone: 'Etc/UTC' }
-    commit-message: { prefix: 'build', include: 'scope' }
 ```
 
 </details>
+
+> [!TIP]
+> **One pull request a month, however many ecosystems.** Each ecosystem otherwise opens a pull
+> request of its own. A repository with several gets one by joining them to a multi-ecosystem
+> group, as the golden path template does: the group under `multi-ecosystem-groups` holds the
+> schedule and `commit-message`, and each ecosystem names it in `multi-ecosystem-group`, with
+> `patterns: ['*']`. Security updates keep no schedule either way, and arrive as soon as their
+> alerts open.
 
 > [!IMPORTANT]
 > **Every update is a Conventional Commit.** `commit-message.prefix` titles
@@ -103,7 +108,9 @@ updates:
 > updates would simply be missing from the release notes.
 >
 > `build` is the Conventional Commits type for changes to the build system or
-> external dependencies. Set it on every ecosystem you add.
+> external dependencies. Set it on every ecosystem you add, or once on the
+> multi-ecosystem group the ecosystem joins: Dependabot refuses a
+> `commit-message` on an ecosystem in a group.
 
 > [!TIP]
 > **Name action directories with a glob, not a list.** Composite actions are not

@@ -107,8 +107,8 @@ evolving **draft** release, which publishes nothing until somebody presses publi
 GitHub **automatically disables every scheduled workflow in a public repository after 60 days
 without repository activity**, with one warning email first.
 
-A repository running `dependabot-automerge.yml` usually stays alive on its own, since weekly
-dependency pull requests merging on green CI count as activity. One that genuinely goes cold will
+A repository running `dependabot-automerge.yml` usually stays alive on its own, since a monthly
+dependency pull request merging on green CI counts as activity. One that genuinely goes cold will
 have its crons stopped until somebody re-enables them from the Actions tab.
 
 This is platform behaviour, not something these standards configure, and no setting here can opt out

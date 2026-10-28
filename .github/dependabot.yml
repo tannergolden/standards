@@ -31,39 +31,21 @@
 # updates put eight pull requests, eight merges and sixteen commits into
 # permanent history for what was a single sweep of the pins.
 #
-# The group name and pattern match the golden path template's, so the two
-# configurations stay one file with two copies rather than two files that
-# drifted.
+# ONE ENTRY, SO ONE PULL REQUEST A MONTH. A group spans the directories of its
+# own entry and never another entry's, so the workflows and the composite
+# actions, watched as two entries, arrived as two pull requests every month.
+# The golden path template gets its one pull request a month from a
+# multi-ecosystem group, since it has three ecosystems; this repository has
+# one, so a plain group does the same, with the same cadence, prefix and
+# labels.
 #
 # ---
 
 version: 2
 updates:
-  - package-ecosystem: 'github-actions'
-    directory: '/'
-    schedule:
-      # Monthly, not weekly. Grouped updates make the cadence the only
-      # remaining source of noise, and a pin that is four weeks old is not a
-      # problem worth a weekly interruption. `day` is a weekly-only key and is
-      # dropped here; monthly runs on the first of the month.
-      interval: 'monthly'
-      time: '07:00'
-      timezone: 'Etc/UTC'
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: 'build'
-      include: 'scope'
-    labels:
-      - 'type: build'
-      - 'dependencies'
-    groups:
-      github-actions:
-        patterns:
-          - '*'
-
-  # Composite actions are not discovered through the workflows directory, so
-  # their folders need naming separately. They live in .github/actions/, one
-  # folder each.
+  # `/` is the workflows directory and the root action file. Composite actions
+  # are not discovered through it, so their folders are named beside it. They
+  # live in .github/actions/, one folder each.
   #
   # ⚠️ A GLOB, NOT AN ENUMERATION, and that is the point. This list was written
   # out by hand and had already fallen five actions behind the tree - none of
@@ -79,8 +61,13 @@ updates:
   # until that major deletes it (ADR-0001).
   - package-ecosystem: 'github-actions'
     directories:
+      - '/'
       - '/.github/actions/*'
     schedule:
+      # Monthly, not weekly. Grouped updates make the cadence the only
+      # remaining source of noise, and a pin that is four weeks old is not a
+      # problem worth a weekly interruption. `day` is a weekly-only key and is
+      # dropped here; monthly runs on the first of the month.
       interval: 'monthly'
       time: '07:00'
       timezone: 'Etc/UTC'
