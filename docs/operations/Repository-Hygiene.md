@@ -36,7 +36,6 @@ We adhere to a standardized structure so that any developer - or agent - can nav
 ```txt
 / (repo root)
 ├── .devcontainer/         # The development container
-├── .vscode/               # Shared editor settings and recommended extensions
 ├── .github/
 │   ├── actions/           # Composite actions, one folder each: action.yml and its README
 │   ├── scripts/           # The repository's own checks, and the helpers its actions ship
@@ -48,6 +47,10 @@ We adhere to a standardized structure so that any developer - or agent - can nav
 ├── docs/                  # The seven folders these standards keep, and templates/
 └── README.md, LICENSE, .editorconfig, .env.example, .gitattributes, .gitignore, .markdownlint.json
 ```
+
+Editor settings and extensions are each project's own choice, so the template ships no `.vscode/`. A
+project that shares some adds them itself, and the template's `.gitignore` lets in only the files
+a team shares, such as `settings.json` and `extensions.json`, and keeps every personal one out.
 
 `docs/` keeps the same seven folders as these standards: `introduction/`, `distribution/`,
 `technical/`, `operations/`, `references/`, `library/` and `adrs/`, each arriving with a
