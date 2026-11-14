@@ -25,8 +25,8 @@ _PR-only merges. Linear history. Restricted pushes._
 > `apply-standards.yml`, matched by name so an existing ruleset is updated rather than
 > duplicated.
 >
-> - **`protect-integration-branches.json`** covers `Experimental` and `Development` (the working lines). Force-push is blocked for everyone **except the repository owner** (the Repository-admin role is a ruleset bypass actor), so the owner can rewrite history on those two branches - most notably to normalize the generation root commit at Day 0.
-> - **`protect-promotion-branches.json`** covers `Preview` and `Release` (the promotion lines). Force-push and deletion are blocked for **everyone**: their history is immutable.
+> - **`protect-integration-branches.json`** covers `Experimental` and `Development` (the working lines). Force-push is blocked for everyone **except the repository owner** (the Repository-admin role is a ruleset bypass actor), so the owner can rewrite history on those two branches - most notably to normalize the generation root commit at Day 0. It also names `~DEFAULT_BRANCH`, so once `Release` becomes the default branch it takes these rules as well, and `Development` keeps them by name.
+> - **`protect-promotion-branches.json`** covers `Preview` and `Release` (the promotion lines). Force-push and deletion are blocked for **everyone**: their history is immutable. Both branches are created only when the project is ready to distribute; the ruleset names them, so it protects each from the moment it is created.
 > - **`protect-release-tags.json`** covers the `v*.*.*` **tag** namespace: once minted, an exact version tag can never be moved by a push, by anyone, so what it resolved yesterday it resolves today. It can be deleted, because `release.yml` prunes every version but the latest after each release, and creating tags stays unrestricted, because the release automation creates them. Together those leave one way round the rule: a tag deleted and created again can name another commit. So anyone who wants a pin that outlives the next release, or that nothing can re-point, pins a commit SHA. An admin can temporarily disable the ruleset in Settings for genuine emergencies.
 > - **The pattern is `v*.*.*`, not `v*`, and that is load-bearing.** A moving major tag like `v1` is _supposed_ to be re-pointed at every release in its line - that is the entire mechanism by which a fix reaches consumers. `v*` would protect it too and quietly break every future release. Two dots is what separates the version, never re-pointed, from the movable major.
 >
@@ -60,12 +60,12 @@ We treat our primary branch lines as sacred. By enforcing strict protection rule
 
 Reviews column = the **recommended team posture** once you have reviewers; the shipped default is `0` everywhere until you harden it.
 
-| Branch Line                 | Intent                       | Recommended Reviews | Critical Gate                     |
-| :-------------------------- | :--------------------------- | :-----------------: | :-------------------------------- |
-| **`Experimental`**          | Spike sandbox / stable base. |          1          | CI Validation + Review            |
-| **`Development`** (Default) | Main integration line.       |          1          | CI Validation (Lint/Test/Build)   |
-| **`Preview`**               | Environmental Staging.       |          1          | Approval + Environment Protection |
-| **`Release`**               | Production Truth.            |         1+          | Managerial sign-off + Tagging     |
+| Branch Line        | Intent                       | Recommended Reviews | Critical Gate                     |
+| :----------------- | :--------------------------- | :-----------------: | :-------------------------------- |
+| **`Experimental`** | Spike sandbox / stable base. |          1          | CI Validation + Review            |
+| **`Development`**  | Main integration line.       |          1          | CI Validation (Lint/Test/Build)   |
+| **`Preview`**      | Environmental Staging.       |          1          | Approval + Environment Protection |
+| **`Release`**      | Production Truth.            |         1+          | Managerial sign-off + Tagging     |
 
 > [!IMPORTANT]
 > **Always Squash & Merge.** The rulesets enforce it: `allowed_merge_methods` is `["squash"]` on both branch rulesets, so a linear history is policy rather than etiquette.

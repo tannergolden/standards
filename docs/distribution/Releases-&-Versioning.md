@@ -187,6 +187,7 @@ A published release is the changelog for its version: its page carries the notes
 
 ## ✅ Release Readiness Checklist
 
+- [ ] **First distribution only**: `Preview` and `Release` created and `Release` made the default branch, as [What You Do By Hand](../introduction/What-You-Do-By-Hand.md#ready-to-distribute) lists.
 - [ ] **Preview** validated: QA smoke green, metrics acceptable.
 - [ ] Version set appropriately (SemVer) and communicated.
 - [ ] Migration notes (if any) are in **Breaking changes**.

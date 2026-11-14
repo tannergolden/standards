@@ -135,6 +135,41 @@ The golden path template's validator fails a public repository that still carrie
 
 ---
 
+## 8️⃣ When It Is Ready To Distribute
+
+<a name="ready-to-distribute"></a>
+
+A repository starts with `Development` alone. When you judge the project ready to distribute, you open the release line: `Preview` from `Development`, `Release` from `Preview`, and `Release` as the default branch, so a visitor lands on the newest release ([🌿 Branching Strategy](../distribution/Branching-Strategy-&-Workflow.md#opening-the-release-line)). In this order:
+
+| Step                                                       | Why it is yours                                                                                                                                                                                                                                                                                                 |
+| :--------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Point what follows the default branch at `Development`** | The stubs and the file in the table below act on the default branch, which is about to be `Release`. Change them in a pull request into `Development` first, so both new branches start with the change: runs on a schedule, on `workflow_run` and on issue events use the workflow file on the default branch. |
+| **Create `Preview` from the newest `Development`**         | On the Branches page, <kbd>New branch</kbd> with `Development` as its source. Validate the project there.                                                                                                                                                                                                       |
+| **Create `Release` from the newest `Preview`**             | <kbd>New branch</kbd> again, with `Preview` as its source.                                                                                                                                                                                                                                                      |
+| **Make `Release` the default branch**                      | Settings → General → Default branch. Nothing automated writes it: 🎯 Apply Standards refuses the default branch in any settings file.                                                                                                                                                                           |
+| **Confirm all three are protected**                        | The loop below prints the active rules on each branch, and every one must show `deletion`. A branch with none has no ruleset over it: the rulesets were never applied, or were disabled. Dispatch 🎯 Apply Standards with `apply-rulesets: true`, as in 3️⃣.                                                     |
+
+```bash
+for branch in Development Preview Release; do
+  echo "$branch: $(gh api "repos/owner/name/rules/branches/$branch" --jq '[.[].type] | unique | join(", ")')"
+done
+```
+
+What follows the default branch until you name `Development`:
+
+| Stub or file                              | Follows the default branch by                                    | Give it                                                                             |
+| :---------------------------------------- | :--------------------------------------------------------------- | :---------------------------------------------------------------------------------- |
+| 🔄 Template Sync, 🖌️ Code Style Formatter | Opening its pull request against it                              | `base: Development`                                                                 |
+| 🗂️ Machined Indexes                       | Running on a push to it, and opening its pull request against it | `base: Development`, and its `if:` comparing `github.ref_name` with `'Development'` |
+| 🦾 Automate Dependabot                    | Acting only on pull requests into it                             | `base-branch: Development`                                                          |
+| 🚨 CI Failure Alerts                      | Escalating only the failures on it                               | `branches: '["Development"]'`: the branches its trigger lists                       |
+| `.github/dependabot.yml`                  | Opening version updates against it                               | `target-branch: Development` in each `updates` entry                                |
+
+> [!NOTE]
+> **Some of it cannot be pointed elsewhere.** Dependabot security updates always open against the default branch: treat each as a hotfix into `Release`, then back-merge it. A closing keyword such as `Fixes #12` acts only in a pull request into the default branch, so an issue fixed on `Development` stays open until you close it, or until a promotion into `Release` names it. A new fork copies only the default branch unless its author clears **Copy the `Release` branch only**. And a later change to a stub that runs on a schedule, on `workflow_run` or on issue events takes effect once it reaches `Release`.
+
+---
+
 ## 🚫 What You Never Do By Hand
 
 Reach for these and you are fighting the automation, not using it:

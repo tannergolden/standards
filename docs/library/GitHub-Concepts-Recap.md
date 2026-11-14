@@ -24,9 +24,9 @@ _Trunk-based development. Linear history. Automated promotion._
 The repository serves as a **single source of truth** managed through a strict promotion lifecycle. We use local feature branches to propose changes, which are then validated by Continuous Integration (CI) and peer-reviewed via Pull Requests (PRs).
 
 - **Experimental**: The CI-only spike line - the stable base beneath integration.
-- **Development**: The active integration branch (and the default). All work starts and lands here.
+- **Development**: The active integration branch, and the default until the project is ready to distribute. All work starts and lands here.
 - **Preview**: The staging environment. Used for validation and smoke testing.
-- **Release**: The production line. Holds the canonical state of truth.
+- **Release**: The production line, created from `Preview` when the project is ready to distribute and the default branch from then on. Holds the canonical state of truth.
 
 ---
 

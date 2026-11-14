@@ -21,10 +21,10 @@ _Linear integration. Intentional promotion. Zero-downtime philosophy._
 
 ## 🎯 Our Strategic Model
 
-We use a quad-tier long-lived branch architecture to isolate work-in-progress from user-facing environments. This structure follows a lineal promotion path: `Experimental` (the stable base) → `Development` → `Preview` → `Release`. This ensures that each stage of the lifecycle has a dedicated environment for validation. A repository generated from the template starts with `Development` as its default branch; the other three are created from it on Day 0 (see the initialization guide).
+We use a quad-tier long-lived branch architecture to isolate work-in-progress from user-facing environments. This structure follows a lineal promotion path: `Experimental` (the stable base) → `Development` → `Preview` → `Release`. This ensures that each stage of the lifecycle has a dedicated environment for validation. A repository generated from the template starts with one long-lived branch, `Development`, as its default; `Preview` and `Release` are created when the project is ready to distribute, and `Release` then becomes the default ([Opening The Release Line](#opening-the-release-line)). `Experimental` is optional: a project creates it from `Development` only when it wants a stable base beneath it.
 
 > [!IMPORTANT]
-> **`Development` is the default branch.** All day-to-day integration must target this branch. Direct pushes to long-lived branches are strictly prohibited.
+> **All day-to-day integration targets `Development`, whichever branch is the default.** `Development` is the default until the project is ready to distribute; from then on `Release` is, so a visitor lands on the newest release rather than on work in progress. Direct pushes to long-lived branches are strictly prohibited.
 
 ---
 
@@ -32,16 +32,16 @@ We use a quad-tier long-lived branch architecture to isolate work-in-progress fr
 
 <strong>🧱 Branch Types (what they're for)</strong>
 
-| Branch                      | Purpose                                 | Who writes                    | How it changes                                                       | Deploy target       |
-| --------------------------- | --------------------------------------- | ----------------------------- | -------------------------------------------------------------------- | ------------------- |
-| **`Experimental`**          | Stable base                             | Nobody directly (via PR only) | Integration from upstream or core architecture shifts                | Sandbox             |
-| **`Development`** (Default) | High-velocity integration line          | Nobody directly (via PR only) | **Promoted** from `Experimental`; Merges feat/bugfix branches        | Default environment |
-| **`Preview`**               | Staging for validation and UAT          | Nobody directly (via PR only) | **Promoted** from `Development`; critical bugfix PRs allowed         | Preview environment |
-| **`Release`**               | Production line; tagged versions        | Nobody directly (via PR only) | **Promoted** from `Preview`; emergency hotfix PRs allowed            | Production          |
-| `feat/*`                    | New work (feature flags encouraged)     | Authors of the feature        | Rebase/merge with `Development` until ready; then PR → `Development` | None                |
-| `bugfix/*`                  | Fixes for issues discovered pre-release | Authors of the fix            | PR → `Development` (or `Preview` if needed)                          | None                |
-| `hotfix/*`                  | Emergency production fixes              | Release managers + owners     | PR → `Release` (then back-merge)                                     | Production          |
-| `experiment/*`              | Prototypes/spikes                       | Authors                       | PR → `Development` (guarded behind flags)                            | None                |
+| Branch                               | Purpose                                 | Who writes                    | How it changes                                                       | Deploy target       |
+| ------------------------------------ | --------------------------------------- | ----------------------------- | -------------------------------------------------------------------- | ------------------- |
+| **`Experimental`** (Optional)        | Stable base                             | Nobody directly (via PR only) | Integration from upstream or core architecture shifts                | Sandbox             |
+| **`Development`** (Default at first) | High-velocity integration line          | Nobody directly (via PR only) | **Promoted** from `Experimental`; Merges feat/bugfix branches        | Default environment |
+| **`Preview`**                        | Staging for validation and UAT          | Nobody directly (via PR only) | **Promoted** from `Development`; critical bugfix PRs allowed         | Preview environment |
+| **`Release`** (Default once created) | Production line; tagged versions        | Nobody directly (via PR only) | **Promoted** from `Preview`; emergency hotfix PRs allowed            | Production          |
+| `feat/*`                             | New work (feature flags encouraged)     | Authors of the feature        | Rebase/merge with `Development` until ready; then PR → `Development` | None                |
+| `bugfix/*`                           | Fixes for issues discovered pre-release | Authors of the fix            | PR → `Development` (or `Preview` if needed)                          | None                |
+| `hotfix/*`                           | Emergency production fixes              | Release managers + owners     | PR → `Release` (then back-merge)                                     | Production          |
+| `experiment/*`                       | Prototypes/spikes                       | Authors                       | PR → `Development` (guarded behind flags)                            | None                |
 
 ---
 
@@ -172,6 +172,24 @@ git push --force-with-lease
 
 ---
 
+<a name="opening-the-release-line"></a>
+
+<strong>🌱 Opening The Release Line</strong>
+
+A new repository has one long-lived branch, `Development`, and the topic branches cut from it. `Preview` and `Release` wait until the owner judges the project ready to distribute: before then there is nothing to stage and nothing released to show. At that point the owner, in this order:
+
+1. **Creates `Preview`** from the newest `Development`, and validates it there.
+2. **Creates `Release`** from the newest `Preview`.
+3. **Makes `Release` the default branch.** The default branch is what a visitor meets first: the repository's front page and README, a clone, a download. From then on that is the newest release, not work in progress.
+4. **Confirms that `Development`, `Preview` and `Release` are protected** and cannot be deleted.
+
+Several stubs, and Dependabot, follow the default branch instead of naming `Development`, so they are pointed at `Development` first, in a pull request into it, and both new branches start with the change. The steps in full, with that list: [🙋 What You Do By Hand](../introduction/What-You-Do-By-Hand.md#ready-to-distribute).
+
+> [!IMPORTANT]
+> **Once `Release` is the default, pick `Development` as the base of every new pull request.** GitHub preselects the default branch, and the flows above have not changed: new work goes to `Development`.
+
+---
+
 <strong>🔧 Hotfix Protocol (production incident)</strong>
 
 1. Create `hotfix/<ticket>` from `Release`.
@@ -219,8 +237,8 @@ Open a Pull Request targeting `Development`. Ensure the description links to rel
 
 <strong>❓ Frequently Asked Questions (FAQ)</strong>
 
-- **Why is `Development` the default branch?**
-  Safer integration and simpler PR targeting; promotions make `Release` stable and auditable.
+- **Why does the default branch move from `Development` to `Release`?**
+  The default branch is what a visitor sees first. Until the project is ready to distribute, every pull request goes to `Development` and nothing has been released, so `Development` is the default. After that, most visitors come for what was released, so they land on `Release`, and contributors pick `Development` as their base.
 
 - **When can I merge to `Preview` directly?**
   Rarely - only critical fixes to unblock a release candidate.

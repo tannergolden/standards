@@ -167,12 +167,12 @@ We believe that clear, unambiguous language is the foundation of effective engin
 
 ## 🌿 Long-lived Branches
 
-| Branch             | Logical Category | Strategic Purpose                         |
-| :----------------- | :--------------- | :---------------------------------------- |
-| **`Experimental`** | Sandbox          | CI-only spike line (the stable base).     |
-| **`Development`**  | Integration      | The default line where features land.     |
-| **`Preview`**      | Staging          | High-fidelity sandbox for E2E validation. |
-| **`Release`**      | Production       | The immutable line of stable truth.       |
+| Branch             | Logical Category | Strategic Purpose                                             |
+| :----------------- | :--------------- | :------------------------------------------------------------ |
+| **`Experimental`** | Sandbox          | CI-only spike line (the stable base).                         |
+| **`Development`**  | Integration      | Where features land; the default until `Release` is created.  |
+| **`Preview`**      | Staging          | High-fidelity sandbox for E2E validation.                     |
+| **`Release`**      | Production       | The immutable line of stable truth; the default once created. |
 
 ---
 
