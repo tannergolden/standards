@@ -198,7 +198,8 @@ in at the end of the section under the heading it follows in the template, or ab
 at the end; one you left as the template had it is brought up to date; one the template drops is
 taken out. Every other line stays as you wrote it, and so does a block you changed, which is a
 conflict like any other, or took out, which stays out. A second block in one file takes a name,
-such as `<!-- TEMPLATE-SYNC:RESEARCH:BEGIN -->`.
+such as `<!-- TEMPLATE-SYNC:RESEARCH:BEGIN -->`. A heading inside a block another machine writes,
+such as the `INTELLIGENCE` block, is never where a section is put.
 
 **In `.gitignore`, other ignore files and `.gitattributes`, two additions in one place are kept.**
 Both appending to the end of `.gitignore` is the commonest change either side makes, and git calls

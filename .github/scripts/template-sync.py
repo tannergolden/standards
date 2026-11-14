@@ -1367,9 +1367,15 @@ def sections(data: bytes) -> dict[bytes, list[bytes]]:
 
 
 def _plain_lines(data: bytes) -> tuple[list[bytes], list[int]]:
-    """The file's lines, and the numbers of those outside every fence and every template block."""
+    """The file's lines, and the numbers of those outside every fence and every block.
+
+    A block another machine writes, such as the INTELLIGENCE block or a
+    folder log, is never an anchor, and nothing is ever put inside one.
+    """
     lines = data.split(b"\n")
     inside = {i for _name, begin, end in template_blocks(data) for i in range(begin, end + 1)}
+    inside |= {i for begin, end, _key, _sealed in machined_blocks(lines, sealed_only_with_hash=False)
+               for i in range(begin, end + 1)}
     plain, fenced = [], False
     for i, line in enumerate(lines):
         if i in inside:

@@ -566,6 +566,14 @@ class TestATemplatesSectionInAFileTheOwnerWrites:
         assert research() in text and "- The build is slow." in text and "sha256:" + "a" * 64 in text
         assert not sync_world.run_sync().changed
 
+    def test_a_heading_inside_another_machines_block_is_never_an_anchor(self):
+        # The template's section follows the universal rules, whose last heading sits inside the sealed block.
+        target = ("# Agents\n\n" + sealed("- SEC-001: Never.", "a") + "\n" + research() + "\n## Commands\n").encode()
+        ours = ("# Agents\n\n" + sealed("- SEC-001: Never.", "b") + "\n## Commands\n\n- make test\n").encode()
+        assert sync.anchor_of(target, b"TEMPLATE-SYNC") == b"# Agents"
+        written = self.decide(None, target, ours).write.data.decode()
+        assert written.index("<!-- INTELLIGENCE:END -->") < written.index("<!-- TEMPLATE-SYNC:BEGIN -->")
+
 
 class TestTheTemplatesSectionsAreChecked:
     def check(self, world):
