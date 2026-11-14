@@ -566,6 +566,7 @@ class TestATemplatesSectionInAFileTheOwnerWrites:
         assert research() in text and "- The build is slow." in text and "sha256:" + "a" * 64 in text
         assert not sync_world.run_sync().changed
 
+
     def test_a_heading_inside_another_machines_block_is_never_an_anchor(self):
         # The template's section follows the universal rules, whose last heading sits inside the sealed block.
         target = ("# Agents\n\n" + sealed("- SEC-001: Never.", "a") + "\n" + research() + "\n## Commands\n").encode()
@@ -573,6 +574,66 @@ class TestATemplatesSectionInAFileTheOwnerWrites:
         assert sync.anchor_of(target, b"TEMPLATE-SYNC") == b"# Agents"
         written = self.decide(None, target, ours).write.data.decode()
         assert written.index("<!-- INTELLIGENCE:END -->") < written.index("<!-- TEMPLATE-SYNC:BEGIN -->")
+
+
+class TestAHiddenFolderIsSyncedWhereItLives:
+    """A generated repository that keeps docs/ as .docs/ is synced there, never handed a new docs/."""
+
+    @staticmethod
+    def hide_docs(world):
+        world.release("v1.0.1", {})
+        world.generate()
+        world.owner({"docs/guide.md": None, ".docs/guide.md": world.text("docs/guide.md")}, message="hide docs")
+
+    def test_it_needs_the_hidden_folder_and_nothing_at_the_template_path(self):
+        assert sync.hidden_folders([".docs/a.md", "README.md"], ["docs/a.md"]).pairs == (("docs", ".docs"),)
+        assert sync.hidden_folders([".assets/logo.svg"], ["assets/logo.svg"]).pairs == (("assets", ".assets"),)
+        assert sync.hidden_folders([".docs/a.md", "docs/b.md"], ["docs/a.md"]).pairs == ()
+        assert sync.hidden_folders([".docs/a.md"], ["docs/a.md", ".docs/x.md"]).pairs == ()
+        assert sync.hidden_folders(["docs/a.md"], ["docs/a.md"]).pairs == ()
+
+    def test_a_change_and_a_new_file_land_in_the_hidden_folder(self, sync_world):
+        self.hide_docs(sync_world)
+        sync_world.release("v1.1.0", {"docs/guide.md": "# Guide v2\n", "docs/new.md": "# New\n",
+                                      ".github/template-sync": listed("docs/new.md")})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["docs/guide.md"] == "updated"
+        assert sync_world.outcomes(result)["docs/new.md"] == "added"
+        assert sync_world.text(".docs/guide.md") == "# Guide v2\n" and sync_world.text(".docs/new.md") == "# New\n"
+        assert not any(f.is_file() for f in (sync_world.repo / "docs").rglob("*"))
+        assert "`.docs/new.md`" in result.report and "`docs/` in `.docs/`" in result.report
+        assert "/docs/new.md" in sync_world.text(".github/template-sync")
+        assert not sync_world.run_sync().changed
+
+    def test_an_owners_edit_in_the_hidden_folder_merges(self, sync_world):
+        self.hide_docs(sync_world)
+        sync_world.owner({".docs/guide.md": sync_world.text(".docs/guide.md") + "\nMine.\n"})
+        sync_world.release("v1.1.0", {"docs/guide.md": "# Guide, renamed\n\n" + sync_world.text(".docs/guide.md")
+                                      .split("\n", 2)[2]})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["docs/guide.md"] == "merged"
+        text = sync_world.text(".docs/guide.md")
+        assert text.startswith("# Guide, renamed\n") and text.endswith("\nMine.\n")
+
+    def test_a_file_deleted_from_the_hidden_folder_is_switched_off(self, sync_world):
+        self.hide_docs(sync_world)
+        sync_world.owner({".docs/guide.md": None, ".docs/notes.md": "# Notes\n"})
+        sync_world.release("v1.1.0", {"docs/guide.md": "# Guide v2\n"})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["docs/guide.md"] == "owner-deleted"
+        assert not any(f.is_file() for f in (sync_world.repo / "docs").rglob("*"))
+        assert not (sync_world.repo / ".docs/guide.md").exists()
+
+    def test_keep_mine_may_name_the_file_where_it_lives(self, sync_world):
+        self.hide_docs(sync_world)
+        mine = sync_world.text(".docs/guide.md").replace("# Guide", "# Our guide")
+        sync_world.owner({".docs/guide.md": mine, ".github/template-sync": sync_world.text(".github/template-sync")
+                          + "# keep mine: /.docs/guide.md\n"})
+        sync_world.release("v1.1.0", {"docs/guide.md": sync_world.text(".docs/guide.md").replace(
+            "# Our guide", "# The guide")})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["docs/guide.md"] == "yours-kept"
+        assert sync_world.text(".docs/guide.md").startswith("# Our guide")
 
 
 class TestTheTemplatesSectionsAreChecked:

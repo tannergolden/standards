@@ -825,6 +825,65 @@ class Mapping:
         return data
 
 
+# ⚠️ A GENERATED REPOSITORY MAY KEEP THE TEMPLATE'S FOLDERS OUT OF SIGHT. A
+# notes vault, say, keeps its own folders at the root and moves the template's
+# docs/ and assets/ to .docs/ and .assets/, where an editor that hides
+# dot-folders leaves them out of the way. Read naively, every file in a moved
+# folder is one the owner deleted, and every file the template adds there
+# re-creates the folder they moved. So a generated repository that tracks
+# files under .docs/ and none under docs/ has the template's docs/ synced
+# into .docs/, and the same for assets/. The list and the lock keep naming
+# the template's own paths, so a lock recorded before the move still holds;
+# only the files are read and written where they live here. A mapped
+# repository says where each folder lives in its mapping instead.
+HIDEABLE = ("docs", "assets")
+
+
+@dataclasses.dataclass(frozen=True)
+class Relocation:
+    """Where a generated repository keeps template folders it hid: (template folder, the folder here)."""
+
+    pairs: tuple[tuple[str, str], ...] = ()
+
+    def here(self, path: str) -> str:
+        """Where a template path lives in this repository."""
+        for source, dest in self.pairs:
+            if covers([source], path):
+                return dest + path[len(source):]
+        return path
+
+    def there(self, path: str) -> str | None:
+        """The template path a path here stands for, or None for one under a folder this repository hid."""
+        for source, dest in self.pairs:
+            if covers([dest], path):
+                return source + path[len(dest):]
+            if covers([source], path):
+                return None
+        return path
+
+    def said(self) -> str:
+        """The relocation in words, for the pull request."""
+        moved = " and ".join(f"`{source}/` in `{dest}/`" for source, dest in self.pairs)
+        return (f"This repository keeps the template's {moved}, so each of those files is synced there; "
+                ".github/template-sync still names them by the template's paths.")
+
+
+def hidden_folders(paths: Iterable[str], shipped: Iterable[str]) -> Relocation:
+    """The folders a generated repository hid: files under `.docs/` and none under `docs/`, and so on.
+
+    A folder the template itself ships under the hidden name is never
+    relocated onto, since its files and the relocated ones would collide.
+    """
+    here, ships = set(paths), set(shipped)
+    pairs = []
+    for name in HIDEABLE:
+        hidden = "." + name
+        if (any(covers([hidden], p) for p in here) and not any(covers([name], p) for p in here)
+                and not any(covers([hidden], p) for p in ships)):
+            pairs.append((name, hidden))
+    return Relocation(tuple(pairs))
+
+
 def load_mapping(text: str, name: str = "the mapping") -> Mapping:
     """Parse and validate a mapping, as strictly as a lock: a wrong one syncs the wrong files."""
     try:
@@ -2020,7 +2079,9 @@ EXPLAINED = frozenset({"conflict", "deferred", "kept", "unsafe", "restored", "ow
 
 
 def render_report(*, template: str, version: str, previous: str, decisions: list[Decision],
-                  list_changed: bool, mapping: Mapping | None = None, redrawn: Iterable[str] = ()) -> str:
+                  list_changed: bool, mapping: Mapping | None = None, redrawn: Iterable[str] = (),
+                  relocation: Relocation | None = None) -> str:
+    where = relocation.here if relocation else (lambda path: path)
     groups: dict[str, list[Decision]] = {}
     for decision in decisions:
         groups.setdefault(decision.outcome, []).append(decision)
@@ -2040,6 +2101,8 @@ def render_report(*, template: str, version: str, previous: str, decisions: list
     elif list_changed:
         lines += ["`.github/template-sync` was redrawn from the template's latest list. Every "
                   "choice you made in it is kept.", ""]
+    if relocation and relocation.pairs:
+        lines += [relocation.said(), ""]
     redrawn = sorted(redrawn)
     if redrawn:
         lines += ["🗂️ Every machined index this changed was redrawn from the tree, as Machined Indexes "
@@ -2050,7 +2113,7 @@ def render_report(*, template: str, version: str, previous: str, decisions: list
             continue
         lines += [f"#### {title}", ""]
         for d in items:
-            lines.append(f"- `{d.path}`" + (f" - {d.detail}" if d.detail and key in EXPLAINED else ""))
+            lines.append(f"- `{where(d.path)}`" + (f" - {d.detail}" if d.detail and key in EXPLAINED else ""))
             if d.diff and key in ("conflict", "yours-kept"):
                 # Longer than any backtick run inside: a Markdown file's own
                 # fences would otherwise close this one partway through.
@@ -2319,6 +2382,15 @@ def run(
     if LIST_PATH not in target_tree and mapping is None:
         raise SyncError(f"{template} at {version} publishes no {LIST_PATH}, so it says nothing about what to sync.")
 
+    # A generated repository that hid docs/ or assets/ is read and written
+    # where it keeps them; everything else here goes by the template's paths.
+    relocation = Relocation() if mapping else hidden_folders(files_here, target_tree)
+    if relocation.pairs:
+        files_seen = {there: s for p, s in files_here.items() if (there := relocation.there(p)) is not None}
+        special = {there for p in special if (there := relocation.there(p)) is not None}
+    else:
+        files_seen = files_here
+
     base_blob = lock.files[LIST_PATH].blob if LIST_PATH in lock.files and mapping is None else ""
     raw_lists = read_blobs(template_dir, [s for s in (
         target_tree[LIST_PATH].sha if LIST_PATH in target_tree else "", base_blob) if s])
@@ -2370,7 +2442,7 @@ def run(
                  {p: s.mode for p, s in known.items()}, transform)
     target = sides(template_dir, {p: e.sha for p, e in shipped.items()},
                    {p: e.mode for p, e in shipped.items()}, transform)
-    ours = {p: s for p, s in files_here.items() if p not in never}
+    ours = {p: s for p, s in files_seen.items() if p not in never}
 
     # ⚠️ A SYNC NEVER GOES BACKWARDS. "Use this template" copies the
     # template's default branch, not its release, so a repository generated
@@ -2430,7 +2502,7 @@ def run(
         moves=moves,
         replaced=replaced,
         # A mapped sync's differences live in its contract, never in a note.
-        keep=set() if mapping else kept_mine(ours_list),
+        keep=set() if mapping else {relocation.there(p) or p for p in kept_mine(ours_list)},
     )
     decisions = [settle(d, mapping) for d in decisions]
     if mapping:
@@ -2559,14 +2631,14 @@ def run(
         writes[lock_path] = Side(lock_side.mode if lock_side else "100644",
                                  dump_lock(new_lock, mapping.name if mapping else "🔄 Template Sync").encode("utf-8"))
         if write:
-            apply(repo, writes, deletes)
+            apply(repo, {relocation.here(p): s for p, s in writes.items()}, [relocation.here(p) for p in deletes])
             settled = {d.path for d in decisions if d.outcome not in ("conflict", "deferred", "waiting", "unsafe")}
             redrawn = redraw_indexes(repo, sorted(
-                p for p in synced & settled
+                relocation.here(p) for p in synced & settled
                 if p.endswith(".md") and p not in special and (workflow_files or not p.startswith(WORKFLOW_DIR))))
 
     report = render_report(template=template, version=version, previous=previous, decisions=decisions,
-                           list_changed=list_changed, mapping=mapping, redrawn=redrawn)
+                           list_changed=list_changed, mapping=mapping, redrawn=redrawn, relocation=relocation)
     return Result(decisions, new_lock, list_text or "", list_changed, changed, version, previous, report)
 
 

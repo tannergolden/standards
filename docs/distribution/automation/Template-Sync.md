@@ -201,6 +201,16 @@ conflict like any other, or took out, which stays out. A second block in one fil
 such as `<!-- TEMPLATE-SYNC:RESEARCH:BEGIN -->`. A heading inside a block another machine writes,
 such as the `INTELLIGENCE` block, is never where a section is put.
 
+**A `docs/` or `assets/` you hid is synced where it lives.** A repository may keep the template's
+`docs/` as `.docs/`, or its `assets/` as `.assets/`, out of the way of its own folders, as a notes
+vault does. When yours tracks files under `.docs/` and none under `docs/`, every file the template
+keeps under `docs/` is read and written in `.docs/` instead: a change merges into your copy there, a
+new file arrives there, and no sync ever brings `docs/` back. The same holds for `assets/`. Your list
+and the lock keep naming the template's paths, such as `/docs/README.md`, so a lock recorded before
+you moved the folder still holds; a `# keep mine:` note may name the file by either path. A folder
+the template itself ships under the hidden name is never relocated onto. Only paths move, never the
+words in a file, so a page that names `docs/` still does.
+
 **In `.gitignore`, other ignore files and `.gitattributes`, two additions in one place are kept.**
 Both appending to the end of `.gitignore` is the commonest change either side makes, and git calls
 it a conflict only because both landed after the same line. The template's lines go first and
