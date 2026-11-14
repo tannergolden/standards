@@ -71,11 +71,13 @@ import argparse
 import atexit
 import dataclasses
 import difflib
+import hashlib
 import importlib.util
 import json
 import os
 import pathlib
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -477,6 +479,7 @@ def kept_mine(text: str | None) -> set[str]:
 # The template's own notes, written above Your rules in its list, are read
 # from its list at the version synced to - never from an owner's copy.
 KEPT_WHOLE = re.compile(r"^#\s*kept whole:\s*(/.*?)\s*$", re.IGNORECASE)
+REDRAW = re.compile(r"^#\s*redraw:\s*(\S.*?)\s*$", re.IGNORECASE)
 
 
 def _template_notes(text: str | None, pattern: re.Pattern[str]) -> list[re.Match[str]]:
@@ -501,6 +504,20 @@ def kept_whole(text: str | None) -> set[str]:
     is the template's: it merges as a whole, the sections with it.
     """
     return {unescape(match.group(1)) for match in _template_notes(text, KEPT_WHOLE) if literal(match.group(1))}
+
+
+def redraw_command(text: str | None) -> list[str]:
+    """The command a template's list names to redraw what a repository generates from its own files.
+
+    `# redraw: COMMAND`, the first of them; empty when there is none, or when
+    its quoting does not parse, which `check` names in the template.
+    """
+    for match in _template_notes(text, REDRAW):
+        try:
+            return shlex.split(match.group(1))
+        except ValueError:
+            return []
+    return []
 
 
 def exact_on(text: str | None) -> set[str]:
@@ -2091,6 +2108,62 @@ def redraw_indexes(repo: pathlib.Path, paths: Iterable[str], title: str = "Templ
     return redrawn
 
 
+# ⚠️ WHAT A REPOSITORY GENERATES FROM ITS OWN FILES GOES STALE IN EVERY SYNC.
+# A notes vault keeps a catalog of every note's title and description, drawn
+# from its own notes and the template's alike, so it is the owner's file and
+# never synced. A sync that rewrites one of the template's notes leaves that
+# catalog behind, and the repository's own check fails the pull request - in
+# every repository, on every release, whether its owner touched a thing or
+# not. So a template names the command that redraws such files, as
+# `# redraw: COMMAND` in its list, and once a sync has written, it runs:
+# from the repository root, without a shell, and with no token in reach -
+# only the variables a program needs to start. What it changes joins the
+# pull request. One that fails is said in the pull request, which then never
+# merges itself; the sync it follows is still proposed.
+REDRAW_SECONDS = 300
+REDRAW_ENV = ("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR", "SYSTEMROOT")
+REDRAW_TAIL = 20
+
+
+def _unstaged(root: pathlib.Path) -> dict[str, str | None]:
+    """Each path the working tree holds apart from the index, and a hash of what it holds now."""
+    names = decode(git(root, "ls-files", "-z", "--modified", "--deleted", "--others", "--exclude-standard"))
+    held: dict[str, str | None] = {}
+    for name in filter(None, names.split("\0")):
+        path = root / name
+        held[name] = (hashlib.sha256(path.read_bytes()).hexdigest()
+                      if path.is_file() and not path.is_symlink() else None)
+    return held
+
+
+def redraw(repo: pathlib.Path, command: list[str]) -> tuple[list[str], str]:
+    """Run a template's redraw command once a sync has written. The paths it changed, and what went wrong.
+
+    The sync writes through the index, so whatever differs from the index
+    afterwards and did not before - or differs differently - is the
+    command's. The second value is empty when the command finished cleanly.
+    """
+    root = repo.resolve()
+    before = _unstaged(root)
+    env = {key: os.environ[key] for key in REDRAW_ENV if key in os.environ}
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    problem = ""
+    try:
+        proc = subprocess.run(command, cwd=root, env=env, capture_output=True, timeout=REDRAW_SECONDS,
+                              check=False)
+        if proc.returncode != 0:
+            said = (proc.stdout + proc.stderr).decode("utf-8", "replace").strip().splitlines()
+            problem = f"exited with {proc.returncode}" + (
+                ":\n" + "\n".join(said[-REDRAW_TAIL:]) if said else ", and said nothing")
+    except subprocess.TimeoutExpired:
+        problem = f"did not finish within {REDRAW_SECONDS} seconds"
+    except OSError as exc:
+        problem = f"could not start: {exc.strerror or exc}"
+    after = _unstaged(root)
+    changed = sorted(p for p in set(before) | set(after) if before.get(p, "") != after.get(p, ""))
+    return changed, problem
+
+
 # =============================================================================
 # Reporting
 # =============================================================================
@@ -2117,7 +2190,8 @@ EXPLAINED = frozenset({"conflict", "deferred", "kept", "unsafe", "restored", "ow
 
 def render_report(*, template: str, version: str, previous: str, decisions: list[Decision],
                   list_changed: bool, mapping: Mapping | None = None, redrawn: Iterable[str] = (),
-                  relocation: Relocation | None = None) -> str:
+                  relocation: Relocation | None = None, command: list[str] | None = None,
+                  remade: Iterable[str] = (), problem: str = "") -> str:
     where = relocation.here if relocation else (lambda path: path)
     groups: dict[str, list[Decision]] = {}
     for decision in decisions:
@@ -2144,6 +2218,20 @@ def render_report(*, template: str, version: str, previous: str, decisions: list
     if redrawn:
         lines += ["🗂️ Every machined index this changed was redrawn from the tree, as Machined Indexes "
                   "would: " + ", ".join(f"`{p}`" for p in redrawn) + ".", ""]
+    remade = sorted(remade)
+    said = f"`{shlex.join(command)}`" if command else "The template's redraw command"
+    if remade:
+        lines += [f"🧮 What this repository generates from its own files was redrawn with {said}, as the "
+                  "template's list asks: " + ", ".join(f"`{p}`" for p in remade) + ".", ""]
+    if problem:
+        head, _, rest = problem.partition("\n")
+        lines += ["> [!WARNING]",
+                  f"> {said} {head.rstrip(':')}, so what this repository generates may be out of date. "
+                  "Run it yourself once this merges. This pull request never merges itself while it says so.", ""]
+        if rest:
+            fence = "`" * max(3, 1 + max((len(run) for run in re.findall(r"`+", rest)), default=0))
+            lines += ["<details><summary>What it said</summary>", "", f"{fence}text", rest, fence, "",
+                      "</details>", ""]
     for key, title in HEADINGS:
         items = groups.get(key)
         if not items:
@@ -2343,6 +2431,8 @@ class Result:
     version: str
     previous: str
     report: str
+    remade: list[str] = dataclasses.field(default_factory=list)
+    redraw_problem: str = ""
 
 
 def text_of(data: bytes, path: str) -> str:
@@ -2670,6 +2760,12 @@ def run(
         counted(old.get("files") or {}) != counted(fresh["files"]))
     changed = bool(writes or deletes) or lock_moved
     redrawn: list[str] = []
+    # A generated repository's own generators, as its template names them. A
+    # mapped repository is a template itself, whose own checks hold its
+    # generated files: no command of the template it follows runs here.
+    command = [] if mapping else redraw_command(target_list)
+    remade: list[str] = []
+    problem = ""
     if changed:
         writes[lock_path] = Side(lock_side.mode if lock_side else "100644",
                                  dump_lock(new_lock, mapping.name if mapping else "🔄 Template Sync").encode("utf-8"))
@@ -2679,10 +2775,14 @@ def run(
             redrawn = redraw_indexes(repo, sorted(
                 relocation.here(p) for p in synced & settled
                 if p.endswith(".md") and p not in special and (workflow_files or not p.startswith(WORKFLOW_DIR))))
+            if command:
+                remade, problem = redraw(repo, command)
 
     report = render_report(template=template, version=version, previous=previous, decisions=decisions,
-                           list_changed=list_changed, mapping=mapping, redrawn=redrawn, relocation=relocation)
-    return Result(decisions, new_lock, list_text or "", list_changed, changed, version, previous, report)
+                           list_changed=list_changed, mapping=mapping, redrawn=redrawn, relocation=relocation,
+                           command=command, remade=remade, problem=problem)
+    return Result(decisions, new_lock, list_text or "", list_changed, changed, version, previous, report,
+                  remade, problem)
 
 
 def mapped_lock(repo: pathlib.Path, template_dir: pathlib.Path, *, template: str, ref: str,
@@ -2796,6 +2896,15 @@ def check(repo: pathlib.Path) -> list[str]:
         elif unescape(named) not in on:
             problems.append(f"`# kept whole: {named}` names a file the list does not keep current, so no "
                             "sync would ever merge it. Name a file it keeps current, or remove the note.")
+    redraws = _template_notes(text, REDRAW)
+    if len(redraws) > 1:
+        problems.append("The list has more than one `# redraw:` note. A sync runs only the first; keep one.")
+    for match in redraws[:1]:
+        try:
+            shlex.split(match.group(1))
+        except ValueError as exc:
+            problems.append(f"`# redraw: {match.group(1)}` does not parse as a command ({exc}), so no sync "
+                            "would run it.")
     present = set(tracked)
     for line in parsed.body:
         if line.kind != "entry":
@@ -2941,6 +3050,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     touched = sum(1 for d in result.decisions if d.write is not None or d.delete)
     for d in conflicts:
         print(f"::warning file={d.path},title=Template sync conflict::{d.detail}")
+    if result.redraw_problem:
+        # One line: a workflow command ends at the first newline.
+        print(f"::warning title=Template sync redraw::The template's redraw command "
+              f"{result.redraw_problem.splitlines()[0].rstrip(':')}. The pull request says what it said.")
     print(f"{result.lock.template} {result.version}: {touched} file(s) changed, "
           f"{len(conflicts)} conflict(s), {len(deferred)} waiting on a token.")
     write_summary(result.report)
@@ -2950,7 +3063,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     title = f"chore(template): 🔄 sync with {name} {result.version}"
     commit_title = f"chore(template): 🔄 sync {touched} file(s) with {name} {result.version}"
     write_output("changed", "true" if result.changed else "false")
-    write_output("clean", "true" if not result.lock.pending else "false")
+    # A redraw that failed leaves this repository's generated files in doubt,
+    # so the pull request waits for its owner, like a file that waits.
+    write_output("clean", "true" if not result.lock.pending and not result.redraw_problem else "false")
     write_output("pending", str(len(result.lock.pending)))
     write_output("version", result.version)
     write_output("pr-title", title if len(title) <= 100 else "chore(template): 🔄 sync with the template")

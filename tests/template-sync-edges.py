@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import os
 import random
+import shlex
 import subprocess
 import sys
 
@@ -725,8 +726,75 @@ class TestTheTemplatesNotesAreChecked:
     def test_a_pattern_kept_whole_is_named(self, sync_world):
         assert any("`# kept whole: /docs/*.md` is a pattern" in p for p in self.check(sync_world, "# kept whole: /docs/*.md"))
 
+    def test_a_second_redraw_is_named(self, sync_world):
+        problems = self.check(sync_world, "# redraw: make index", "# redraw: make catalog")
+        assert any("more than one `# redraw:`" in p for p in problems)
+
+    def test_a_redraw_that_does_not_parse_is_named(self, sync_world):
+        assert any("does not parse as a command" in p for p in self.check(sync_world, "# redraw: python3 'unclosed"))
+
     def test_well_formed_notes_pass(self, sync_world):
-        assert self.check(sync_world, "# kept whole: /docs/guide.md") == []
+        assert self.check(sync_world, "# kept whole: /docs/guide.md", "# redraw: python3 scripts/tool.py") == []
+
+
+# A generator of the repository's own: the first line of the guide, drawn into
+# a catalog the owner keeps, which no sync ever writes.
+DRAW = ("import pathlib\n"
+        "first = pathlib.Path('docs/guide.md').read_text(encoding='utf-8').splitlines()[0]\n"
+        "pathlib.Path('catalog.txt').write_text(first + '\\n', encoding='utf-8')\n")
+
+
+def drawing(world, draw: str = DRAW) -> None:
+    """A template that names its redraw command, released and generated from."""
+    text = (TEMPLATE_LIST.replace("/scripts/tool.py\n", "/scripts/tool.py\n/scripts/draw.py\n")
+            .replace("#/LICENSE\n", "#/LICENSE\n#/catalog.txt\n"))
+    world.release("v1.0.1", {".github/template-sync": with_notes(
+        f"# redraw: {shlex.quote(sys.executable)} scripts/draw.py", text=text),
+        "scripts/draw.py": draw, "catalog.txt": "# Guide\n"})
+    world.generate()
+
+
+class TestWhatARepositoryGeneratesIsRedrawn:
+    """`# redraw: COMMAND`: once a sync has written, the repository's own generated files are drawn again."""
+
+    def test_it_runs_once_a_sync_writes_and_what_it_changes_joins_the_pull_request(self, sync_world):
+        drawing(sync_world)
+        sync_world.release("v1.1.0", {"docs/guide.md": "# Guide, revised\n"})
+        result = sync_world.run_sync(merge=False)
+        assert result.remade == ["catalog.txt"] and result.redraw_problem == ""
+        assert sync_world.text("catalog.txt") == "# Guide, revised\n"
+        assert "🧮" in result.report and "`catalog.txt`" in result.report
+        sync_world.commit(sync_world.repo, "sync")
+        assert not sync_world.run_sync().changed
+
+    def test_it_never_runs_when_the_sync_changes_nothing(self, sync_world):
+        drawing(sync_world, DRAW + "pathlib.Path('ran.txt').write_text('ran\\n', encoding='utf-8')\n")
+        assert not sync_world.run_sync().changed
+        assert not (sync_world.repo / "ran.txt").exists()
+
+    def test_no_token_reaches_it(self, sync_world, monkeypatch):
+        tokens = {"GH_TOKEN", "GITHUB_TOKEN", "WORKFLOW_TOKEN", "BOT_ACCESS_TOKEN"}
+        drawing(sync_world, DRAW + "import os\npathlib.Path('env.txt').write_text('\\n'.join(os.environ), "
+                                   "encoding='utf-8')\n")
+        for name in tokens:
+            monkeypatch.setenv(name, "not-a-real-token")
+        sync_world.release("v1.1.0", {"docs/guide.md": "# Guide, revised\n"})
+        sync_world.run_sync(merge=False)
+        seen = set(sync_world.text("env.txt").split())
+        assert not seen & tokens and "PYTHONDONTWRITEBYTECODE" in seen
+
+    def test_one_that_fails_is_said_and_the_sync_is_still_proposed(self, sync_world, tmp_path, monkeypatch):
+        drawing(sync_world, "import sys\nprint('The catalog cannot be drawn.')\nsys.exit(3)\n")
+        sync_world.release("v1.1.0", {"docs/guide.md": "# Guide, revised\n"})
+        output = tmp_path / "output"
+        monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+        code = sync_world.sync.main(["run", "--repo-dir", str(sync_world.repo), "--template-dir",
+                                     str(sync_world.template), "--ref", "v1"])
+        assert code == 0
+        said = output.read_text(encoding="utf-8")
+        assert "changed=true" in said and "clean=false" in said, "a failed redraw never merges itself"
+        assert "exited with 3" in said and "The catalog cannot be drawn." in said and "[!WARNING]" in said
+        assert sync_world.text("docs/guide.md") == "# Guide, revised\n"
 
 
 GITIGNORE = "# Built\n/build/\n/dist/\n"

@@ -181,6 +181,17 @@ and markers around a block are compared and merged; the rows are yours as they s
 sync has written anything, every block in every file it keeps current is redrawn from the tree it
 leaves, by the same indexer 🗂️ Machined Indexes runs. Its pull request needs no index fix after it.
 
+**What your repository generates from its own files is redrawn too.** A notes vault keeps a catalog
+of every note's title and description, the template's notes among them; it is drawn from your files,
+so it is yours and never synced, and a sync that rewrites one of the template's notes leaves it
+behind for your own checks to fail on. So a template names the command that redraws such files, as
+`# redraw: python3 .github/scripts/update-vault.py` in its list, above **Your rules**, and once a
+sync has written anything it runs: from the repository root, without a shell, with no token in
+reach, and only in a repository generated from the template, never in one that follows it through a
+mapping. What it changes joins the same pull request, which names each file. A command that fails is
+said in the pull request, with what it printed, and that pull request never merges itself; the sync
+it follows is still proposed.
+
 **A sealed block is never merged either.** A block marked `<!-- NAME:BEGIN sha256:<hash> -->`, such
 as the `INTELLIGENCE` block tannergolden/intelligence delivers into `AGENTS.md`, belongs to the
 machine that sealed it, which rewrites it and its marker line on every release. So the whole block,
@@ -392,7 +403,8 @@ dispatch of **🔄 Template Sync** syncs it from the template it came from, as a
   came from keeps, such as that template's research section in an `AGENTS.md` of its own rules.
   Its own sync reads the list of the template it came from, never its own, so it still takes the
   section in as a section; the note makes its generated repositories take the whole file, so its
-  rules keep reaching them.
+  rules keep reaching them. No mapped sync runs a `# redraw:` command: a template's own checks hold
+  its files.
 - **The rest of its workflows run as they do anywhere else.** The stubs that are silent in a
   template are silent only in the golden path template, so a derived template keeps its
   checks, its governance and its maintenance. Initialisation and `release.yml` stay silent in every
@@ -414,8 +426,10 @@ dispatch of **🔄 Template Sync** syncs it from the template it came from, as a
   yours. The check fails on a block that never closes, a second block of the same name, or a block
   in a file the list switches off.
 - **Write `# kept whole: /path`** above **Your rules** for a file you keep current whole that holds
-  another template's section. The check fails on a note that names a pattern or a file the list
-  does not keep current.
+  another template's section, and **`# redraw: COMMAND`**, once, for the command that redraws what a
+  repository generates from its own files. The check fails on a `# kept whole:` that names a pattern
+  or a file the list does not keep current, on a second `# redraw:`, and on one whose quoting does
+  not parse.
 - **Name what only the template needs under `# --- Only ever in the template`**, one file to a line,
   switched off. Initialisation deletes each of them from every generated repository, leaves them
   out of its lock and redraws every folder log from what is left; the check refuses a line there

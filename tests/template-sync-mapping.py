@@ -24,7 +24,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import subprocess
+import sys
 
 import pytest
 from conftest import SYNC_ENV, load_script
@@ -369,6 +371,15 @@ class TestAMappedSync:
         result = world.run()
         assert not result.changed
         assert world.outcomes(result) == {}
+
+    def test_a_redraw_the_template_names_never_runs_here(self, world):
+        # Its generators are its generated repositories', and this one is a template with checks of its own.
+        note = f"# redraw: {shlex.quote(sys.executable)} -c \"open('ran.txt', 'w').write('ran')\""
+        world.publish({"docs/templates/ADR.md": seed("Record one decision, and why.", MIT)},
+                      lambda t: t.replace(f"{YOURS}\n", f"{note}\n\n{YOURS}\n", 1))
+        result = world.run()
+        assert result.changed and result.remade == []
+        assert not (world.derived / "ran.txt").exists()
 
     def test_a_new_seed_arrives_relocated_in_this_repositorys_form(self, world):
         world.publish({"docs/templates/Runbook.md": seed("Steps.", MIT)},
