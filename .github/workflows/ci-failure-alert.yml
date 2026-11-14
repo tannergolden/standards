@@ -21,6 +21,11 @@
 # repository's own default branch. A topic branch failing is ordinary work
 # in progress and does not warrant a durable issue.
 #
+# Where a repository has issues turned off, a failure goes in the
+# escalator's run summary with a warning instead, and the escalator passes,
+# so the failing workflow's own red run is the only one. Turn issues on to
+# have each failure tracked until it recovers.
+#
 # Called, not triggered. A consuming repository adds a stub:
 #
 #   name: '🚨 CI Failure Alerts'

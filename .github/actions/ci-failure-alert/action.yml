@@ -7,6 +7,10 @@
 # repeatedly failing job produces one issue that stays open rather than a
 # new one every run.
 #
+# Where the repository has issues turned off, a failure goes in the run's
+# summary with a warning instead, and the step passes: the failing
+# workflow's own red run is the one that shows.
+#
 # The point is that nobody has to remember to check the Actions tab. A
 # scheduled job that quietly breaks is the failure mode this exists for: it
 # can go unnoticed for weeks precisely because nothing about it is on

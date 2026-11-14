@@ -4,15 +4,29 @@
 # =============================================================================
 # CI Failure Alert - mechanical failure escalation
 # =============================================================================
-# Invoked by ops-ci-failure-alert.yml when a core workflow completes on a
+# Invoked by the ci-failure-alert action when a core workflow completes on a
 # long-lived branch. Opens a labeled issue on failure (deduped per workflow)
-# and closes it automatically when the same workflow recovers. Requires:
-#   GH_TOKEN, WORKFLOW_NAME, CONCLUSION, BRANCH, RUN_URL, HEAD_SHA
+# and closes it automatically when the same workflow recovers. Where the
+# repository has issues turned off, a failure goes in the run's summary with
+# a warning instead. Requires:
+#   GH_TOKEN, GH_REPO, WORKFLOW_NAME, CONCLUSION, BRANCH, RUN_URL, HEAD_SHA
 # =============================================================================
 set -euo pipefail
 
 LABEL='ci: failure'
 TITLE="🚨 CI failing on ${BRANCH}: ${WORKFLOW_NAME}"
+
+# ⚠️ A REPOSITORY CAN TURN ISSUES OFF, as a private vault does. Every `gh
+# issue` call below then fails: the escalator went red beside the workflow
+# it reports, blamed the token's permissions, and tracked the failure
+# nowhere. Where issues are off, a failure goes in this run's summary with a
+# warning, a recovery has nothing to close, and the escalator passes, so the
+# failing workflow's own red run is the one that shows.
+#
+# Only an explicit `false` takes that path. A lookup that fails says nothing
+# about issues, so it falls through to the issue path below, which still
+# fails loudly when it cannot open an issue.
+has_issues=$(gh api 'repos/{owner}/{repo}' --jq '.has_issues' 2>/dev/null) || has_issues=unknown
 
 # Take the first match in bash rather than `| head -n 1`: under pipefail,
 # head closing the pipe early can SIGPIPE gh and fail the whole script.
@@ -26,7 +40,10 @@ TITLE="🚨 CI failing on ${BRANCH}: ${WORKFLOW_NAME}"
 # non-zero exit means the dedup check itself failed - warn, because we may
 # open a duplicate escalation issue this run rather than commenting on the
 # existing one.
-if ! existing=$(TITLE="$TITLE" gh issue list --state open --label "$LABEL" --json number,title \
+existing=""
+if [ "$has_issues" = false ]; then
+  : # Issues are off: there is no issue to find, comment on or close.
+elif ! existing=$(TITLE="$TITLE" gh issue list --state open --label "$LABEL" --json number,title \
   --jq '.[] | select(.title == env.TITLE) | .number'); then
   echo "::warning::Could not list existing failure issues (gh/API error); a duplicate escalation issue may be opened this run."
   existing=""
@@ -49,6 +66,21 @@ existing="${existing%%$'\n'*}"
 # channel is only useful while everything in it is real.
 case "$CONCLUSION" in
   failure | timed_out | startup_failure)
+    if [ "$has_issues" = false ]; then
+      echo "::warning title=CI failure alert::'${WORKFLOW_NAME}' failed on '${BRANCH}' (${CONCLUSION}), and issues are turned off here, so no issue tracks it. This run's summary has the details."
+      {
+        echo "### ${TITLE}"
+        echo ""
+        echo "- **Workflow:** ${WORKFLOW_NAME}"
+        echo "- **Conclusion:** \`${CONCLUSION}\`"
+        echo "- **Branch:** \`${BRANCH}\`"
+        echo "- **Commit:** ${HEAD_SHA}"
+        echo "- **Run:** ${RUN_URL}"
+        echo ""
+        echo "Issues are turned off in this repository, so no issue was opened to track this failure. Turn them on to have the next one tracked until the workflow recovers."
+      } >>"${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+      exit 0
+    fi
     BODY="**Workflow:** ${WORKFLOW_NAME}
 **Branch:** \`${BRANCH}\`
 **Commit:** ${HEAD_SHA}

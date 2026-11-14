@@ -39,6 +39,7 @@ _Every script, every shell block._
 | [`auto-format-preconditions.py`](auto-format-preconditions.py)                     | Auto-format must skip when it cannot run, not fail.                                           |
 | [`ci-failure-alert-scope.py`](ci-failure-alert-scope.py)                           | The escalator must only escalate runs from the repository it guards.                          |
 | [`ci-failure-conclusions.py`](ci-failure-conclusions.py)                           | The escalator must react to every conclusion that means "broken".                             |
+| [`ci-failure-issues-off.py`](ci-failure-issues-off.py)                             | The escalator must work in a repository with issues turned off.                               |
 | [`ci-stage-resolution.py`](ci-stage-resolution.py)                                 | The primary required check must never report green having run nothing.                        |
 | [`cliff-config.py`](cliff-config.py)                                               | The changelog config must use keys git-cliff actually reads.                                  |
 | [`commit-identity.py`](commit-identity.py)                                         | Who a commit is by: never an AI, and signed off by its author.                                |

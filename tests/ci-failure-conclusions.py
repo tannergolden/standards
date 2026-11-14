@@ -41,6 +41,7 @@ def run_alert(run_script, fake_gh, tmp_path, conclusion, existing=None):
     route returns the real API shape and the fake applies the filter.
     """
     listing = [{"number": existing, "title": TITLE}] if existing else []
+    fake_gh.route("api repos/", json.dumps({"has_issues": True}))
     fake_gh.route("issue list", json.dumps(listing))
     fake_gh.route("issue create", "https://github.com/o/r/issues/9")
     fake_gh.route("issue comment", "")
