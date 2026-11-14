@@ -457,6 +457,139 @@ class TestASealedBlockIsNeverMerged:
         assert sync.refilled(plain) == plain
 
 
+FOOTER = "---\n\n<div align=\"center\">\n\n[↑ Back to Top](#top)\n\n</div>\n"
+
+
+def research(line: str = "- Reports go in docs/technical/research/.") -> str:
+    """The section a template keeps in AGENTS.md, as the golden path template ships one."""
+    return f"<!-- TEMPLATE-SYNC:BEGIN -->\n## Research\n\n{line}\n<!-- TEMPLATE-SYNC:END -->\n"
+
+
+def shipped(section: str = "", *, footer: bool = True) -> bytes:
+    """The template's AGENTS.md: its own empty sections, and the section it keeps."""
+    return (f"# Agents\n\n## Commands\n\n<!-- How to build. -->\n\n## Where things live\n\n<!-- The folders. -->\n\n"
+            f"{section + chr(10) if section else ''}## Gotchas\n\n" + (FOOTER if footer else "")).encode()
+
+
+# An AGENTS.md the repository's own sync wrote and its owner filled in, long
+# before the template shipped one: there is no baseline to merge it from.
+OWNED = ("# Agents\n\n" + sealed("- SEC-001: Never.", "a") + "\n## Commands\n\n- make test\n\n"
+         "## Where things live\n\n- src/: the code\n\n## Gotchas\n\n- The build is slow.\n\n" + FOOTER).encode()
+
+
+class TestATemplatesSectionInAFileTheOwnerWrites:
+    """A TEMPLATE-SYNC block is the template's; every other line of the file stays the owner's."""
+
+    @staticmethod
+    def side(data, sha):
+        return None if data is None else sync.Side("100644", data, sha)
+
+    def decide(self, base, target, ours, keep=False):
+        return sync.decide("AGENTS.md", self.side(base, "base"), self.side(target, "target"),
+                           self.side(ours, "ours"), synced=True, was_deleted=False, keep=keep)
+
+    def test_a_file_with_no_baseline_takes_the_section_under_its_heading(self):
+        decision = self.decide(None, shipped(research()), OWNED)
+        assert decision.outcome == "shared", decision.detail
+        assert "under `## Where things live`" in decision.detail
+        written = decision.write.data.decode()
+        assert written == OWNED.decode().replace("- src/: the code\n\n", "- src/: the code\n\n" + research() + "\n")
+        assert decision.state.blob == "target"
+
+    def test_taking_the_section_twice_changes_nothing(self):
+        once = self.decide(None, shipped(research()), OWNED).write.data
+        assert self.decide(shipped(research()), shipped(research()), once).outcome == "unchanged"
+        assert self.decide(None, shipped(research()), once).outcome == "current"
+
+    def test_the_templates_change_to_its_section_arrives(self):
+        once = self.decide(None, shipped(research()), OWNED).write.data
+        newer = shipped(research("- Reports go in docs/technical/research/, one per question."))
+        decision = self.decide(shipped(research()), newer, once)
+        assert decision.outcome == "shared" and b"one per question" in decision.write.data
+        assert decision.write.data.replace(b", one per question", b"") == once
+
+    def test_an_owners_change_to_the_section_is_a_conflict_that_writes_nothing(self):
+        once = self.decide(None, shipped(research()), OWNED).write.data
+        mine = once.replace(b"- Reports go", b"- Our reports go")
+        decision = self.decide(shipped(research()), shipped(research("- Reports go elsewhere.")), mine)
+        assert decision.outcome == "conflict" and decision.write is None and decision.state is None
+        assert "+- Reports go elsewhere." in decision.diff
+
+    def test_an_owners_change_stands_while_the_template_leaves_its_section_alone(self):
+        mine = self.decide(None, shipped(research()), OWNED).write.data.replace(b"- Reports go", b"- Ours go")
+        decision = self.decide(shipped(research()), shipped(research()), mine)
+        assert decision.outcome == "unchanged" and decision.write is None
+
+    def test_keep_mine_keeps_the_owners_section_and_says_what_the_template_changed(self):
+        mine = self.decide(None, shipped(research()), OWNED).write.data.replace(b"- Reports go", b"- Ours go")
+        decision = self.decide(shipped(research()), shipped(research("- Elsewhere.")), mine, keep=True)
+        assert decision.outcome == "yours-kept" and decision.write is None
+        assert "+- Elsewhere." in decision.diff
+
+    def test_a_section_the_owner_took_out_stays_out(self):
+        decision = self.decide(shipped(research()), shipped(research("- Moved on.")), OWNED)
+        assert decision.outcome == "current" and decision.write is None
+
+    def test_a_section_the_template_drops_goes_where_the_owner_left_it_alone(self):
+        once = self.decide(None, shipped(research()), OWNED).write.data
+        decision = self.decide(shipped(research()), shipped(), once)
+        assert decision.outcome == "shared" and decision.write.data == OWNED
+        mine = once.replace(b"- Reports go", b"- Ours go")
+        assert self.decide(shipped(research()), shipped(), mine).write is None
+
+    def test_a_file_the_template_stops_shipping_stays_the_owners(self):
+        once = self.decide(None, shipped(research()), OWNED).write.data
+        decision = self.decide(shipped(research()), None, once)
+        assert decision.outcome == "kept" and not decision.delete and decision.write.data == OWNED
+
+    def test_with_no_such_heading_the_section_goes_above_the_footer_or_at_the_end(self):
+        bare = b"# Notes\n\nSome notes.\n\n" + FOOTER.encode()
+        written = self.decide(None, shipped(research()), bare).write.data.decode()
+        assert written == "# Notes\n\nSome notes.\n\n" + research() + "\n" + FOOTER
+        plain = self.decide(None, shipped(research()), b"# Notes\n\nSome notes.\n").write.data.decode()
+        assert plain == "# Notes\n\nSome notes.\n\n" + research()
+
+    def test_markers_in_a_fence_are_an_example_and_the_file_merges_as_a_whole(self):
+        example = ("# Spec\n\n```markdown\n" + research() + "```\n").encode()
+        assert not sync.is_shared("docs/Spec.md", sync.Side("100644", example))
+        assert sync.template_blocks(example) == []
+
+    def test_a_repository_whose_agents_file_came_first_takes_the_section_in_a_real_sync(self, sync_world):
+        sync_world.release("v1.0.1", {})
+        sync_world.generate()
+        sync_world.owner({"AGENTS.md": OWNED.decode()})
+        sync_world.release("v1.1.0", {"AGENTS.md": shipped(research()).decode(), ".github/template-sync": listed(
+            "AGENTS.md")})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["AGENTS.md"] == "shared"
+        text = sync_world.text("AGENTS.md")
+        assert research() in text and "- The build is slow." in text and "sha256:" + "a" * 64 in text
+        assert not sync_world.run_sync().changed
+
+
+class TestTheTemplatesSectionsAreChecked:
+    def check(self, world):
+        return world.sync.check(world.template)
+
+    def test_a_section_that_never_closes_is_named(self, sync_world):
+        sync_world.release("v1.0.1", {"docs/guide.md": "# Guide\n\n<!-- TEMPLATE-SYNC:BEGIN -->\nOpen.\n"})
+        assert any("docs/guide.md: `TEMPLATE-SYNC` opens and never closes" in p for p in self.check(sync_world))
+
+    def test_two_sections_of_one_name_are_named(self, sync_world):
+        twice = "# Guide\n\n" + research() + "\n" + research()
+        sync_world.release("v1.0.1", {"docs/guide.md": twice})
+        assert any("a second `TEMPLATE-SYNC`" in p for p in self.check(sync_world))
+
+    def test_a_section_in_a_file_switched_off_is_named(self, sync_world):
+        sync_world.release("v1.0.1", {"README.md": "# Template\n\n" + research()})
+        assert any("README.md holds a TEMPLATE-SYNC block but is not kept current" in p
+                   for p in self.check(sync_world))
+
+    def test_a_well_formed_section_in_a_kept_file_passes(self, sync_world):
+        sync_world.release("v1.0.1", {"docs/guide.md": "# Guide\n\n" + research()})
+        assert self.check(sync_world) == []
+
+
 GITIGNORE = "# Built\n/build/\n/dist/\n"
 
 

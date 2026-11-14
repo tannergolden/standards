@@ -1205,6 +1205,8 @@ def machined_blocks(lines: list[bytes], *, sealed_only_with_hash: bool = True) -
             i = end + 1
             continue
         sealed = None if fenced else SEALED_BEGIN.search(lines[i])
+        if sealed and template_owned(sealed.group("name")):
+            sealed = None  # the template's own section: decided by `decide_shared`, never masked
         if sealed and sealed.group("name") != b"AUTO-INDEX" and (sealed.group("seal") or not sealed_only_with_hash):
             closing = re.compile(rb"<!--\s*" + re.escape(sealed.group("name")) + rb":END\s*-->")
             end = next((j for j in range(i + 1, len(lines)) if closing.search(lines[j])), None)
@@ -1281,6 +1283,273 @@ def refilled(data: bytes, *sources: list[tuple[bytes, list[bytes]]]) -> bytes:
     return b"\n".join(out)
 
 
+# =============================================================================
+# The template's own section in a file the owner writes
+# =============================================================================
+#
+# ⚠️ SOME FILES ARE SHARED, NOT SHIPPED. An AGENTS.md is the owner's: their
+# commands, their conventions, and the block tannergolden/intelligence seals
+# into it. A template can still have lines that every repository built from it
+# should carry there, such as where its research reports go, and a repository
+# generated before the template had them already holds an AGENTS.md of its
+# own, written by its own sync. A whole-file merge has no baseline to compare
+# that file with, so it could only ever conflict. So the template marks its
+# part of the file:
+#
+#     <!-- TEMPLATE-SYNC:BEGIN -->
+#     ...the template's lines...
+#     <!-- TEMPLATE-SYNC:END -->
+#
+# and a Markdown file whose template version holds such a block is synced one
+# block at a time, never as a whole. Each block is kept current: put in where
+# the file lacks it, at the end of the section under the heading it follows in
+# the template; brought up to date while the owner has left it as the template
+# had it; taken out when the template drops it, unless the owner changed it.
+# Every other line of the file stays as the owner wrote it, and so does a
+# block they changed or took out: a change is a conflict like any other, and
+# a block they took out stays out. A second block in one file takes a name of
+# its own, such as <!-- TEMPLATE-SYNC:RESEARCH:BEGIN -->.
+
+TEMPLATE_BLOCK = re.compile(rb"^<!--\s*(?P<name>TEMPLATE-SYNC(?::[A-Z][A-Z0-9_-]*)*):BEGIN\s*-->$")
+TEMPLATE_END = re.compile(rb"^<!--\s*(?P<name>TEMPLATE-SYNC(?::[A-Z][A-Z0-9_-]*)*):END\s*-->$")
+HEADING = re.compile(rb"^ {0,3}(?P<level>#{1,6})(?:[ \t]|$)")
+
+
+def template_owned(name: bytes) -> bool:
+    """True for a block name that marks the template's own section of a file."""
+    return name == b"TEMPLATE-SYNC" or name.startswith(b"TEMPLATE-SYNC:")
+
+
+def template_blocks(data: bytes) -> list[tuple[bytes, int, int]]:
+    """Each section the template keeps, as (its name, its BEGIN line, its END line).
+
+    A marker inside a fenced code block is an example, not a block, and a
+    BEGIN that never closes is no block either: `check` names it in the
+    template, so it never reaches a repository.
+    """
+    lines = data.split(b"\n")
+    found: list[tuple[bytes, int, int]] = []
+    fenced, i = False, 0
+    while i < len(lines):
+        line = lines[i].strip()
+        if INDEX_FENCE.match(line):
+            fenced = not fenced
+        elif not fenced:
+            opened = TEMPLATE_BLOCK.match(line)
+            if opened:
+                name = opened.group("name")
+                end = next((j for j in range(i + 1, len(lines))
+                            if (closed := TEMPLATE_END.match(lines[j].strip())) and closed.group("name") == name),
+                           None)
+                if end is None:
+                    break
+                found.append((name, i, end))
+                i = end + 1
+                continue
+        i += 1
+    return found
+
+
+def is_shared(path: str, *versions: Side | None) -> bool:
+    """True when the template keeps sections of this file rather than the whole of it."""
+    return path.endswith(".md") and any(
+        side is not None and side is not MISSING and b"TEMPLATE-SYNC" in side.data and template_blocks(side.data)
+        for side in versions)
+
+
+def sections(data: bytes) -> dict[bytes, list[bytes]]:
+    """The lines between each block's markers, by its name; the first block of a name counts."""
+    lines = data.split(b"\n")
+    rows: dict[bytes, list[bytes]] = {}
+    for name, begin, end in template_blocks(data):
+        rows.setdefault(name, lines[begin + 1:end])
+    return rows
+
+
+def _plain_lines(data: bytes) -> tuple[list[bytes], list[int]]:
+    """The file's lines, and the numbers of those outside every fence and every template block."""
+    lines = data.split(b"\n")
+    inside = {i for _name, begin, end in template_blocks(data) for i in range(begin, end + 1)}
+    plain, fenced = [], False
+    for i, line in enumerate(lines):
+        if i in inside:
+            continue
+        if INDEX_FENCE.match(line.strip()):
+            fenced = not fenced
+            continue
+        if not fenced:
+            plain.append(i)
+    return lines, plain
+
+
+def anchor_of(data: bytes, name: bytes) -> bytes | None:
+    """The heading a block sits under in the template: the last one above it, outside every block and fence."""
+    lines, plain = _plain_lines(data)
+    start = next((begin for found, begin, _end in template_blocks(data) if found == name), None)
+    if start is None:
+        return None
+    above = [lines[i].rstrip() for i in plain if i < start and HEADING.match(lines[i])]
+    return above[-1] if above else None
+
+
+def insertion_point(data: bytes, anchor: bytes | None) -> tuple[int, bool]:
+    """Where a block goes in a file that lacks it, and whether that is under its heading.
+
+    Under the heading it follows in the template, at the end of that
+    section: before the next heading as high or higher, or the next `---`.
+    With no such heading here, above a Document Styling footer - the last
+    `---` with only the centred footer after it - or else at the end.
+    """
+    lines, plain = _plain_lines(data)
+    if anchor is not None:
+        level = len(HEADING.match(anchor).group("level"))
+        start = next((i for i in plain if lines[i].rstrip() == anchor), None)
+        if start is not None:
+            for i in plain:
+                if i <= start:
+                    continue
+                heading = HEADING.match(lines[i])
+                if (heading and len(heading.group("level")) <= level) or lines[i].strip() == b"---":
+                    return i, True
+            return len(lines), True
+    for i in reversed(plain):
+        if lines[i].strip() != b"---":
+            continue
+        after = [line.strip() for line in lines[i + 1:] if line.strip()]
+        if after and after[0].lower().startswith(b'<div align="center">') and b"Back to Top" in b"\n".join(after):
+            return i, False
+        break
+    return len(lines), False
+
+
+def _joined(before: list[bytes], middle: list[bytes], after: list[bytes]) -> bytes:
+    """Three runs of lines with one blank line between each pair, and a final newline."""
+    while before and not before[-1].strip():
+        before = before[:-1]
+    while after and not after[0].strip():
+        after = after[1:]
+    out = list(before)
+    for part in (middle, after):
+        if part:
+            out += [b"", *part] if out else list(part)
+    if not out or out[-1] != b"":
+        out.append(b"")
+    return b"\n".join(out)
+
+
+def block_lines(data: bytes, name: bytes) -> list[bytes]:
+    """A block whole, its markers included."""
+    lines = data.split(b"\n")
+    return next((lines[begin:end + 1] for found, begin, end in template_blocks(data) if found == name), [])
+
+
+def with_block(data: bytes, block: list[bytes], anchor: bytes | None) -> tuple[bytes, bool]:
+    """`data` with a template block put in where it belongs, and whether that was under its heading."""
+    at, under = insertion_point(data, anchor)
+    lines = data.split(b"\n")
+    return _joined(lines[:at], block, lines[at:]), under
+
+
+def with_rows(data: bytes, name: bytes, rows: list[bytes]) -> bytes:
+    """`data` with the lines inside one block replaced, its markers kept."""
+    lines = data.split(b"\n")
+    for found, begin, end in template_blocks(data):
+        if found == name:
+            return b"\n".join(lines[:begin + 1] + rows + lines[end:])
+    return data
+
+
+def without_block(data: bytes, name: bytes) -> bytes:
+    """`data` with one block taken out, markers and all."""
+    lines = data.split(b"\n")
+    for found, begin, end in template_blocks(data):
+        if found == name:
+            return _joined(lines[:begin], [], lines[end + 1:])
+    return data
+
+
+def _label(name: bytes) -> str:
+    return "the template's section" if name == b"TEMPLATE-SYNC" else f"the template's `{name.decode()}` section"
+
+
+def decide_shared(path: str, base: Side | None, target: Side | None, ours: Side, *, keep: bool) -> Decision:
+    """A file the owner writes, holding sections the template keeps: only those sections are synced."""
+    had = sections(base.data) if base is not None and base is not MISSING else None
+    wants = sections(target.data) if target is not None else {}
+    holds = sections(ours.data)
+    data, done, edited = ours.data, [], []
+    for name, rows in wants.items():
+        if name in holds:
+            if holds[name] == rows or (had is not None and had.get(name) == rows):
+                continue  # current, or the template left it alone and the owner's change stands
+            if had is not None and had.get(name) == holds[name]:
+                data = with_rows(data, name, rows)
+                done.append(f"brought {_label(name)} up to date")
+            else:
+                edited.append(name)
+        elif had is None or name not in had:
+            anchor = anchor_of(target.data, name)
+            data, under = with_block(data, block_lines(target.data, name), anchor)
+            done.append(f"took in {_label(name)}" + (f", under `{anchor.decode('utf-8', 'replace')}`"
+                                                     if under and anchor else ""))
+        # Otherwise the owner took the template's block out, and it stays out.
+    for name, rows in holds.items():
+        if name not in wants and had is not None and had.get(name) == rows:
+            data = without_block(data, name)
+            done.append(f"took out {_label(name)}, which the template dropped")
+    rest = "The rest of the file is yours, as you wrote it."
+    if edited:
+        name = edited[0]
+        diff = udiff(path, b"\n".join(holds[name]), b"\n".join(wants[name]))
+        if not keep:
+            return Decision(path, "conflict", diff=diff, detail=(
+                f"You changed the lines between the `{name.decode()}` markers, which the template keeps. "
+                "Your file is untouched; the template's lines are below. Make yours match them on your "
+                "default branch, or switch the file off."))
+        write = Side(ours.mode, data) if data != ours.data else None
+        return kept_yours(path, target, write, "The template's other sections arrived.", diff)
+    if target is None:
+        return Decision(path, "kept", write=Side(ours.mode, data) if data != ours.data else None, state=REMOVE,
+                        detail="The template stopped shipping this file, which was yours to write all along, "
+                               "so it stays" + (" without the template's section." if done else "."))
+    if data == ours.data:
+        return Decision(path, "unchanged" if had == wants else "current", state=state_of(target))
+    said = "; ".join(done)
+    return Decision(path, "shared", write=Side(ours.mode, data), state=state_of(target),
+                    detail=f"{said[:1].upper()}{said[1:]}. {rest}")
+
+
+def block_problems(data: bytes) -> list[str]:
+    """What is wrong with a file's template blocks, for `check` to name in the template."""
+    problems: list[str] = []
+    fenced, open_name, seen = False, None, set()
+    for number, raw in enumerate(data.split(b"\n"), start=1):
+        line = raw.strip()
+        if INDEX_FENCE.match(line) and open_name is None:
+            fenced = not fenced
+            continue
+        if fenced:
+            continue
+        opened, closed = TEMPLATE_BLOCK.match(line), TEMPLATE_END.match(line)
+        if opened:
+            name = opened.group("name").decode()
+            if open_name is not None:
+                problems.append(f"line {number} opens `{name}` inside `{open_name}`, which has not closed")
+            elif name in seen:
+                problems.append(f"line {number} opens a second `{name}`; give each block a name of its own")
+            open_name = name
+            seen.add(name)
+        elif closed:
+            name = closed.group("name").decode()
+            if name != open_name:
+                problems.append(f"line {number} closes `{name}`, which is not open")
+            else:
+                open_name = None
+    if open_name is not None:
+        problems.append(f"`{open_name}` opens and never closes")
+    return problems
+
+
 # What a line-by-line conflict says; how the owner may settle it follows, by
 # the kind of sync (see `settle`).
 SAME_LINES = ("You and the template changed the same lines. Your file is untouched; the template's change "
@@ -1341,6 +1610,8 @@ def decide(
     if target is None:  # the template no longer ships it
         if ours is None:
             return Decision(path, "gone", state=REMOVE)
+        if is_shared(path, base):
+            return decide_shared(path, base, None, ours, keep=keep)
         if base is not None and base is not MISSING and masked(path, ours.data)[0] == masked(path, base.data)[0]:
             return Decision(path, "deleted", delete=True, state=REMOVE)
         return Decision(path, "kept", state=REMOVE,
@@ -1355,6 +1626,11 @@ def decide(
         recorded = target if base is MISSING else base
         return Decision(path, "owner-deleted", state=FileState(recorded.sha, recorded.mode, True),
                         detail="You deleted this file, so it is now switched off in .github/template-sync.")
+
+    # A file the owner writes, with sections the template keeps, syncs those
+    # sections alone, even where it has no baseline to merge from.
+    if is_shared(path, base, target):
+        return decide_shared(path, base, target, ours, keep=keep)
 
     # What people wrote is compared and merged; a machined index's rows are
     # derived from the tree, taken out here and filled again below.
@@ -1722,6 +1998,7 @@ HEADINGS = (
     ("deferred", "⏸️ Waiting on a token"),
     ("updated", "✅ Updated to the template's version"),
     ("merged", "🔀 Merged with your changes"),
+    ("shared", "🧩 The template's section kept current, the rest yours"),
     ("yours-kept", "🧷 Merged, your lines kept where you both changed them"),
     ("added", "🆕 Added"),
     ("restored", "♻️ Switched back on and restored"),
@@ -1733,7 +2010,7 @@ HEADINGS = (
     ("unsafe", "⛔ Skipped as unsafe"),
 )
 EXPLAINED = frozenset({"conflict", "deferred", "kept", "unsafe", "restored", "owner-deleted", "moved", "held-off",
-                       "yours-kept"})
+                       "yours-kept", "shared"})
 
 
 def render_report(*, template: str, version: str, previous: str, decisions: list[Decision],
@@ -2375,6 +2652,19 @@ def check(repo: pathlib.Path) -> list[str]:
         if not literal(line.key):
             problems.append(f"`{line.text}` is a pattern under `{TEMPLATE_ONLY}`. Initialisation deletes only "
                             "the files that heading names one to a line, so name each file on a line of its own.")
+    # A section the template keeps in a file its owners write reaches them
+    # only if its markers pair up and the file is kept current.
+    for p in sorted(tracked):
+        source = repo / p
+        if not p.endswith(".md") or source.is_symlink() or not source.is_file():
+            continue
+        data = source.read_bytes()
+        if b"TEMPLATE-SYNC" not in data:
+            continue
+        problems += [f"{p}: {problem}." for problem in block_problems(data)]
+        if template_blocks(data) and p not in on:
+            problems.append(f"{p} holds a TEMPLATE-SYNC block but is not kept current, so no repository "
+                            f"would ever receive it. Switch `{escape(p)}` on.")
     present = set(tracked)
     for line in parsed.body:
         if line.kind != "entry":

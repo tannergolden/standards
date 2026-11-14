@@ -138,6 +138,9 @@ The third column is the heading the file is listed under in the pull request.
 | changed it           | changed the same lines, kept mine | 🧷 Merged, your lines kept where you both changed them              |
 | added it             | does not exist                    | 🆕 Added, in your identity                                          |
 | added it             | already exists, different         | ⚠️ Needs you: yours untouched                                       |
+| has a section in it  | already exists, without it        | 🧩 Its section taken in under its heading, the rest yours           |
+| changed its section  | left its section as it was        | 🧩 Its section brought up to date, the rest yours                   |
+| changed its section  | changed that section              | ⚠️ Needs you: yours untouched, the template's change shown          |
 | removed it           | is untouched                      | 🗑️ Removed, as the template removed it                              |
 | removed it           | was changed                       | 📌 Kept as yours after the template removed it                      |
 | moved it             | is untouched or merges            | 🚚 Moved by the template, your changes with it                      |
@@ -184,6 +187,18 @@ machine that sealed it, which rewrites it and its marker line on every release. 
 marker line included, is taken out of all three sides, the rest of the file merges, and the block
 comes back exactly as your repository holds it. Your own sync keeps it current; Template Sync never
 offers the template's copy of it, and never conflicts over it.
+
+**A section the template keeps in a file you write is synced on its own.** Some files are yours,
+not the template's: an `AGENTS.md` holds your commands and your conventions, and a repository
+generated before the template shipped one already has its own, so a whole-file merge would have no
+baseline and could only conflict. So a template marks the lines every repository should carry there
+between `<!-- TEMPLATE-SYNC:BEGIN -->` and `<!-- TEMPLATE-SYNC:END -->`, and a Markdown file whose
+template version holds such a block is synced one block at a time. A block your file lacks is put
+in at the end of the section under the heading it follows in the template, or above the footer, or
+at the end; one you left as the template had it is brought up to date; one the template drops is
+taken out. Every other line stays as you wrote it, and so does a block you changed, which is a
+conflict like any other, or took out, which stays out. A second block in one file takes a name,
+such as `<!-- TEMPLATE-SYNC:RESEARCH:BEGIN -->`.
 
 **In `.gitignore`, other ignore files and `.gitattributes`, two additions in one place are kept.**
 Both appending to the end of `.gitignore` is the commonest change either side makes, and git calls
@@ -368,6 +383,11 @@ dispatch of **🔄 Template Sync** syncs it from the template it came from, as a
 - **Anchor every entry with `/`**, write `#/path` for a file each owner keeps, and leave
   **Your rules** empty: that section is the owner's.
 - **Remove a file's line when you remove the file.** A line naming nothing fails the check.
+- **Mark what you keep in a file each owner writes** between `<!-- TEMPLATE-SYNC:BEGIN -->` and
+  `<!-- TEMPLATE-SYNC:END -->`, under the heading it belongs beneath, and keep the file's line
+  switched on. Only those lines then sync, into every repository's copy, even one written before
+  yours. The check fails on a block that never closes, a second block of the same name, or a block
+  in a file the list switches off.
 - **Name what only the template needs under `# --- Only ever in the template`**, one file to a line,
   switched off. Initialisation deletes each of them from every generated repository, leaves them
   out of its lock and redraws every folder log from what is left; the check refuses a line there
