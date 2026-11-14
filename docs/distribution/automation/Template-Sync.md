@@ -192,6 +192,16 @@ mapping. What it changes joins the same pull request, which names each file. A c
 said in the pull request, with what it printed, and that pull request never merges itself; the sync
 it follows is still proposed.
 
+**A block your repository draws is never merged either.** A notes vault lists its owner's people,
+projects and summaries in blocks of the template's own READMEs, between `<!-- brain:NAME ... -->`
+and `<!-- /brain:NAME -->`, drawn by its own script, so each one differs from the template's, and a
+template that rewords a line in or beside one would make every vault with entries conflict over
+lines its owner never wrote. So a template names their namespace in its list, as
+`# drawn blocks: brain`, above **Your rules**: their rows are taken out of all three sides before
+the merge, like a machined index's, the prose and markers around them merge, and your own rows go
+back in. The `# redraw:` command the list names then draws them again. A marker counts only on a
+line of its own, outside a code fence, so one named in a sentence is text.
+
 **A sealed block is never merged either.** A block marked `<!-- NAME:BEGIN sha256:<hash> -->`, such
 as the `INTELLIGENCE` block tannergolden/intelligence delivers into `AGENTS.md`, belongs to the
 machine that sealed it, which rewrites it and its marker line on every release. So the whole block,
@@ -403,8 +413,8 @@ dispatch of **🔄 Template Sync** syncs it from the template it came from, as a
   came from keeps, such as that template's research section in an `AGENTS.md` of its own rules.
   Its own sync reads the list of the template it came from, never its own, so it still takes the
   section in as a section; the note makes its generated repositories take the whole file, so its
-  rules keep reaching them. No mapped sync runs a `# redraw:` command: a template's own checks hold
-  its files.
+  rules keep reaching them. No mapped sync runs a `# redraw:` command or masks `# drawn blocks:`: a
+  template's own checks hold its files.
 - **The rest of its workflows run as they do anywhere else.** The stubs that are silent in a
   template are silent only in the golden path template, so a derived template keeps its
   checks, its governance and its maintenance. Initialisation and `release.yml` stay silent in every
@@ -426,10 +436,12 @@ dispatch of **🔄 Template Sync** syncs it from the template it came from, as a
   yours. The check fails on a block that never closes, a second block of the same name, or a block
   in a file the list switches off.
 - **Write `# kept whole: /path`** above **Your rules** for a file you keep current whole that holds
-  another template's section, and **`# redraw: COMMAND`**, once, for the command that redraws what a
-  repository generates from its own files. The check fails on a `# kept whole:` that names a pattern
-  or a file the list does not keep current, on a second `# redraw:`, and on one whose quoting does
-  not parse.
+  another template's section, **`# redraw: COMMAND`**, once, for the command that redraws what a
+  repository generates from its own files, and **`# drawn blocks: NAMESPACE`** for the blocks that
+  command draws in files you keep current. The check fails on a `# kept whole:` that names a pattern
+  or a file the list does not keep current, on a second `# redraw:`, on one whose quoting does not
+  parse, on a `# drawn blocks:` that names no lowercase namespace, and on drawn blocks with no
+  `# redraw:` to draw them again.
 - **Name what only the template needs under `# --- Only ever in the template`**, one file to a line,
   switched off. Initialisation deletes each of them from every generated repository, leaves them
   out of its lock and redraws every folder log from what is left; the check refuses a line there

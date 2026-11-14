@@ -733,8 +733,16 @@ class TestTheTemplatesNotesAreChecked:
     def test_a_redraw_that_does_not_parse_is_named(self, sync_world):
         assert any("does not parse as a command" in p for p in self.check(sync_world, "# redraw: python3 'unclosed"))
 
+    def test_drawn_blocks_must_name_a_namespace(self, sync_world):
+        problems = self.check(sync_world, "# drawn blocks: Brain Blocks", "# redraw: python3 scripts/tool.py")
+        assert any("`# drawn blocks: Brain Blocks` names no namespace" in p for p in problems)
+
+    def test_drawn_blocks_need_a_redraw_to_draw_them_again(self, sync_world):
+        assert any("no `# redraw:` command" in p for p in self.check(sync_world, "# drawn blocks: brain"))
+
     def test_well_formed_notes_pass(self, sync_world):
-        assert self.check(sync_world, "# kept whole: /docs/guide.md", "# redraw: python3 scripts/tool.py") == []
+        assert self.check(sync_world, "# kept whole: /docs/guide.md", "# redraw: python3 scripts/tool.py",
+                          "# drawn blocks: brain") == []
 
 
 # A generator of the repository's own: the first line of the guide, drawn into
@@ -795,6 +803,104 @@ class TestWhatARepositoryGeneratesIsRedrawn:
         assert "changed=true" in said and "clean=false" in said, "a failed redraw never merges itself"
         assert "exited with 3" in said and "The catalog cannot be drawn." in said and "[!WARNING]" in said
         assert sync_world.text("docs/guide.md") == "# Guide, revised\n"
+
+
+# A README whose block the repository's own generator fills from the notes
+# beside it, as a notes vault's are.
+EMPTY_PEOPLE = "_No people recorded yet._"
+INTRO = "Everyone the owner knows well."
+
+
+def people(rows: str = EMPTY_PEOPLE, intro: str = INTRO) -> str:
+    return (f"# People\n\n{intro}\n\n<!-- brain:entries (drawn by scripts/draw.py) -->\n{rows}\n"
+            "<!-- /brain:entries -->\n\n---\n")
+
+
+DRAW_PEOPLE = '''\
+import pathlib
+import re
+
+EMPTY = "_No people recorded yet._"
+folder = pathlib.Path("people")
+names = sorted(p.stem for p in folder.glob("*.md") if p.name != "README.md")
+rows = "\\n".join(f"- {name}" for name in names) or EMPTY
+readme = folder / "README.md"
+block = re.compile(r"(<!-- brain:entries[^>]*-->\\n).*?(\\n<!-- /brain:entries -->)", re.S)
+readme.write_text(block.sub(lambda m: m.group(1) + rows + m.group(2), readme.read_text(encoding="utf-8")),
+                  encoding="utf-8")
+'''
+
+
+class TestABlockTheRepositoryDrawsIsNeverMerged:
+    """`# drawn blocks: NS`: rows the repository draws from its own files never meet the template's."""
+
+    BRAIN = frozenset({b"brain"})
+
+    def decide(self, base, target, ours, drawn=BRAIN):
+        def side(data, sha):
+            return sync.Side("100644", data.encode(), sha)
+        return sync.decide("people/README.md", side(base, "base"), side(target, "target"), side(ours, "ours"),
+                           synced=True, was_deleted=False, drawn=drawn)
+
+    def test_a_reworded_empty_list_is_no_conflict_for_an_owner_with_entries(self):
+        decision = self.decide(people(), people("_Nobody recorded yet._"), people("- Alex Rivera"))
+        assert decision.outcome == "unchanged" and decision.write is None
+
+    def test_without_the_note_the_same_change_is_a_conflict(self):
+        decision = self.decide(people(), people("_Nobody recorded yet._"), people("- Alex Rivera"),
+                               drawn=frozenset())
+        assert decision.outcome == "conflict"
+
+    def test_the_templates_prose_arrives_around_the_owners_rows(self):
+        newer = people("_Nobody recorded yet._", "Everyone close to the owner.")
+        decision = self.decide(people(), newer, people("- Alex Rivera"))
+        assert decision.outcome == "updated"
+        assert decision.write.data.decode() == people("- Alex Rivera", "Everyone close to the owner.")
+
+    def test_a_marker_named_in_a_sentence_or_a_fence_is_no_block(self):
+        text = (b"From `<!-- brain:x -->` to `<!-- /brain:x -->`.\n\n```markdown\n"
+                b"<!-- brain:x -->\nrow\n<!-- /brain:x -->\n```\n")
+        assert sync.machined_blocks(text.split(b"\n"), drawn=self.BRAIN) == []
+
+    def test_a_marker_without_its_end_is_no_block(self):
+        text = (b"## Log\n\n<!-- brain:log-entries -->\n\n### An entry\n\n## Open\n\n"
+                b"<!-- brain:open-loops (drawn) -->\n_None._\n<!-- /brain:open-loops -->\n")
+        prose, rows = sync.masked("Log.md", text, self.BRAIN)
+        assert rows == [(b"drawn brain:open-loops", [b"_None._"])]
+        assert b"### An entry" in prose and b"_None._" not in prose
+
+    def test_only_the_templates_own_well_formed_note_counts(self):
+        text = with_notes("# drawn blocks: brain", "# drawn blocks: Not A Namespace") + "# drawn blocks: own\n"
+        assert sync.drawn_blocks(text) == self.BRAIN
+
+    @staticmethod
+    def world(world, *, entries: bool) -> None:
+        """A template whose people README its generator draws, and a repository generated from it."""
+        text = TEMPLATE_LIST.replace("/scripts/tool.py\n", "/scripts/tool.py\n/scripts/draw.py\n/people/README.md\n")
+        world.release("v1.0.1", {".github/template-sync": with_notes(
+            f"# redraw: {shlex.quote(sys.executable)} scripts/draw.py", "# drawn blocks: brain", text=text),
+            "scripts/draw.py": DRAW_PEOPLE, "people/README.md": people()})
+        world.generate()
+        if entries:
+            world.owner({"people/Alex Rivera.md": "# Alex Rivera\n", "people/README.md": people("- Alex Rivera")})
+
+    def test_a_real_sync_merges_around_an_owners_entries(self, sync_world):
+        self.world(sync_world, entries=True)
+        sync_world.release("v1.1.0", {"scripts/draw.py": DRAW_PEOPLE.replace(EMPTY_PEOPLE, "_Nobody recorded yet._"),
+                                      "people/README.md": people("_Nobody recorded yet._", "Everyone close.")})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["people/README.md"] == "updated"
+        assert sync_world.text("people/README.md") == people("- Alex Rivera", "Everyone close.")
+        assert not sync_world.run_sync().changed
+
+    def test_an_untouched_repository_takes_the_new_wording_from_the_redraw(self, sync_world):
+        self.world(sync_world, entries=False)
+        sync_world.release("v1.1.0", {"scripts/draw.py": DRAW_PEOPLE.replace(EMPTY_PEOPLE, "_Nobody recorded yet._"),
+                                      "people/README.md": people("_Nobody recorded yet._")})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["people/README.md"] == "unchanged"
+        assert result.remade == ["people/README.md"]
+        assert sync_world.text("people/README.md") == people("_Nobody recorded yet._")
 
 
 GITIGNORE = "# Built\n/build/\n/dist/\n"

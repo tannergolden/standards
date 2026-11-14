@@ -480,6 +480,8 @@ def kept_mine(text: str | None) -> set[str]:
 # from its list at the version synced to - never from an owner's copy.
 KEPT_WHOLE = re.compile(r"^#\s*kept whole:\s*(/.*?)\s*$", re.IGNORECASE)
 REDRAW = re.compile(r"^#\s*redraw:\s*(\S.*?)\s*$", re.IGNORECASE)
+DRAWN = re.compile(r"^#\s*drawn blocks:\s*(\S.*?)\s*$", re.IGNORECASE)
+NAMESPACE = re.compile(r"^[a-z][a-z0-9-]*$")
 
 
 def _template_notes(text: str | None, pattern: re.Pattern[str]) -> list[re.Match[str]]:
@@ -518,6 +520,24 @@ def redraw_command(text: str | None) -> list[str]:
         except ValueError:
             return []
     return []
+
+
+def drawn_blocks(text: str | None) -> frozenset[bytes]:
+    """The namespaces of the blocks a repository draws itself, as its template's list names them.
+
+    ⚠️ A BLOCK A REPOSITORY DRAWS FROM ITS OWN FILES IS NEVER THE OWNER'S EDIT.
+    A notes vault lists its owner's people, projects and session summaries in
+    blocks of the template's own READMEs, between `<!-- brain:NAME ... -->`
+    and `<!-- /brain:NAME -->`, drawn by its own script. Merged line by line,
+    every one of them differs from the template's, so a template that rewords
+    a line in or beside one - an empty list's wording - makes each vault with
+    entries conflict over lines its owner never wrote and could not make
+    match. `# drawn blocks: brain` takes those rows out of every side before
+    the merge, as a machined index's are, and puts the repository's own back;
+    the template's `# redraw:` command then draws them again.
+    """
+    names = (match.group(1) for match in _template_notes(text, DRAWN))
+    return frozenset(name.encode() for name in names if NAMESPACE.match(name))
 
 
 def exact_on(text: str | None) -> set[str]:
@@ -1286,14 +1306,22 @@ INDEX_FENCE = re.compile(rb"^(?:```|~~~)")
 SEALED_BEGIN = re.compile(rb"<!--\s*(?P<name>[A-Z][A-Z0-9_-]*(?::[A-Z][A-Z0-9_-]*)*):BEGIN"
                           rb"(?P<seal>\s+sha256:[0-9a-f]{64})?\s*-->")
 
+# A block a repository draws from its own files, in a namespace its template
+# names with `# drawn blocks:` - from `<!-- brain:NAME (a note) -->` to
+# `<!-- /brain:NAME -->`, each marker a line of its own. Masked like a
+# machined index: the markers stay, and the rows are the repository's.
+DRAWN_BEGIN = re.compile(rb"^<!--\s*(?P<ns>[a-z][a-z0-9-]*):(?P<name>[A-Za-z0-9_-]+)(?:\s[^>]*)?-->$")
 
-def machined_blocks(lines: list[bytes], *, sealed_only_with_hash: bool = True) -> list[tuple[int, int, bytes, bool]]:
+
+def machined_blocks(lines: list[bytes], *, sealed_only_with_hash: bool = True,
+                    drawn: frozenset[bytes] = frozenset()) -> list[tuple[int, int, bytes, bool]]:
     """Each live block as (its BEGIN line, its END line, its key, whether it is sealed).
 
     A marker inside a fenced code block is an example, not a block, and a
     BEGIN that never closes is no block either. A masked file carries a
     sealed block's marker without its hash, so refilling one finds it by
-    name alone.
+    name alone. A block in one of the `drawn` namespaces counts only with
+    both markers on lines of their own, so one named in a sentence is text.
     """
     blocks: list[tuple[int, int, bytes, bool]] = []
     fenced, i = False, 0
@@ -1309,6 +1337,15 @@ def machined_blocks(lines: list[bytes], *, sealed_only_with_hash: bool = True) -
             blocks.append((i, end, b"index " + _marker(lines[i]), False))
             i = end + 1
             continue
+        opened = DRAWN_BEGIN.match(lines[i].strip()) if drawn and not fenced else None
+        if opened and opened.group("ns") in drawn:
+            key = opened.group("ns") + b":" + opened.group("name")
+            closing = re.compile(rb"^<!--\s*/" + re.escape(key) + rb"\s*-->$")
+            end = next((j for j in range(i + 1, len(lines)) if closing.match(lines[j].strip())), None)
+            if end is not None:
+                blocks.append((i, end, b"drawn " + key, False))
+                i = end + 1
+                continue
         sealed = None if fenced else SEALED_BEGIN.search(lines[i])
         if sealed and template_owned(sealed.group("name")):
             sealed = None  # the template's own section: decided by `decide_shared`, never masked
@@ -1334,17 +1371,20 @@ def _unsealed(line: bytes) -> bytes:
     return b"<!-- " + found.group("name") + b":BEGIN -->" if found else line
 
 
-def masked(path: str, data: bytes) -> tuple[bytes, list[tuple[bytes, list[bytes]]]]:
+def masked(path: str, data: bytes,
+           drawn: frozenset[bytes] = frozenset()) -> tuple[bytes, list[tuple[bytes, list[bytes]]]]:
     """A Markdown file with each block's rows taken out, and the rows each block held.
 
-    A machined index keeps its marker line, which only says what to draw. A
-    sealed block gives up its marker line too, hash and all, so it travels
-    with the rows and comes back with them.
+    A machined index keeps its marker line, which only says what to draw, and
+    so does a block in one of the `drawn` namespaces. A sealed block gives up
+    its marker line too, hash and all, so it travels with the rows and comes
+    back with them.
     """
-    if not path.endswith(".md") or (b"AUTO-INDEX:BEGIN" not in data and b":BEGIN sha256:" not in data):
+    if not path.endswith(".md") or (b"AUTO-INDEX:BEGIN" not in data and b":BEGIN sha256:" not in data
+                                    and not any(b"/" + ns + b":" in data for ns in drawn)):
         return data, []
     lines = data.split(b"\n")
-    blocks = machined_blocks(lines)
+    blocks = machined_blocks(lines, drawn=drawn)
     if not blocks:
         return data, []
     out: list[bytes] = []
@@ -1362,10 +1402,11 @@ def masked(path: str, data: bytes) -> tuple[bytes, list[tuple[bytes, list[bytes]
     return b"\n".join(out), rows
 
 
-def refilled(data: bytes, *sources: list[tuple[bytes, list[bytes]]]) -> bytes:
+def refilled(data: bytes, *sources: list[tuple[bytes, list[bytes]]],
+             drawn: frozenset[bytes] = frozenset()) -> bytes:
     """Masked `data` with each block filled from the first source that has a block of the same marker."""
     lines = data.split(b"\n")
-    blocks = machined_blocks(lines, sealed_only_with_hash=False)
+    blocks = machined_blocks(lines, sealed_only_with_hash=False, drawn=drawn)
     if not blocks:
         return data
     pools = [list(source) for source in sources]
@@ -1703,6 +1744,7 @@ def decide(
     was_deleted: bool,
     keep: bool = False,
     whole: bool = False,
+    drawn: frozenset[bytes] = frozenset(),
 ) -> Decision:
     """The one decision for one path. Pure: every input is passed in.
 
@@ -1713,7 +1755,9 @@ def decide(
     `keep` is the owner's `# keep mine` for this path: where this would be a
     conflict, their lines stand and the template's change is shown instead.
     `whole` is the template's `# kept whole` for it: a TEMPLATE-SYNC section
-    in the file is merged with the rest, never synced on its own.
+    in the file is merged with the rest, never synced on its own. `drawn`
+    names the namespaces of the blocks the repository draws itself, whose
+    rows are never compared or merged.
     """
     if not synced:
         # A file the template stopped shipping is the owner's from here on,
@@ -1726,7 +1770,8 @@ def decide(
             return Decision(path, "gone", state=REMOVE)
         if not whole and is_shared(path, base):
             return decide_shared(path, base, None, ours, keep=keep)
-        if base is not None and base is not MISSING and masked(path, ours.data)[0] == masked(path, base.data)[0]:
+        if (base is not None and base is not MISSING
+                and masked(path, ours.data, drawn)[0] == masked(path, base.data, drawn)[0]):
             return Decision(path, "deleted", delete=True, state=REMOVE)
         return Decision(path, "kept", state=REMOVE,
                         detail="The template removed this file and you had changed it, so it stays, as yours.")
@@ -1748,9 +1793,10 @@ def decide(
         return decide_shared(path, base, target, ours, keep=keep)
 
     # What people wrote is compared and merged; a machined index's rows are
-    # derived from the tree, taken out here and filled again below.
-    o, ours_rows = masked(path, ours.data)
-    t, target_rows = masked(path, target.data)
+    # derived from the tree, and a drawn block's from the repository's files,
+    # so both are taken out here and filled again below.
+    o, ours_rows = masked(path, ours.data, drawn)
+    t, target_rows = masked(path, target.data, drawn)
 
     if base is MISSING:
         if o == t:
@@ -1780,7 +1826,7 @@ def decide(
             "untouched; make it match the template's, or switch the path off."),
             diff=udiff(path, o, t))
 
-    b = masked(path, base.data)[0]
+    b = masked(path, base.data, drawn)[0]
     mode = merge_mode(ours.mode, base.mode, target.mode)
     if b == t or o == t:
         # Nothing for the content to do: the template did not change it, or
@@ -1790,7 +1836,7 @@ def decide(
             return Decision(path, kind, state=state_of(target))
         return Decision(path, "updated", write=Side(mode, ours.data), state=state_of(target))
     if o == b:
-        data = target.data if ours.data == base.data else refilled(t, ours_rows, target_rows)
+        data = target.data if ours.data == base.data else refilled(t, ours_rows, target_rows, drawn=drawn)
         return Decision(path, "updated", write=Side(mode, data), state=state_of(target))
     if binary(ours.data, base.data, target.data):
         if keep:
@@ -1802,14 +1848,14 @@ def decide(
     line_set = bool(LINE_SETS.search(path))
     merged, clean = merge3(o, b, t, line_set=line_set)
     if clean:
-        return Decision(path, "merged", write=Side(mode, refilled(merged, ours_rows, target_rows)),
+        return Decision(path, "merged", write=Side(mode, refilled(merged, ours_rows, target_rows, drawn=drawn)),
                         state=state_of(target))
     if keep:
         mine, settled = resolved(merged, o, t, line_set=line_set, side="yours")
         if settled:
             # Shown: only what the owner's lines stood over, never what arrived.
             shown = udiff(path, mine, resolved(merged, o, t, line_set=line_set, side="template")[0])
-            mine = refilled(mine, ours_rows, target_rows)
+            mine = refilled(mine, ours_rows, target_rows, drawn=drawn)
             return kept_yours(path, target, Side(mode, mine) if mine != ours.data or mode != ours.mode else None,
                               "The template's other changes to it arrived.", shown)
     return Decision(path, "conflict", detail=SAME_LINES, diff=udiff(path, b, t))
@@ -1929,6 +1975,7 @@ def plan(
     replaced: dict[str, str] | None = None,
     keep: set[str] = frozenset(),
     whole: set[str] = frozenset(),
+    drawn: frozenset[bytes] = frozenset(),
 ) -> list[Decision]:
     """Every decision for every path the template ships or shipped.
 
@@ -1937,7 +1984,8 @@ def plan(
     names paths this repository holds as a symlink or submodule, which are
     never written over. A move is carried out only when both of its paths
     are synced; otherwise each path is decided on its own. `whole` names the
-    files the template keeps whole, TEMPLATE-SYNC sections and all.
+    files the template keeps whole, TEMPLATE-SYNC sections and all, and
+    `drawn` the namespaces of the blocks the repository draws itself.
     """
     decisions: dict[str, Decision] = {}
     if moves is None:
@@ -1968,11 +2016,11 @@ def plan(
             continue
         if old in ours and new not in ours and new not in special:
             result = decide(new, base[old], target[new], ours[old], synced=True, was_deleted=False,
-                            whole=new in whole)
+                            whole=new in whole, drawn=drawn)
             if result.outcome != "conflict":
                 write = result.write or Side(merge_mode(ours[old].mode, base[old].mode, target[new].mode),
                                              ours[old].data)
-                edited = masked(old, ours[old].data)[0] != masked(old, base[old].data)[0]
+                edited = masked(old, ours[old].data, drawn)[0] != masked(old, base[old].data, drawn)[0]
                 decisions[old] = Decision(old, "moved", delete=True, state=REMOVE, pair=new, detail=(
                     f"The template moved this file to `{new}`" + (", and your changes came with it."
                                                                   if edited else ".")))
@@ -1999,6 +2047,7 @@ def plan(
             was_deleted=path in deleted,
             keep=path in keep,
             whole=path in whole,
+            drawn=drawn,
         )
         if path in special and decisions[path].outcome not in ("not-synced", "gone"):
             decisions[path] = Decision(path, "conflict", detail=(
@@ -2619,10 +2668,13 @@ def run(
             synced -= {p for p, s in known.items() if s.deleted and p not in asked}
 
     # The template's own notes, from its list at this version: the files it
-    # keeps whole, at the paths they live at here.
+    # keeps whole, at the paths they live at here, and the blocks a generated
+    # repository draws itself - which its `# redraw:` draws again, so a mapped
+    # repository, which runs none, merges them as text.
     whole = kept_whole(target_list)
     if mapping:
         whole = {local for p in whole if (local := mapping.here(p)) is not None}
+    drawn = frozenset() if mapping else drawn_blocks(target_list)
     decisions = plan(
         base,
         target,
@@ -2636,6 +2688,7 @@ def run(
         # A mapped sync's differences live in its contract, never in a note.
         keep=set() if mapping else {relocation.there(p) or p for p in kept_mine(ours_list)},
         whole=whole,
+        drawn=drawn,
     )
     decisions = [settle(d, mapping) for d in decisions]
     if mapping:
@@ -2905,6 +2958,14 @@ def check(repo: pathlib.Path) -> list[str]:
         except ValueError as exc:
             problems.append(f"`# redraw: {match.group(1)}` does not parse as a command ({exc}), so no sync "
                             "would run it.")
+    drawn = _template_notes(text, DRAWN)
+    for match in drawn:
+        if not NAMESPACE.match(match.group(1)):
+            problems.append(f"`# drawn blocks: {match.group(1)}` names no namespace. Name the one word before "
+                            "the colon in the block's marker, in lowercase, such as `brain` for `<!-- brain:NAME -->`.")
+    if drawn and not redraws:
+        problems.append("The list names `# drawn blocks:` but no `# redraw:` command, so no sync would ever draw "
+                        "those blocks again. Name the command that draws them.")
     present = set(tracked)
     for line in parsed.body:
         if line.kind != "entry":
