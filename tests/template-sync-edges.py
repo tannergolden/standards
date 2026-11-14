@@ -659,6 +659,76 @@ class TestTheTemplatesSectionsAreChecked:
         assert self.check(sync_world) == []
 
 
+def with_notes(*notes: str, text: str = TEMPLATE_LIST) -> str:
+    """A template's list with notes of its own, above Your rules."""
+    return text.replace("# --- Yours:", "".join(f"{note}\n" for note in notes) + "\n# --- Yours:", 1)
+
+
+# A template derived from another, which took that template's section into an
+# AGENTS.md whose every other rule is its own.
+RULES = "# Agents\n\n## Rules\n\n- Notes open with frontmatter.\n\n## Gotchas\n\n- Profile/ is read-only.\n"
+RULES_WITH_SECTION = RULES.replace("## Gotchas", research() + "\n## Gotchas")
+NEWER_RULES = RULES_WITH_SECTION.replace("frontmatter.\n", "frontmatter.\n- Names are plain.\n")
+
+
+class TestATemplateKeepsAFileWhole:
+    """`# kept whole: /path`: the template's file, another template's section in it included."""
+
+    @staticmethod
+    def decide(base, target, ours, *, whole):
+        def side(data, sha):
+            return sync.Side("100644", data.encode(), sha)
+        return sync.decide("AGENTS.md", side(base, "base"), side(target, "target"), side(ours, "ours"),
+                           synced=True, was_deleted=False, whole=whole)
+
+    def test_its_change_outside_the_section_merges_with_the_owners(self):
+        mine = RULES_WITH_SECTION + "- My own gotcha.\n"
+        decision = self.decide(RULES_WITH_SECTION, NEWER_RULES, mine, whole=True)
+        assert decision.outcome == "merged", decision.detail
+        assert decision.write.data.decode() == NEWER_RULES + "- My own gotcha.\n"
+
+    def test_without_the_note_the_section_alone_is_the_templates(self):
+        # The default every other template relies on: the rest is the owner's, so it never arrives.
+        decision = self.decide(RULES_WITH_SECTION, NEWER_RULES, RULES_WITH_SECTION, whole=False)
+        assert decision.outcome == "unchanged" and decision.write is None
+
+    def test_only_the_templates_own_note_counts(self):
+        text = with_notes("# kept whole: /AGENTS.md", "# kept whole: /docs/*.md") + "# kept whole: /docs/guide.md\n"
+        assert sync.kept_whole(text) == {"AGENTS.md"}
+
+    @pytest.mark.parametrize("noted", [True, False])
+    def test_a_derived_templates_rules_keep_reaching_its_repositories(self, sync_world, noted):
+        notes = ("# kept whole: /AGENTS.md",) if noted else ()
+        sync_world.release("v1.0.1", {"AGENTS.md": RULES, ".github/template-sync": with_notes(
+            *notes, text=listed("AGENTS.md"))})
+        sync_world.generate()
+        sync_world.release("v1.1.0", {"AGENTS.md": NEWER_RULES})
+        result = sync_world.run_sync()
+        text = sync_world.text("AGENTS.md")
+        assert research() in text
+        if noted:
+            assert sync_world.outcomes(result)["AGENTS.md"] == "updated" and text == NEWER_RULES
+        else:
+            assert sync_world.outcomes(result)["AGENTS.md"] == "shared" and "- Names are plain." not in text
+        assert not sync_world.run_sync().changed
+
+
+class TestTheTemplatesNotesAreChecked:
+    def check(self, world, *notes):
+        world.release("v1.0.1", {".github/template-sync": with_notes(*notes)})
+        return world.sync.check(world.template)
+
+    def test_a_file_kept_whole_must_be_kept_current(self, sync_world):
+        assert any("`# kept whole: /README.md` names a file the list does not keep current" in p
+                   for p in self.check(sync_world, "# kept whole: /README.md"))
+
+    def test_a_pattern_kept_whole_is_named(self, sync_world):
+        assert any("`# kept whole: /docs/*.md` is a pattern" in p for p in self.check(sync_world, "# kept whole: /docs/*.md"))
+
+    def test_well_formed_notes_pass(self, sync_world):
+        assert self.check(sync_world, "# kept whole: /docs/guide.md") == []
+
+
 GITIGNORE = "# Built\n/build/\n/dist/\n"
 
 

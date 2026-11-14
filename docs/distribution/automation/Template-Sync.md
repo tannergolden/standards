@@ -201,6 +201,15 @@ conflict like any other, or took out, which stays out. A second block in one fil
 such as `<!-- TEMPLATE-SYNC:RESEARCH:BEGIN -->`. A heading inside a block another machine writes,
 such as the `INTELLIGENCE` block, is never where a section is put.
 
+**A file the template keeps whole stays whole, another template's section in it included.** A
+template derived from another can take that template's section into a file it writes itself, such
+as an `AGENTS.md` whose every other rule is its own. Read as a file its owner writes, that section
+would be all that ever synced, and every later change to the rest of the file would stop reaching
+the repositories generated from it, without a word. So such a template writes
+`# kept whole: /AGENTS.md` in its list, above **Your rules**: the file then merges as a whole, like
+any file the list keeps current, the section with it. The note is the template's, read from its
+list at the version synced to; one in your copy decides nothing.
+
 **A `docs/` or `assets/` you hid is synced where it lives.** A repository may keep the template's
 `docs/` as `.docs/`, or its `assets/` as `.assets/`, out of the way of its own folders, as a notes
 vault does. When yours tracks files under `.docs/` and none under `docs/`, every file the template
@@ -320,7 +329,7 @@ The engine is tested here, on real git repositories, with no network:
 | `tests/template-sync-list.py`       | The list's redraw rules, and git's matcher on hostile path names                           |
 | `tests/template-sync-lock.py`       | Every way a lock can be wrong, refused                                                     |
 | `tests/template-sync-properties.py` | Random template histories against random owners, and the bad designs they catch            |
-| `tests/template-sync-edges.py`      | The cases review and real use found: edits, deletions, choices, indexes, ignores           |
+| `tests/template-sync-edges.py`      | The cases review and real use found: edits, deletions, choices, indexes, ignores, notes    |
 | `tests/template-sync-mapping.py`    | A mapped sync: relocations, replaced text, exclusions, and its own lock and list           |
 | `tests/template-sync-workflow.py`   | The workflow, the action, the token policy, the issue, and init's first lock               |
 | `tests/init-template-removal.py`    | What init deletes, the workflows it leaves alone, and every sync after it                  |
@@ -379,6 +388,11 @@ dispatch of **🔄 Template Sync** syncs it from the template it came from, as a
 - **Without the mapping, a template never syncs.** An ordinary sync redraws a list from the
   template's, which would fold this template's own lines under Your rules; the sync job stops
   instead and says what to write.
+- **A file it writes whole is named `# kept whole:`** when it carries a section the template it
+  came from keeps, such as that template's research section in an `AGENTS.md` of its own rules.
+  Its own sync reads the list of the template it came from, never its own, so it still takes the
+  section in as a section; the note makes its generated repositories take the whole file, so its
+  rules keep reaching them.
 - **The rest of its workflows run as they do anywhere else.** The stubs that are silent in a
   template are silent only in the golden path template, so a derived template keeps its
   checks, its governance and its maintenance. Initialisation and `release.yml` stay silent in every
@@ -399,6 +413,9 @@ dispatch of **🔄 Template Sync** syncs it from the template it came from, as a
   switched on. Only those lines then sync, into every repository's copy, even one written before
   yours. The check fails on a block that never closes, a second block of the same name, or a block
   in a file the list switches off.
+- **Write `# kept whole: /path`** above **Your rules** for a file you keep current whole that holds
+  another template's section. The check fails on a note that names a pattern or a file the list
+  does not keep current.
 - **Name what only the template needs under `# --- Only ever in the template`**, one file to a line,
   switched off. Initialisation deletes each of them from every generated repository, leaves them
   out of its lock and redraws every folder log from what is left; the check refuses a line there

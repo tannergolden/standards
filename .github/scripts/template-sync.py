@@ -474,6 +474,35 @@ def kept_mine(text: str | None) -> set[str]:
     return {unescape(match.group(1)) for match in found if match and literal(match.group(1))}
 
 
+# The template's own notes, written above Your rules in its list, are read
+# from its list at the version synced to - never from an owner's copy.
+KEPT_WHOLE = re.compile(r"^#\s*kept whole:\s*(/.*?)\s*$", re.IGNORECASE)
+
+
+def _template_notes(text: str | None, pattern: re.Pattern[str]) -> list[re.Match[str]]:
+    """Each note above Your rules that `pattern` matches, in order."""
+    parsed = parse_list(text)
+    if parsed is None:
+        return []
+    found = (pattern.match(line.text.strip()) for line in parsed.body if line.kind == "note")
+    return [match for match in found if match]
+
+
+def kept_whole(text: str | None) -> set[str]:
+    """The files a template keeps current whole, sections of another template's in them included.
+
+    ⚠️ A SECTION ANOTHER TEMPLATE KEEPS DOES NOT MAKE THE FILE THE OWNER'S. A
+    template derived from another can take that template's TEMPLATE-SYNC
+    section into a file it writes itself - an AGENTS.md whose every rule is
+    its own. Read as a file its owner writes, that one section is all that
+    would ever sync, and every later change to the rest - the rules the file
+    exists for - would stop reaching the repositories generated from it,
+    without a word. `# kept whole: /path` in the template's list says the file
+    is the template's: it merges as a whole, the sections with it.
+    """
+    return {unescape(match.group(1)) for match in _template_notes(text, KEPT_WHOLE) if literal(match.group(1))}
+
+
 def exact_on(text: str | None) -> set[str]:
     """The paths a list switches on by a line of their own: what an owner can only have meant."""
     parsed = parse_list(text)
@@ -1656,6 +1685,7 @@ def decide(
     synced: bool,
     was_deleted: bool,
     keep: bool = False,
+    whole: bool = False,
 ) -> Decision:
     """The one decision for one path. Pure: every input is passed in.
 
@@ -1665,6 +1695,8 @@ def decide(
     repository holds. Template sides are already in the owner's identity.
     `keep` is the owner's `# keep mine` for this path: where this would be a
     conflict, their lines stand and the template's change is shown instead.
+    `whole` is the template's `# kept whole` for it: a TEMPLATE-SYNC section
+    in the file is merged with the rest, never synced on its own.
     """
     if not synced:
         # A file the template stopped shipping is the owner's from here on,
@@ -1675,7 +1707,7 @@ def decide(
     if target is None:  # the template no longer ships it
         if ours is None:
             return Decision(path, "gone", state=REMOVE)
-        if is_shared(path, base):
+        if not whole and is_shared(path, base):
             return decide_shared(path, base, None, ours, keep=keep)
         if base is not None and base is not MISSING and masked(path, ours.data)[0] == masked(path, base.data)[0]:
             return Decision(path, "deleted", delete=True, state=REMOVE)
@@ -1693,8 +1725,9 @@ def decide(
                         detail="You deleted this file, so it is now switched off in .github/template-sync.")
 
     # A file the owner writes, with sections the template keeps, syncs those
-    # sections alone, even where it has no baseline to merge from.
-    if is_shared(path, base, target):
+    # sections alone, even where it has no baseline to merge from - unless the
+    # template keeps the whole file, as its list says.
+    if not whole and is_shared(path, base, target):
         return decide_shared(path, base, target, ours, keep=keep)
 
     # What people wrote is compared and merged; a machined index's rows are
@@ -1878,6 +1911,7 @@ def plan(
     moves: dict[str, str] | None = None,
     replaced: dict[str, str] | None = None,
     keep: set[str] = frozenset(),
+    whole: set[str] = frozenset(),
 ) -> list[Decision]:
     """Every decision for every path the template ships or shipped.
 
@@ -1885,7 +1919,8 @@ def plan(
     is gone), so a path absent from it is new to this repository. `special`
     names paths this repository holds as a symlink or submodule, which are
     never written over. A move is carried out only when both of its paths
-    are synced; otherwise each path is decided on its own.
+    are synced; otherwise each path is decided on its own. `whole` names the
+    files the template keeps whole, TEMPLATE-SYNC sections and all.
     """
     decisions: dict[str, Decision] = {}
     if moves is None:
@@ -1915,7 +1950,8 @@ def plan(
                                              "is switched off in .github/template-sync.")
             continue
         if old in ours and new not in ours and new not in special:
-            result = decide(new, base[old], target[new], ours[old], synced=True, was_deleted=False)
+            result = decide(new, base[old], target[new], ours[old], synced=True, was_deleted=False,
+                            whole=new in whole)
             if result.outcome != "conflict":
                 write = result.write or Side(merge_mode(ours[old].mode, base[old].mode, target[new].mode),
                                              ours[old].data)
@@ -1945,6 +1981,7 @@ def plan(
             synced=path in synced,
             was_deleted=path in deleted,
             keep=path in keep,
+            whole=path in whole,
         )
         if path in special and decisions[path].outcome not in ("not-synced", "gone"):
             decisions[path] = Decision(path, "conflict", detail=(
@@ -2491,6 +2528,11 @@ def run(
             asked = exact_on(ours_list)
             synced -= {p for p, s in known.items() if s.deleted and p not in asked}
 
+    # The template's own notes, from its list at this version: the files it
+    # keeps whole, at the paths they live at here.
+    whole = kept_whole(target_list)
+    if mapping:
+        whole = {local for p in whole if (local := mapping.here(p)) is not None}
     decisions = plan(
         base,
         target,
@@ -2503,6 +2545,7 @@ def run(
         replaced=replaced,
         # A mapped sync's differences live in its contract, never in a note.
         keep=set() if mapping else {relocation.there(p) or p for p in kept_mine(ours_list)},
+        whole=whole,
     )
     decisions = [settle(d, mapping) for d in decisions]
     if mapping:
@@ -2743,6 +2786,16 @@ def check(repo: pathlib.Path) -> list[str]:
         if template_blocks(data) and p not in on:
             problems.append(f"{p} holds a TEMPLATE-SYNC block but is not kept current, so no repository "
                             f"would ever receive it. Switch `{escape(p)}` on.")
+    # The template's own notes say what a sync does with its files, so each
+    # must name something the sync can do it to.
+    for match in _template_notes(text, KEPT_WHOLE):
+        named = match.group(1)
+        if not literal(named):
+            problems.append(f"`# kept whole: {named}` is a pattern. Name each file the template keeps whole "
+                            "on a note of its own.")
+        elif unescape(named) not in on:
+            problems.append(f"`# kept whole: {named}` names a file the list does not keep current, so no "
+                            "sync would ever merge it. Name a file it keeps current, or remove the note.")
     present = set(tracked)
     for line in parsed.body:
         if line.kind != "entry":
