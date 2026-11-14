@@ -200,7 +200,11 @@ lines its owner never wrote. So a template names their namespace in its list, as
 `# drawn blocks: brain`, above **Your rules**: their rows are taken out of all three sides before
 the merge, like a machined index's, the prose and markers around them merge, and your own rows go
 back in. The `# redraw:` command the list names then draws them again. A marker counts only on a
-line of its own, outside a code fence, so one named in a sentence is text.
+line of its own, outside a code fence, so one named in a sentence is text. The blocks the
+[Markdown Kit](https://github.com/tannergolden/markdown) draws into a README, from
+`<!-- markdown:NAME:start -->` to `<!-- markdown:NAME:end -->`, are drawn blocks too: a template
+that draws its own page with the kit names `# drawn blocks: markdown`, and your page keeps the
+header, footer and trophy case your own run of the kit drew, however often the template's change.
 
 **A sealed block is never merged either.** A block marked `<!-- NAME:BEGIN sha256:<hash> -->`, such
 as the `INTELLIGENCE` block tannergolden/intelligence delivers into `AGENTS.md`, belongs to the
@@ -438,7 +442,7 @@ dispatch of **🔄 Template Sync** syncs it from the template it came from, as a
 - **Write `# kept whole: /path`** above **Your rules** for a file you keep current whole that holds
   another template's section, **`# redraw: COMMAND`**, once, for the command that redraws what a
   repository generates from its own files, and **`# drawn blocks: NAMESPACE`** for the blocks that
-  command draws in files you keep current. The check fails on a `# kept whole:` that names a pattern
+  command, or the Markdown Kit, draws in files you keep current. The check fails on a `# kept whole:` that names a pattern
   or a file the list does not keep current, on a second `# redraw:`, on one whose quoting does not
   parse, on a `# drawn blocks:` that names no lowercase namespace, and on drawn blocks with no
   `# redraw:` to draw them again.

@@ -535,6 +535,13 @@ def drawn_blocks(text: str | None) -> frozenset[bytes]:
     match. `# drawn blocks: brain` takes those rows out of every side before
     the merge, as a machined index's are, and puts the repository's own back;
     the template's `# redraw:` command then draws them again.
+
+    A README the Markdown Kit draws is the same: each repository's header,
+    footer and trophy case are its own measurement, drawn every night between
+    `<!-- markdown:NAME:start -->` and `<!-- markdown:NAME:end -->`, and a
+    template that draws its own page changes them every night.
+    `# drawn blocks: markdown` keeps the repository's rows, which its own run
+    of the kit keeps current.
     """
     names = (match.group(1) for match in _template_notes(text, DRAWN))
     return frozenset(name.encode() for name in names if NAMESPACE.match(name))
@@ -1311,6 +1318,10 @@ SEALED_BEGIN = re.compile(rb"<!--\s*(?P<name>[A-Z][A-Z0-9_-]*(?::[A-Z][A-Z0-9_-]
 # `<!-- /brain:NAME -->`, each marker a line of its own. Masked like a
 # machined index: the markers stay, and the rows are the repository's.
 DRAWN_BEGIN = re.compile(rb"^<!--\s*(?P<ns>[a-z][a-z0-9-]*):(?P<name>[A-Za-z0-9_-]+)(?:\s[^>]*)?-->$")
+# The same, marked as the Markdown Kit marks the blocks it draws into a README
+# from the repository's own measurement: from `<!-- markdown:NAME:start -->`
+# to `<!-- markdown:NAME:end -->`, an element's NAME being `element:ID`.
+DRAWN_START = re.compile(rb"^<!--\s*(?P<ns>[a-z][a-z0-9-]*):(?P<name>[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)*):start\s*-->$")
 
 
 def machined_blocks(lines: list[bytes], *, sealed_only_with_hash: bool = True,
@@ -1337,10 +1348,12 @@ def machined_blocks(lines: list[bytes], *, sealed_only_with_hash: bool = True,
             blocks.append((i, end, b"index " + _marker(lines[i]), False))
             i = end + 1
             continue
-        opened = DRAWN_BEGIN.match(lines[i].strip()) if drawn and not fenced else None
+        line = lines[i].strip()
+        opened = (DRAWN_BEGIN.match(line) or DRAWN_START.match(line)) if drawn and not fenced else None
         if opened and opened.group("ns") in drawn:
             key = opened.group("ns") + b":" + opened.group("name")
-            closing = re.compile(rb"^<!--\s*/" + re.escape(key) + rb"\s*-->$")
+            ending = rb"/" + re.escape(key) if opened.re is DRAWN_BEGIN else re.escape(key) + rb":end"
+            closing = re.compile(rb"^<!--\s*" + ending + rb"\s*-->$")
             end = next((j for j in range(i + 1, len(lines)) if closing.match(lines[j].strip())), None)
             if end is not None:
                 blocks.append((i, end, b"drawn " + key, False))
@@ -1381,7 +1394,7 @@ def masked(path: str, data: bytes,
     back with them.
     """
     if not path.endswith(".md") or (b"AUTO-INDEX:BEGIN" not in data and b":BEGIN sha256:" not in data
-                                    and not any(b"/" + ns + b":" in data for ns in drawn)):
+                                    and not any(ns + b":" in data for ns in drawn)):
         return data, []
     lines = data.split(b"\n")
     blocks = machined_blocks(lines, drawn=drawn)

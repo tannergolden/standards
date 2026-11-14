@@ -903,6 +903,63 @@ class TestABlockTheRepositoryDrawsIsNeverMerged:
         assert sync_world.text("people/README.md") == people("_Nobody recorded yet._")
 
 
+# A front page the Markdown Kit draws: a header and a footer between its own
+# markers, each repository's from its own measurement, and the template's prose
+# between them.
+def front_page(stars: int, updated: str, prose: str = "What it is.") -> str:
+    return (f'<!-- markdown:header:start -->\n<img alt="Stars: {stars}" src="assets/banners/header-day.svg">\n'
+            f"<!-- markdown:header:end -->\n\n## About\n\n{prose}\n\n<!-- markdown:footer:start -->\n"
+            f'<img alt="Last updated {updated}" src="assets/banners/footer-day.svg">\n<!-- markdown:footer:end -->\n')
+
+
+class TestABlockTheMarkdownKitDrawsIsNeverMerged:
+    """`# drawn blocks: markdown`: a page the kit draws keeps its own drawing, however often the template's moves."""
+
+    KIT = frozenset({b"markdown"})
+
+    def decide(self, base, target, ours, drawn=KIT):
+        def side(data, sha):
+            return sync.Side("100644", data.encode(), sha)
+        return sync.decide("README.md", side(base, "base"), side(target, "target"), side(ours, "ours"),
+                           synced=True, was_deleted=False, drawn=drawn)
+
+    def test_the_templates_redrawn_page_is_no_conflict_for_a_page_drawn_its_own(self):
+        decision = self.decide(front_page(3, "May 1"), front_page(4, "May 2"), front_page(0, "June 9"))
+        assert decision.outcome == "unchanged" and decision.write is None
+
+    def test_without_the_note_the_same_redraw_is_a_conflict(self):
+        decision = self.decide(front_page(3, "May 1"), front_page(4, "May 2"), front_page(0, "June 9"),
+                               drawn=frozenset())
+        assert decision.outcome == "conflict"
+
+    def test_the_templates_prose_arrives_around_the_pages_own_drawing(self):
+        decision = self.decide(front_page(3, "May 1"), front_page(4, "May 2", "What it is, and why."),
+                               front_page(0, "June 9"))
+        assert decision.outcome == "updated"
+        assert decision.write.data.decode() == front_page(0, "June 9", "What it is, and why.")
+
+    def test_an_element_is_a_block_and_a_marker_in_a_fence_or_with_the_wrong_end_is_not(self):
+        text = (b"<!-- markdown:element:flow:start -->\nrow\n<!-- markdown:element:flow:end -->\n\n"
+                b"<!-- markdown:badges:start -->\nrow\n<!-- /markdown:badges -->\n\n```markdown\n"
+                b"<!-- markdown:header:start -->\nrow\n<!-- markdown:header:end -->\n```\n")
+        prose, rows = sync.masked("README.md", text, self.KIT)
+        assert rows == [(b"drawn markdown:element:flow", [b"row"])]
+        assert prose.count(b"row") == 2
+
+    def test_a_real_sync_keeps_the_pages_drawing_and_brings_the_templates_prose(self, sync_world):
+        text = TEMPLATE_LIST.replace("/scripts/tool.py\n", "/scripts/tool.py\n/docs/front.md\n")
+        sync_world.release("v1.0.1", {".github/template-sync": with_notes(
+            f"# redraw: {shlex.quote(sys.executable)} -c pass", "# drawn blocks: markdown", text=text),
+            "docs/front.md": front_page(3, "May 1")})
+        sync_world.generate()
+        sync_world.owner({"docs/front.md": front_page(0, "June 9")})
+        sync_world.release("v1.1.0", {"docs/front.md": front_page(4, "May 2", "What it is, and why.")})
+        result = sync_world.run_sync()
+        assert sync_world.outcomes(result)["docs/front.md"] == "updated"
+        assert sync_world.text("docs/front.md") == front_page(0, "June 9", "What it is, and why.")
+        assert not sync_world.run_sync().changed
+
+
 GITIGNORE = "# Built\n/build/\n/dist/\n"
 
 
