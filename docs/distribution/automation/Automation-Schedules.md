@@ -48,6 +48,7 @@ with nothing to sync back here.
 | `lifecycle.yml`, `standards`     | Weekly, Mon 07:00 | Last of the weekly sweep, and it usually does nothing                 |
 | `intelligence-sync.yml` (local)  | Weekly, Mon 08:00 | The hub's rules for AI agents, after the sweep, on an hour of its own |
 | `research-freshness.yml` (local) | Weekly, Mon 09:00 | Research past its three months, after the hub's sync                  |
+| `offline-sources.yml` (vault)    | Weekly, Mon 10:00 | The vault's offline sources against Kiwix, after the research check   |
 
 Everything else is **event driven** and needs no schedule:
 
