@@ -51,6 +51,8 @@
 #         issues: write # post the welcome on issues
 #         pull-requests: write # post the welcome on pull requests
 #       uses: tannergolden/standards/.github/workflows/governance.yml@v1
+#       with:
+#         base-branch: 'Development' # the base the welcome names, as above
 #
 # NOTE ON THE LABEL SYNC TRIGGER: the taxonomy lives in this repository now,
 # so a consumer has no local labels file whose push could trigger a sync. The
@@ -80,6 +82,13 @@ on:
         description: >-
           Link to the engineering standards shown to first-time
           contributors. Empty omits the line.
+        required: false
+        type: string
+        default: ''
+      base-branch:
+        description: >-
+          Branch the welcome tells a first-time contributor to target. Empty
+          names the repository's own default branch.
         required: false
         type: string
         default: ''
@@ -149,6 +158,11 @@ jobs:
       # would 404 at a new contributor on their very first interaction.
       # Links that always resolve, to this repository's own issues and
       # discussions, are built from the github context instead.
+      #
+      # The base branch is an input too. Once a project is ready to
+      # distribute, `Release` becomes the default branch while pull requests
+      # still target `Development`, so naming the default branch would send
+      # a newcomer who got it right to the production line.
       - name: '👋 Greet First-Time Contributor'
         uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # v3.1.0
         with:
@@ -172,7 +186,7 @@ jobs:
             - 📜 **PR title** is a Conventional Commit (`type(scope): summary`); it becomes the squash commit.
             - ✍️ **Commits are signed off** for the DCO (`git commit -s`); this is a required check.
             - 🧪 **Local gates pass**: `make lint && make test`.
-            - 🌿 **Base branch** is `${{ github.event.repository.default_branch }}`.
+            - 🌿 **Base branch** is `${{ inputs.base-branch || github.event.repository.default_branch }}`.
 
             Feel free to open as a **Draft** until CI is green; a maintainer will follow up from there. Happy shipping! ✨
 

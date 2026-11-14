@@ -104,6 +104,7 @@ _Every script, every shell block._
 | [`toolchain-from-the-environment.py`](toolchain-from-the-environment.py)           | Every checker comes from the environment's toolchain, at the version it pins.                 |
 | [`trusted-publishing.py`](trusted-publishing.py)                                   | Npm and crates.io publish without a stored token, and say why when they cannot.               |
 | [`unreadable-pull-requests.py`](unreadable-pull-requests.py)                       | A pull request list the API refuses must not fail the run that asks for it.                   |
+| [`welcome-base-branch.py`](welcome-base-branch.py)                                 | The first-time welcome must name the branch pull requests target.                             |
 
 <!-- AUTO-INDEX:END -->
 

@@ -46,7 +46,7 @@ When a first-time reporter opens an issue, the bot:
 When a first-time contributor opens a Pull Request, the bot:
 
 - Celebrates the new contribution.
-- Reminds the author of the **Conventional Commit PR title** contract and the base branch (`Development`).
+- Reminds the author of the **Conventional Commit PR title** contract and the base branch: the stub's `base-branch`, or the repository's default branch when it names none.
 - Flags the **DCO sign-off** (`git commit -s`) as a required check.
 - Encourages a local `make lint && make test` run, and the Draft-until-CI-is-green habit.
 

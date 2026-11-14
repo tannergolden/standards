@@ -162,6 +162,7 @@ What follows the default branch until you name `Development`:
 | 🔄 Template Sync, 🖌️ Code Style Formatter | Opening its pull request against it                              | `base: Development`                                                                 |
 | 🗂️ Machined Indexes                       | Running on a push to it, and opening its pull request against it | `base: Development`, and its `if:` comparing `github.ref_name` with `'Development'` |
 | 🦾 Automate Dependabot                    | Acting only on pull requests into it                             | `base-branch: Development`                                                          |
+| ⚖️ Governance                             | Naming it as the base in the first-time welcome                  | `base-branch: Development`                                                          |
 | 🚨 CI Failure Alerts                      | Escalating only the failures on it                               | `branches: '["Development"]'`: the branches its trigger lists                       |
 | `.github/dependabot.yml`                  | Opening version updates against it                               | `target-branch: Development` in each `updates` entry                                |
 
