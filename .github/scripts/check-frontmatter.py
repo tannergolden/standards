@@ -25,10 +25,13 @@
 # loads in its own format, meaning a skill's folder, anything under
 # `.claude/`, a `*.agent.md`, `*.instructions.md`, `*.prompt.md` or
 # `*.chatmode.md`, and any `---` block that names its agent or skill; a test
-# fixture, which is data; and anything `.gitattributes` marks
-# `linguist-generated`, which belongs to the generator that writes it. An
-# agent instruction file (AGENTS.md, CLAUDE.md, GEMINI.md) may leave
-# frontmatter out; one that carries it is checked like any other document.
+# fixture, which is data; anything `.gitattributes` marks `-text`, which git
+# keeps byte for byte as data, as a vault keeps a file waiting at its Inbox
+# until it is sorted, and which the repository validator does not read as
+# text either; and anything it marks `linguist-generated`, which belongs to
+# the generator that writes it. An agent instruction file (AGENTS.md,
+# CLAUDE.md, GEMINI.md) may leave frontmatter out; one that carries it is
+# checked like any other document.
 #
 # `--mode enforce`, the default, exits 1 on any problem; `--mode warn`
 # reports each one as a warning and exits 0. Nothing here touches the
@@ -81,12 +84,13 @@ def markdown_files() -> list[str]:
     return sorted(found)
 
 
-def generated(paths: list[str]) -> set[str]:
-    """The paths .gitattributes marks linguist-generated, which their generator owns."""
+def set_aside(paths: list[str]) -> set[str]:
+    """The paths .gitattributes says are no document of this repository's: `-text`, which git
+    keeps byte for byte as data, and `linguist-generated`, which their generator owns."""
     if not paths:
         return set()
     done = subprocess.run(
-        ["git", "check-attr", "-z", "--stdin", "linguist-generated"],
+        ["git", "check-attr", "-z", "--stdin", "text", "linguist-generated"],
         input="\0".join(paths) + "\0",
         capture_output=True,
         text=True,
@@ -95,9 +99,14 @@ def generated(paths: list[str]) -> set[str]:
     if done.returncode != 0:
         return set()
     parts = done.stdout.split("\0")
-    return {
-        parts[i] for i in range(0, len(parts) - 2, 3) if parts[i + 2] in ("set", "true")
-    }
+    aside = set()
+    for i in range(0, len(parts) - 2, 3):
+        path, attribute, value = parts[i], parts[i + 1], parts[i + 2]
+        if (attribute, value) == ("text", "unset") or (
+            attribute == "linguist-generated" and value in ("set", "true")
+        ):
+            aside.add(path)
+    return aside
 
 
 def exempt(path: str, skills: set[str]) -> bool:
@@ -240,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
 
     files = markdown_files()
     skills = {os.path.dirname(f) for f in files if os.path.basename(f) == "SKILL.md"}
-    skip = generated(files)
+    skip = set_aside(files)
     checked = 0
     offenders: list[tuple[str, int, str]] = []
     for path in files:

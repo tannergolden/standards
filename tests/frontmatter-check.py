@@ -184,6 +184,23 @@ class TestTheGate:
         result = run_in(git_repo, files, run_shell, untracked={"scratch.md": "# Not tracked\n"})
         assert result.returncode == 0, result.output
 
+    def test_a_file_git_keeps_as_data_is_not_read(self, git_repo, run_shell):
+        # A vault keeps a file waiting at its Inbox byte for byte, exactly as it arrived, until it is
+        # sorted, and gives the Inbox's own README.md its default back: that one is read again.
+        files = {".gitattributes": "inbox/** -text\ninbox/README.md text=auto\nsamples/*.md binary\n",
+                 "inbox/call notes.md": "# Notes from the call\n",
+                 "samples/raw.md": "# A sample kept as it is\n",
+                 "inbox/README.md": doc(*GOOD),
+                 "README.md": doc(*GOOD)}
+        result = run_in(git_repo, files, run_shell)
+        assert result.returncode == 0, result.output
+        assert "all 2 document(s)" in result.output
+
+        result = run_in(git_repo, {"inbox/README.md": "# Inbox\n"}, run_shell)
+        assert result.returncode == 1, result.output
+        assert "file=inbox/README.md" in result.output
+        assert "call notes" not in result.output
+
 
 class TestTheWiring:
     def test_ci_runs_the_action_with_the_input(self):
