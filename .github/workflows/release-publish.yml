@@ -289,15 +289,23 @@ jobs:
           echo "version=${TAG_PREFIX}.${TIMESTAMP}.g${SHORT_SHA}" >> "$GITHUB_OUTPUT"
           echo "prerelease=${prerelease_flag}" >> "$GITHUB_OUTPUT"
 
+      # The notes cover the latest 100 commits at most. That limit is the
+      # `[git] limit_commits` config key, set below through git-cliff's
+      # environment override, so it holds for a caller's own `cliff-config`
+      # as well as the shared one. It was a `--limit-commits` flag, which the
+      # git-cliff this action installs (2.14.2) does not have: it rejected
+      # the flag and exited 2, so every manual run that reached this step
+      # failed.
       - name: '📝 Generate Changelog'
         id: cliff
         if: ${{ steps.gate.outputs.proceed == 'true' && steps.gate.outputs.mode == 'manual' }}
         uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
         with:
           config: ${{ steps.cliff-config.outputs.path }}
-          args: --verbose ${{ steps.remote.outputs.offline }} --strip header --limit-commits 100
+          args: --verbose ${{ steps.remote.outputs.offline }} --strip header
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GIT_CLIFF__GIT__LIMIT_COMMITS: '100'
 
       # Caching is off in both setup steps: this job publishes artifacts, so
       # a poisoned cache would reach a release.
